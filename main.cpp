@@ -3,6 +3,16 @@
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
+	if(!SDL_SetAppMetadata("Abrogue", "0.1", "org.strovstiksoft.abrogue")) 
+		return SDL_APP_FAILURE;
+
+	if(!SDL_Init(SDL_INIT_VIDEO)) 
+		return SDL_APP_FAILURE;
+
+	auto window = SDL_CreateWindow("Abrogue 0.1", 1600, 900, SDL_WINDOW_VULKAN);
+	if (!window)
+		return SDL_APP_FAILURE;
+
 	return SDL_APP_CONTINUE;
 }
 
