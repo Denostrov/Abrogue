@@ -1,0 +1,12 @@
+{
+	"appName" : "Abrogue",
+	"appVersion" : "0.1",
+	"appIdentifier" : "org.strovstiksoft.abrogue",
+	"appCreator" : "Strovstik Software Inc.",
+	"appCopyright" : "Copyright (c) 2025 Strovstik Software Inc.",
+	"appURL" : "https://github.com/Denostrov",
+	"appType" : "game",
+	
+	"windowWidth" : 1600,
+	"windowHeight" : 900
+}

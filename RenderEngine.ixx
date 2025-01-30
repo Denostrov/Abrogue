@@ -1,40 +1,30 @@
 module;
 
-#include <SDL3/SDL_video.h>
-#include <SDL3/SDL_vulkan.h>
-#include <SDL3/SDL_messagebox.h>
-
 #include <vulkan/vulkan.hpp>
 
 export module RenderEngine;
 
 export import std;
+export import RenderWindow;
 
 export class RenderEngine
 {
 public:
-	void init(SDL_Window* newWindow)
+	bool init()
 	{
-		window = newWindow;
-		uint32_t instanceCount{};
-		auto extensions = SDL_Vulkan_GetInstanceExtensions(&instanceCount);
+		window = std::make_unique<RenderWindow>();
+		if(window->getHasError())
+			return false;
 
-		if(!extensions)
-		{
-			SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SDL Error", SDL_GetError(), nullptr);
-		}
-
-		std::println(std::cerr, "{} vulkan instance extensions required:", instanceCount);
-		for(uint32_t i{}; i < instanceCount; i++)
-			std::println(std::cerr, "\t{}", extensions[i]);
+		return true;
 	}
 
-	void release() { window = nullptr; }
+	void release() { window.release(); }
 
-	auto getWindow() const { return window; }
+	auto& getWindow() const { return window; }
 
 private:
-	SDL_Window* window{};
+	std::unique_ptr<RenderWindow> window;
 	vk::Instance vulkanInstance;
 };
 
