@@ -3,11 +3,10 @@ module;
 #include <SDL3/SDL_messagebox.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_vulkan.h>
-#include <json.hpp>
 
 module RenderWindow;
 
-import std;
+import Configuration;
 
 RenderWindow::RenderWindow()
 {
@@ -49,36 +48,32 @@ RenderWindow::RenderWindow()
 		return true;
 	};
 
-	nlohmann::json configJSON = nlohmann::json::parse(std::ifstream("config.json"), nullptr, false);
-	if(checkErrorOccured(configJSON.is_discarded() || !configJSON.is_object(), "config.json not found"))
-		return;
-
-	auto fullAppName = configJSON["appName"].get<std::string>() + " " + configJSON["appVersion"].get<std::string>();
+	auto fullAppName = Configuration::getAppName() + " " + Configuration::getAppVersion();
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, fullAppName.c_str())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, configJSON["appVersion"].get<std::string>().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, Configuration::getAppVersion().c_str())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, configJSON["appIdentifier"].get<std::string>().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, Configuration::getAppIdentifier().c_str())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_CREATOR_STRING, configJSON["appCreator"].get<std::string>().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_CREATOR_STRING, Configuration::getAppCreator().c_str())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_COPYRIGHT_STRING, configJSON["appCopyright"].get<std::string>().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_COPYRIGHT_STRING, Configuration::getAppCopyright().c_str())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_URL_STRING, configJSON["appURL"].get<std::string>().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_URL_STRING, Configuration::getAppURL().c_str())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, configJSON["appType"].get<std::string>().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, Configuration::getAppType().c_str())))
 		return;
 
 	if(checkSDLErrorOccured(!SDL_Init(SDL_INIT_VIDEO)))
 		return;
 
-	window = SDL_CreateWindow(fullAppName.c_str(), 1600, 900, SDL_WINDOW_VULKAN);
+	window = SDL_CreateWindow(fullAppName.c_str(), Configuration::getWindowWidth(), Configuration::getWindowHeight(), SDL_WINDOW_VULKAN);
 	if(checkSDLErrorOccured(!window))
 		return;
 
@@ -96,4 +91,6 @@ RenderWindow::~RenderWindow()
 {
 	if(window)
 		SDL_DestroyWindow(window);
+
+	SDL_Quit();
 }
