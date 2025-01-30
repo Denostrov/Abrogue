@@ -28,14 +28,15 @@ void Configuration::init()
 		if(!configJSON.contains(key))
 			return;
 
-		if constexpr(std::is_integral_v<decltype(value)>)
+		using ValueType = std::decay_t<decltype(value)>;
+
+		if constexpr(std::is_integral_v<ValueType>)
 		{
-			if(!configJSON[key.data()].is_number_integer())
+			if(!configJSON[key].is_number_integer())
 				return;
 
-			value = configJSON[key.data()].get<decltype(value)>();
+			value = configJSON[key].get<ValueType>();
 		}
-		
 	};
 
 	readJSONValue("windowWidth", windowWidth);
