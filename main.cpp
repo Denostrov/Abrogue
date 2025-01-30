@@ -3,10 +3,13 @@
 
 #include <SDL3/SDL_messagebox.h>
 
+import Configuration;
 import RenderEngine;
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
+	Configuration::init();
+
 	if(!renderEngine.init())
 		return SDL_APP_FAILURE;
 

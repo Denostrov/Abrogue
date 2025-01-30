@@ -1,3 +1,7 @@
+module;
+
+#include <json.hpp>
+
 export module Configuration;
 
 export import std;
@@ -5,8 +9,7 @@ export import std;
 export class Configuration
 {
 public:
-	static bool init();
-	static void release();
+	static void init();
 
 	static auto const& getAppName() { return appName; }
 	static auto const& getAppVersion() { return appVersion; }
@@ -20,6 +23,8 @@ public:
 	static auto getWindowHeight() { return windowHeight; }
 
 private:
+	static bool saveToFile();
+
 	inline static std::string appName{"Abrogue"};
 	inline static std::string appVersion{"0.1"};
 	inline static std::string appIdentifier{"org.strovstiksoft.abrogue"};

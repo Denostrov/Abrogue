@@ -6,11 +6,22 @@ module Configuration;
 
 import std;
 
-bool Configuration::init()
+void Configuration::init()
 {
-	nlohmann::json configJSON = nlohmann::json::parse(std::ifstream("config.json"), nullptr, false);
+	auto configFile = std::ifstream("config.json", std::ios::in | std::ios::binary);
+	if(!configFile)
+	{
+		saveToFile();
+		return;
+	}
+
+	nlohmann::json configJSON = nlohmann::json::parse(configFile, nullptr, false);
 	if(configJSON.is_discarded() || !configJSON.is_object())
-		return false;
+	{
+		saveToFile();
+		return;
+	}
+		
 
 	auto readJSONValue = [&configJSON](std::string_view key, auto& value)
 	{
@@ -29,11 +40,18 @@ bool Configuration::init()
 
 	readJSONValue("windowWidth", windowWidth);
 	readJSONValue("windowHeight", windowHeight);
-
-	return true;
 }
 
-void Configuration::release()
+bool Configuration::saveToFile()
 {
+	nlohmann::json configJSON;
+	configJSON["windowWidth"] = windowWidth;
+	configJSON["windowHeight"] = windowHeight;
 
+	std::ofstream configFile("config.json", std::ios::out | std::ios::binary);
+	if(!configFile)
+		return false;
+
+	configFile << std::setw(4) << configJSON << std::endl;
+	return true;
 }
