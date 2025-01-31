@@ -4,23 +4,20 @@ module;
 
 module Configuration;
 
+import Logger;
 import std;
 
-void Configuration::init()
+using namespace std::literals;
+
+bool Configuration::init()
 {
-	auto configFile = std::ifstream("config.json", std::ios::in | std::ios::binary);
+	auto configFile = std::ifstream(configFileName.data() + ".json"s, std::ios::in | std::ios::binary);
 	if(!configFile)
-	{
-		saveToFile();
-		return;
-	}
+		return saveToFile();
 
 	nlohmann::json configJSON = nlohmann::json::parse(configFile, nullptr, false);
 	if(configJSON.is_discarded() || !configJSON.is_object())
-	{
-		saveToFile();
-		return;
-	}
+		return saveToFile();
 
 	auto readJSONValue = [&configJSON](std::string_view key, auto& value)
 	{
@@ -40,6 +37,8 @@ void Configuration::init()
 
 	readJSONValue("windowWidth", windowWidth);
 	readJSONValue("windowHeight", windowHeight);
+
+	return true;
 }
 
 bool Configuration::saveToFile()
@@ -48,9 +47,12 @@ bool Configuration::saveToFile()
 	configJSON["windowWidth"] = windowWidth;
 	configJSON["windowHeight"] = windowHeight;
 
-	std::ofstream configFile("config.json", std::ios::out | std::ios::binary);
+	std::ofstream configFile(configFileName.data() + ".json"s, std::ios::out | std::ios::binary);
 	if(!configFile)
+	{
+		Logger::logError("Couldn't create config file, check if game folder needs admin permissions");
 		return false;
+	}
 
 	configFile << std::setw(4) << configJSON << std::endl;
 	return true;

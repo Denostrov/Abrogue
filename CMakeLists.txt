@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.30)
 
 project(Abrogue LANGUAGES CXX)
 
-add_executable(${PROJECT_NAME} main.cpp "RenderWindow.cpp" "Configuration.cpp")
+add_executable(${PROJECT_NAME} main.cpp "RenderWindow.cpp" "Configuration.cpp" "Logger.cpp")
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES FILES "RenderEngine.ixx" "std.ixx" "RenderWindow.ixx" "Configuration.ixx" "Logger.ixx")
 
 target_link_directories(${PROJECT_NAME} PUBLIC lib)

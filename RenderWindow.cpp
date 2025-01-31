@@ -8,6 +8,8 @@ module RenderWindow;
 
 import Configuration;
 
+using namespace std::literals;
+
 RenderWindow::RenderWindow()
 {
 	auto checkErrorOccured = [this](bool checkValue, std::string_view errorStr)
@@ -48,26 +50,26 @@ RenderWindow::RenderWindow()
 		return true;
 	};
 
-	auto fullAppName = Configuration::getAppName() + " " + Configuration::getAppVersion();
+	auto fullAppName = Configuration::appName.data() + " "s + Configuration::appVersion.data();
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, fullAppName.c_str())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, Configuration::getAppVersion().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, Configuration::appVersion.data())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, Configuration::getAppIdentifier().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, Configuration::appIdentifier.data())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_CREATOR_STRING, Configuration::getAppCreator().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_CREATOR_STRING, Configuration::appCreator.data())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_COPYRIGHT_STRING, Configuration::getAppCopyright().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_COPYRIGHT_STRING, Configuration::appCopyright.data())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_URL_STRING, Configuration::getAppURL().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_URL_STRING, Configuration::appURL.data())))
 		return;
 
-	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, Configuration::getAppType().c_str())))
+	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, Configuration::appType.data())))
 		return;
 
 	if(checkSDLErrorOccured(!SDL_Init(SDL_INIT_VIDEO)))
