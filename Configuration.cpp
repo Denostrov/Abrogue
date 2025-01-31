@@ -21,7 +21,6 @@ void Configuration::init()
 		saveToFile();
 		return;
 	}
-		
 
 	auto readJSONValue = [&configJSON](std::string_view key, auto& value)
 	{
