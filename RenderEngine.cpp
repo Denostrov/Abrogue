@@ -82,7 +82,12 @@ RenderEngine::RenderEngine()
 		Logger::logError(std::format("Required extension {} not supported", extension));
 		return;
 	}
-	auto instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredExtensions);
+	vk::InstanceCreateInfo instanceCreateInfo;
+	auto messengerCreateInfo{getDebugUtilsMessengerCreateInfo()};
+	if constexpr(isDebugBuild)
+		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredExtensions, &messengerCreateInfo);
+	else
+		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredExtensions);
 	if(checkVulkanErrorOccured(instance, vk::createInstanceUnique(instanceCreateInfo), "Created Vulkan instance", "Failed to create Vulkan instance"))
 		return;
 
@@ -90,11 +95,15 @@ RenderEngine::RenderEngine()
 
 	if constexpr(isDebugBuild)
 	{
-		vk::DebugUtilsMessengerCreateInfoEXT messengerCreateInfo({}, vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-																 vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding, debugCallback);
 		if(checkVulkanErrorOccured(debugMessenger, instance->createDebugUtilsMessengerEXTUnique(messengerCreateInfo), "Created debug messenger", "Failed to create debug messenger"))
 		   return;
 	}
+}
+
+vk::DebugUtilsMessengerCreateInfoEXT RenderEngine::getDebugUtilsMessengerCreateInfo() const
+{
+	return {{}, vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+			vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding, debugCallback};
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL RenderEngine::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
@@ -103,9 +112,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL RenderEngine::debugCallback(VkDebugUtilsMessageSe
 											 void* pUserData)
 {
 	if(messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		Logger::logInfo(std::format("Validation layer: {}", pCallbackData->pMessage));
+		Logger::logInfo(std::format("{}", pCallbackData->pMessage));
 	else if(messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		Logger::logError(std::format("Validation layer: {}", pCallbackData->pMessage));
+		Logger::logError(std::format("{}", pCallbackData->pMessage));
 
 	return VK_FALSE;
 }
