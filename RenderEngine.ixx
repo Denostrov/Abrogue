@@ -1,31 +1,31 @@
 module;
 
+#define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
+#define VULKAN_HPP_NO_EXCEPTIONS
 #include <vulkan/vulkan.hpp>
 
 export module RenderEngine;
 
-export import std;
 export import RenderWindow;
+export import Configuration;
+export import Logger;
 
 export class RenderEngine
 {
 public:
-	bool init()
-	{
-		window = std::make_unique<RenderWindow>();
-		if(window->getHasError())
-			return false;
+	RenderEngine();
 
-		return true;
-	}
-
-	void release() { window.release(); }
-
-	auto& getWindow() const { return window; }
+	auto getHasError() const { return hasError; }
 
 private:
-	std::unique_ptr<RenderWindow> window;
-	vk::Instance vulkanInstance;
-};
+	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+														VkDebugUtilsMessageTypeFlagsEXT messageType,
+														const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+														void* pUserData);
 
-export inline RenderEngine renderEngine;
+	bool hasError{};
+
+	RenderWindow window;
+	vk::UniqueInstance instance;
+	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
+};

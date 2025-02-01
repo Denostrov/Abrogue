@@ -5,7 +5,7 @@
 
 import Logger;
 import Configuration;
-import RenderEngine;
+import Game;
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
@@ -15,7 +15,7 @@ SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 	if(!Configuration::init())
 		return SDL_APP_FAILURE;
 
-	if(!renderEngine.init())
+	if(!Game::init())
 		return SDL_APP_FAILURE;
 
 	return SDL_APP_CONTINUE;
@@ -36,5 +36,5 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result)
 {
-	renderEngine.release();
+	Game::release();
 }

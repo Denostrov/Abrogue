@@ -23,8 +23,21 @@ void Logger::logError(std::string_view message)
 {
 	auto stackTrace = std::stacktrace::current();
 	std::println(errorLog, "Error: {}\nStacktrace:\n{}", message, stackTrace);
+	errorLog.flush();
+
 	if constexpr(isDebugBuild)
 		std::println(std::cerr, "Error: {}\nStacktrace:\n{}", message, stackTrace);
+
+	displayErrorMessage("Error: "s + message.data() + "\nCheck the error log for details");
+}
+
+void Logger::logInfo(std::string_view message)
+{
+	std::println(infoLog, "{}", message);
+	infoLog.flush();
+
+	if constexpr(isDebugBuild)
+		std::println(std::cout, "{}", message);
 }
 
 void Logger::displayErrorMessage(std::string_view message)

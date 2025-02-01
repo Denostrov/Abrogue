@@ -4,6 +4,8 @@ module;
 
 export module RenderWindow;
 
+export import std;
+
 export class RenderWindow
 {
 public:
@@ -11,10 +13,13 @@ public:
 	~RenderWindow();
 
 	auto getHasError() const { return hasError; }
+	auto getWindow() const { return window; }
+	auto const& getRequiredExtensions() const { return requiredExtensions; }
 
 private:
 	bool hasError{};
 	SDL_Window* window{};
+	std::vector<char const*> requiredExtensions{};
 };
 
 

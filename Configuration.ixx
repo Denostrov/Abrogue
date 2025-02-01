@@ -32,6 +32,10 @@ public:
 	static constexpr std::string_view appURL{"https://github.com/Denostrov"};
 	static constexpr std::string_view appType{"game"};
 
+	static constexpr uint32_t vkAppMajorVersion{0};
+	static constexpr uint32_t vkAppMinorVersion{1};
+	static constexpr uint32_t vkAppPatchVersion{0};
+
 private:
 	static bool saveToFile();
 

@@ -6,7 +6,7 @@ module;
 
 module RenderWindow;
 
-import Configuration;
+import Logger;
 
 using namespace std::literals;
 
@@ -17,13 +17,8 @@ RenderWindow::RenderWindow()
 		if(!checkValue)
 			return false;
 
-		if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Application Error", errorStr.data(), nullptr))
-		{
-			hasError = true;
-			return true;
-		}
-
-		std::println(std::cerr, "{}", errorStr);
+		hasError = true;
+		Logger::logError(errorStr);
 		return true;
 	};
 	auto checkSDLErrorOccured = [this](bool checkValue)
@@ -31,22 +26,14 @@ RenderWindow::RenderWindow()
 		if(!checkValue)
 			return false;
 
+		hasError = true;
+
 		std::string errorString = SDL_GetError();
 		SDL_ClearError();
-
 		if(errorString.empty())
-		{
-			hasError = true;
 			return true;
-		}
 
-		if(SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "SDL Error", errorString.c_str(), nullptr))
-		{
-			hasError = true;
-			return true;
-		}
-
-		std::println(std::cerr, "{}", errorString);
+		Logger::logError(errorString);
 		return true;
 	};
 
@@ -80,13 +67,13 @@ RenderWindow::RenderWindow()
 		return;
 
 	uint32_t instanceCount{};
-	auto extensions = SDL_Vulkan_GetInstanceExtensions(&instanceCount);
-	if(checkSDLErrorOccured(!extensions))
+	auto extensionsArray = SDL_Vulkan_GetInstanceExtensions(&instanceCount);
+	if(checkSDLErrorOccured(!extensionsArray))
 		return;
 
-	std::println(std::cerr, "{} vulkan instance extensions required:", instanceCount);
+	requiredExtensions.reserve(instanceCount);
 	for(uint32_t i{}; i < instanceCount; i++)
-		std::println(std::cerr, "\t{}", extensions[i]);
+		requiredExtensions.emplace_back(extensionsArray[i]);
 }
 
 RenderWindow::~RenderWindow()
