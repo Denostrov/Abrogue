@@ -21,21 +21,6 @@ RenderWindow::RenderWindow()
 		Logger::logError(errorStr);
 		return true;
 	};
-	auto checkSDLErrorOccured = [this](bool checkValue)
-	{
-		if(!checkValue)
-			return false;
-
-		hasError = true;
-
-		std::string errorString = SDL_GetError();
-		SDL_ClearError();
-		if(errorString.empty())
-			return true;
-
-		Logger::logError(errorString);
-		return true;
-	};
 
 	auto fullAppName = Configuration::appName.data() + " "s + Configuration::appVersion.data();
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, fullAppName.c_str())))
@@ -82,4 +67,28 @@ RenderWindow::~RenderWindow()
 		SDL_DestroyWindow(window);
 
 	SDL_Quit();
+}
+
+bool RenderWindow::createSurface(VkInstance instance)
+{
+	if(checkSDLErrorOccured(!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface)))
+		return false;
+
+	return true;
+}
+
+bool RenderWindow::checkSDLErrorOccured(bool checkValue)
+{
+	if(!checkValue)
+		return false;
+
+	hasError = true;
+
+	std::string errorString = SDL_GetError();
+	SDL_ClearError();
+	if(errorString.empty())
+		return true;
+
+	Logger::logError(errorString);
+	return true;
 }

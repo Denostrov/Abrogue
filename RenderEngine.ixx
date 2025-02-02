@@ -10,6 +10,18 @@ export import RenderWindow;
 export import Configuration;
 export import Logger;
 
+struct UniqueSurface
+{
+	UniqueSurface(vk::Instance& instance): instance(instance) {}
+	~UniqueSurface() { instance.destroySurfaceKHR(surface);; }
+
+	auto operator->() const { return surface; }
+	operator vk::SurfaceKHR() const { return surface; }
+
+	vk::Instance& instance;
+	vk::SurfaceKHR surface;
+};
+
 export class RenderEngine
 {
 public:
@@ -29,4 +41,8 @@ private:
 	RenderWindow window;
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
+	vk::PhysicalDevice physicalDevice;
+	vk::UniqueDevice device;
+	vk::Queue graphicsQueue;
+	UniqueSurface surface;
 };

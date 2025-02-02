@@ -8,7 +8,7 @@ module RenderEngine;
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
-RenderEngine::RenderEngine()
+RenderEngine::RenderEngine(): surface(instance.get())
 {
 	if(window.getHasError())
 	{
@@ -53,8 +53,8 @@ RenderEngine::RenderEngine()
 	if constexpr(isDebugBuild)
 		requiredLayers.emplace_back("VK_LAYER_KHRONOS_validation");
 	Logger::logInfo(std::format("{} Vulkan validation layers required:", requiredLayers.size()));
-	for(uint32_t i{}; i < requiredLayers.size(); i++)
-		Logger::logInfo(std::format("\t{}", requiredLayers[i]));
+	for(auto layer : requiredLayers)
+		Logger::logInfo(std::format("\t{}", layer));
 
 	for(auto layer : requiredLayers)
 	{
@@ -70,8 +70,8 @@ RenderEngine::RenderEngine()
 	if constexpr(isDebugBuild)
 		requiredExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	Logger::logInfo(std::format("{} Vulkan instance extensions required:", requiredExtensions.size()));
-	for(uint32_t i{}; i < requiredExtensions.size(); i++)
-		Logger::logInfo(std::format("\t{}", requiredExtensions[i]));
+	for(auto extension : requiredExtensions)
+		Logger::logInfo(std::format("\t{}", extension));
 
 	for(auto extension : requiredExtensions)
 	{
@@ -82,6 +82,7 @@ RenderEngine::RenderEngine()
 		Logger::logError(std::format("Required extension {} not supported", extension));
 		return;
 	}
+
 	vk::InstanceCreateInfo instanceCreateInfo;
 	auto messengerCreateInfo{getDebugUtilsMessengerCreateInfo()};
 	if constexpr(isDebugBuild)
@@ -96,8 +97,90 @@ RenderEngine::RenderEngine()
 	if constexpr(isDebugBuild)
 	{
 		if(checkVulkanErrorOccured(debugMessenger, instance->createDebugUtilsMessengerEXTUnique(messengerCreateInfo), "Created debug messenger", "Failed to create debug messenger"))
-		   return;
+			return;
 	}
+
+	std::vector<vk::PhysicalDevice> availablePhysicalDevices;
+	if(checkVulkanErrorOccured(availablePhysicalDevices, instance->enumeratePhysicalDevices(), "", "Failed to enumerate physical devices"))
+		return;
+	if(availablePhysicalDevices.empty())
+	{
+		hasError = true;
+		Logger::logError("No physical device with Vulkan support found. Try updating drivers");
+		return;
+	}
+
+	Logger::logInfo(std::format("{} physical devices available:", availablePhysicalDevices.size()));
+	for(auto availableDevice : availablePhysicalDevices)
+		Logger::logInfo(std::format("\t{}", availableDevice.getProperties().deviceName.data()));
+
+	auto maxDeviceScore{0};
+	std::string physicalDeviceName;
+	size_t graphicsQueueFamilyIndex{};
+	for(auto availableDevice : availablePhysicalDevices)
+	{
+		auto deviceProperties = availableDevice.getProperties();
+		Logger::logInfo(std::format("Checking {} suitability:", deviceProperties.deviceName.data()));
+
+		auto queueFamilyProperties = availableDevice.getQueueFamilyProperties();
+		Logger::logInfo(std::format("\t{} queue families available", queueFamilyProperties.size()));
+
+		bool hasRequiredQueueFamilies{};
+		for(size_t i{}; i < queueFamilyProperties.size(); i++)
+		{
+			if(queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)
+			{
+				hasRequiredQueueFamilies = true;
+				graphicsQueueFamilyIndex = i;
+				Logger::logInfo(std::format("\tQueue family with index {} supports graphics", i));
+				break;
+			}
+		}
+		if(!hasRequiredQueueFamilies)
+		{
+			Logger::logInfo("\tNo queue families with graphics support found");
+			continue;
+		}
+
+		auto deviceScore{0};
+		if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+		{
+			deviceScore++;
+			Logger::logInfo("\tIs a discrete GPU");
+		}
+		else
+			Logger::logInfo("\tIs not a discrete GPU");
+
+		if(deviceScore > maxDeviceScore)
+		{
+			maxDeviceScore = deviceScore;
+			physicalDevice = availableDevice;
+			physicalDeviceName = deviceProperties.deviceName.data();
+		}
+	}
+
+	if(!physicalDevice)
+	{
+		hasError = true;
+		Logger::logError("No suitable physical devices found. Try updating drivers");
+		return;
+	}
+	Logger::logInfo(std::format("Picked {} as a suitable physical device", physicalDeviceName.data()));
+
+	std::array<float, 1> queuePriorities{1.0f};
+	vk::DeviceQueueCreateInfo queueCreateInfo{vk::DeviceQueueCreateInfo({}, graphicsQueueFamilyIndex, queuePriorities)};
+	vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfo, requiredLayers);
+	checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo), "Created logical device", "Failed to create logical device");
+
+	graphicsQueue = device->getQueue(graphicsQueueFamilyIndex, 0);
+
+	if(!window.createSurface(instance.get()))
+	{
+		hasError = true;
+		return;
+	}
+	surface.surface = window.getSurface();
+	Logger::logInfo("Created surface");
 }
 
 vk::DebugUtilsMessengerCreateInfoEXT RenderEngine::getDebugUtilsMessengerCreateInfo() const
@@ -107,9 +190,9 @@ vk::DebugUtilsMessengerCreateInfoEXT RenderEngine::getDebugUtilsMessengerCreateI
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL RenderEngine::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-											 VkDebugUtilsMessageTypeFlagsEXT messageType,
-											 const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-											 void* pUserData)
+														   VkDebugUtilsMessageTypeFlagsEXT messageType,
+														   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+														   void* pUserData)
 {
 	if(messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 		Logger::logInfo(std::format("{}", pCallbackData->pMessage));
