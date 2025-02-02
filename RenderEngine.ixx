@@ -41,8 +41,9 @@ private:
 	RenderWindow window;
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
+	UniqueSurface surface;
 	vk::PhysicalDevice physicalDevice;
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
-	UniqueSurface surface;
+	vk::Queue presentationQueue;
 };

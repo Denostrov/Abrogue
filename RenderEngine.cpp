@@ -100,6 +100,14 @@ RenderEngine::RenderEngine(): surface(instance.get())
 			return;
 	}
 
+	if(!window.createSurface(instance.get()))
+	{
+		hasError = true;
+		return;
+	}
+	surface.surface = window.getSurface();
+	Logger::logInfo("Created surface");
+
 	std::vector<vk::PhysicalDevice> availablePhysicalDevices;
 	if(checkVulkanErrorOccured(availablePhysicalDevices, instance->enumeratePhysicalDevices(), "", "Failed to enumerate physical devices"))
 		return;
@@ -116,7 +124,8 @@ RenderEngine::RenderEngine(): surface(instance.get())
 
 	auto maxDeviceScore{0};
 	std::string physicalDeviceName;
-	size_t graphicsQueueFamilyIndex{};
+	uint32_t graphicsQueueFamilyIndex{};
+	uint32_t presentationQueueFamilyIndex{};
 	for(auto availableDevice : availablePhysicalDevices)
 	{
 		auto deviceProperties = availableDevice.getProperties();
@@ -125,18 +134,31 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		auto queueFamilyProperties = availableDevice.getQueueFamilyProperties();
 		Logger::logInfo(std::format("\t{} queue families available", queueFamilyProperties.size()));
 
-		bool hasRequiredQueueFamilies{};
+		bool hasGraphicsQueueFamily{};
+		bool hasPresentationQueueFamily{};
 		for(size_t i{}; i < queueFamilyProperties.size(); i++)
 		{
 			if(queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)
 			{
-				hasRequiredQueueFamilies = true;
+				hasGraphicsQueueFamily = true;
 				graphicsQueueFamilyIndex = i;
 				Logger::logInfo(std::format("\tQueue family with index {} supports graphics", i));
-				break;
 			}
+
+			vk::Bool32 surfaceSupport;
+			if(checkVulkanErrorOccured(surfaceSupport, availableDevice.getSurfaceSupportKHR(i, surface), "", "Failed to get surface support info"))
+			   return;
+			if(surfaceSupport)
+			{
+				hasPresentationQueueFamily = true;
+				presentationQueueFamilyIndex = i;
+				Logger::logInfo(std::format("\tQueue family with index {} supports presentation", i));
+			}
+
+			if(hasGraphicsQueueFamily && hasPresentationQueueFamily)
+				break;
 		}
-		if(!hasRequiredQueueFamilies)
+		if(!hasPresentationQueueFamily || !hasGraphicsQueueFamily)
 		{
 			Logger::logInfo("\tNo queue families with graphics support found");
 			continue;
@@ -167,20 +189,18 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	}
 	Logger::logInfo(std::format("Picked {} as a suitable physical device", physicalDeviceName.data()));
 
+	std::unordered_set uniqueQueueFamilyIndices{graphicsQueueFamilyIndex, presentationQueueFamilyIndex};
 	std::array<float, 1> queuePriorities{1.0f};
-	vk::DeviceQueueCreateInfo queueCreateInfo{vk::DeviceQueueCreateInfo({}, graphicsQueueFamilyIndex, queuePriorities)};
-	vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfo, requiredLayers);
+	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
+	queueCreateInfos.reserve(uniqueQueueFamilyIndices.size());
+	for(auto index : uniqueQueueFamilyIndices)
+		queueCreateInfos.emplace_back(vk::DeviceQueueCreateInfo{{}, index, queuePriorities});
+	
+	vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfos, requiredLayers);
 	checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo), "Created logical device", "Failed to create logical device");
 
 	graphicsQueue = device->getQueue(graphicsQueueFamilyIndex, 0);
-
-	if(!window.createSurface(instance.get()))
-	{
-		hasError = true;
-		return;
-	}
-	surface.surface = window.getSurface();
-	Logger::logInfo("Created surface");
+	presentationQueue = device->getQueue(presentationQueueFamilyIndex, 0);
 }
 
 vk::DebugUtilsMessengerCreateInfoEXT RenderEngine::getDebugUtilsMessengerCreateInfo() const
