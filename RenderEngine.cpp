@@ -66,14 +66,14 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		return;
 	}
 
-	auto requiredExtensions = window.getRequiredExtensions();
+	auto requiredInstanceExtensions = window.getRequiredExtensions();
 	if constexpr(isDebugBuild)
-		requiredExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-	Logger::logInfo(std::format("{} Vulkan instance extensions required:", requiredExtensions.size()));
-	for(auto extension : requiredExtensions)
+		requiredInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+	Logger::logInfo(std::format("{} Vulkan instance extensions required:", requiredInstanceExtensions.size()));
+	for(auto extension : requiredInstanceExtensions)
 		Logger::logInfo(std::format("\t{}", extension));
 
-	for(auto extension : requiredExtensions)
+	for(auto extension : requiredInstanceExtensions)
 	{
 		if(std::find_if(availableExtensionProperties.begin(), availableExtensionProperties.end(), [extension](auto const& property) { return std::strcmp(property.extensionName, extension) == 0; }) != availableExtensionProperties.end())
 			continue;
@@ -86,9 +86,9 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	vk::InstanceCreateInfo instanceCreateInfo;
 	auto messengerCreateInfo{getDebugUtilsMessengerCreateInfo()};
 	if constexpr(isDebugBuild)
-		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredExtensions, &messengerCreateInfo);
+		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredInstanceExtensions, &messengerCreateInfo);
 	else
-		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredExtensions);
+		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredInstanceExtensions);
 	if(checkVulkanErrorOccured(instance, vk::createInstanceUnique(instanceCreateInfo), "Created Vulkan instance", "Failed to create Vulkan instance"))
 		return;
 
@@ -117,6 +117,11 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		Logger::logError("No physical device with Vulkan support found. Try updating drivers");
 		return;
 	}
+
+	std::vector<char const*> requiredPhysicalDeviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
+	Logger::logInfo(std::format("{} physical device extensions required:", requiredPhysicalDeviceExtensions.size()));
+	for(auto const& extension : requiredPhysicalDeviceExtensions)
+		Logger::logInfo(std::format("\t{}", extension));
 
 	Logger::logInfo(std::format("{} physical devices available:", availablePhysicalDevices.size()));
 	for(auto availableDevice : availablePhysicalDevices)
@@ -147,7 +152,7 @@ RenderEngine::RenderEngine(): surface(instance.get())
 
 			vk::Bool32 surfaceSupport;
 			if(checkVulkanErrorOccured(surfaceSupport, availableDevice.getSurfaceSupportKHR(i, surface), "", "Failed to get surface support info"))
-			   return;
+				return;
 			if(surfaceSupport)
 			{
 				hasPresentationQueueFamily = true;
@@ -158,9 +163,33 @@ RenderEngine::RenderEngine(): surface(instance.get())
 			if(hasGraphicsQueueFamily && hasPresentationQueueFamily)
 				break;
 		}
-		if(!hasPresentationQueueFamily || !hasGraphicsQueueFamily)
+		if(!hasGraphicsQueueFamily)
 		{
-			Logger::logInfo("\tNo queue families with graphics support found");
+			Logger::logInfo("\tNo queue family with graphics support found");
+			continue;
+		}
+		if(!hasPresentationQueueFamily)
+		{
+			Logger::logInfo("\tNo queue family with presentation support found");
+			continue;
+		}
+
+		std::vector<vk::ExtensionProperties> deviceExtensions;
+		if(checkVulkanErrorOccured(deviceExtensions, availableDevice.enumerateDeviceExtensionProperties(), "", "Failed to enumerate physical device extension properties"))
+			return;
+		Logger::logInfo(std::format("\t{} physical device extensions available:", deviceExtensions.size()));
+		std::unordered_set<std::string> extensionSet;
+		for(auto extension : requiredPhysicalDeviceExtensions)
+			extensionSet.insert(extension);
+		for(auto const& extension : deviceExtensions)
+		{
+			extensionSet.erase(extension.extensionName);
+			Logger::logInfo(std::format("\t\t{}", extension.extensionName.data()));
+		}
+
+		if(!extensionSet.empty())
+		{
+			Logger::logInfo(std::format("Required physical device extension {} not supported", *requiredPhysicalDeviceExtensions.begin()));
 			continue;
 		}
 
@@ -195,8 +224,8 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	queueCreateInfos.reserve(uniqueQueueFamilyIndices.size());
 	for(auto index : uniqueQueueFamilyIndices)
 		queueCreateInfos.emplace_back(vk::DeviceQueueCreateInfo{{}, index, queuePriorities});
-	
-	vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfos, requiredLayers);
+
+	vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions);
 	checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo), "Created logical device", "Failed to create logical device");
 
 	graphicsQueue = device->getQueue(graphicsQueueFamilyIndex, 0);
