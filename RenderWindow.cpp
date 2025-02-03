@@ -77,6 +77,13 @@ bool RenderWindow::createSurface(VkInstance instance)
 	return true;
 }
 
+std::pair<uint32_t, uint32_t> RenderWindow::getFramebufferSize() const
+{
+	int width{}, height{};
+	SDL_GetWindowSizeInPixels(window, &width, &height); 
+	return {width, height};
+}
+
 bool RenderWindow::checkSDLErrorOccured(bool checkValue)
 {
 	if(!checkValue)

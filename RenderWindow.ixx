@@ -16,9 +16,10 @@ public:
 	bool createSurface(VkInstance instance);
 
 	auto getHasError() const { return hasError; }
-	auto getWindow() const { return window; }
+
 	auto const& getRequiredExtensions() const { return requiredExtensions; }
 	auto getSurface() const { return surface; }
+	std::pair<uint32_t, uint32_t> getFramebufferSize() const;
 
 private:
 	bool checkSDLErrorOccured(bool checkValue);
