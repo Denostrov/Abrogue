@@ -16,21 +16,6 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		return;
 	}
 
-	auto checkVulkanErrorOccured = [this](auto& value, auto result, std::string_view successMessage, std::string_view errorMessage)
-	{
-		if(result.result != vk::Result::eSuccess)
-		{
-			hasError = true;
-			Logger::logError(errorMessage);
-			return true;
-		}
-		else if(!successMessage.empty())
-			Logger::logInfo(successMessage);
-
-		value = std::move(result.value);
-		return false;
-	};
-
 	VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
 	std::vector<vk::ExtensionProperties> availableExtensionProperties;
@@ -129,108 +114,17 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	for(auto availableDevice : availablePhysicalDevices)
 		Logger::logInfo(std::format("\t{}", availableDevice.getProperties().deviceName.data()));
 
-	auto maxDeviceScore{0};
-	std::string physicalDeviceName;
-	std::vector<vk::SurfaceFormatKHR> physicalDeviceSurfaceFormats;
-	std::vector<vk::PresentModeKHR> physicalDevicePresentModes;
-	uint32_t graphicsQueueFamilyIndex{};
-	uint32_t presentationQueueFamilyIndex{};
+	int32_t maxDeviceScore{0};
+	PhysicalDeviceInfo physicalDeviceInfo;
 	for(auto availableDevice : availablePhysicalDevices)
 	{
-		auto deviceProperties = availableDevice.getProperties();
-		Logger::logInfo(std::format("Checking {} suitability:", deviceProperties.deviceName.data()));
-
-		auto queueFamilyProperties = availableDevice.getQueueFamilyProperties();
-		Logger::logInfo(std::format("\t{} queue families available", queueFamilyProperties.size()));
-
-		bool hasGraphicsQueueFamily{};
-		uint32_t graphicsIndex{};
-		bool hasPresentationQueueFamily{};
-		uint32_t presentationIndex{};
-		for(size_t i{}; i < queueFamilyProperties.size(); i++)
-		{
-			if(queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)
-			{
-				hasGraphicsQueueFamily = true;
-				graphicsIndex = i;
-				Logger::logInfo(std::format("\tQueue family with index {} supports graphics", i));
-			}
-
-			vk::Bool32 surfaceSupport;
-			if(checkVulkanErrorOccured(surfaceSupport, availableDevice.getSurfaceSupportKHR(i, surface), "", "Failed to get surface support info"))
-				return;
-			if(surfaceSupport)
-			{
-				hasPresentationQueueFamily = true;
-				presentationIndex = i;
-				Logger::logInfo(std::format("\tQueue family with index {} supports presentation", i));
-			}
-
-			if(hasGraphicsQueueFamily && hasPresentationQueueFamily)
-				break;
-		}
-		if(!hasGraphicsQueueFamily)
-		{
-			Logger::logInfo("\tNo queue family with graphics support found");
-			continue;
-		}
-		if(!hasPresentationQueueFamily)
-		{
-			Logger::logInfo("\tNo queue family with presentation support found");
-			continue;
-		}
-
-		std::vector<vk::ExtensionProperties> deviceExtensions;
-		if(checkVulkanErrorOccured(deviceExtensions, availableDevice.enumerateDeviceExtensionProperties(), "", "Failed to enumerate physical device extension properties"))
-			return;
-		Logger::logInfo(std::format("\t{} physical device extensions available:", deviceExtensions.size()));
-		std::unordered_set<std::string> extensionSet;
-		for(auto extension : requiredPhysicalDeviceExtensions)
-			extensionSet.insert(extension);
-		for(auto const& extension : deviceExtensions)
-		{
-			extensionSet.erase(extension.extensionName);
-			Logger::logInfo(std::format("\t\t{}", extension.extensionName.data()));
-		}
-
-		if(!extensionSet.empty())
-		{
-			Logger::logInfo(std::format("Required physical device extension {} not supported", *requiredPhysicalDeviceExtensions.begin()));
-			continue;
-		}
-
-		std::vector<vk::SurfaceFormatKHR> surfaceFormats;
-		if(checkVulkanErrorOccured(surfaceFormats, availableDevice.getSurfaceFormatsKHR(surface), "", "Failed to get surface formats"))
-			return;
-
-		std::vector<vk::PresentModeKHR> presentModes;
-		if(checkVulkanErrorOccured(presentModes, availableDevice.getSurfacePresentModesKHR(surface), "", "Failed to get surface present modes"))
-			return;
-
-		if(surfaceFormats.empty() || presentModes.empty())
-		{
-			Logger::logInfo("Physical device doesn't support swapchain");
-			continue;
-		}
-
-		auto deviceScore{0};
-		if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
-		{
-			deviceScore++;
-			Logger::logInfo("\tIs a discrete GPU");
-		}
-		else
-			Logger::logInfo("\tIs not a discrete GPU");
+		auto [deviceScore, info] = getPhysicalDeviceInfo(availableDevice, requiredPhysicalDeviceExtensions);
 
 		if(deviceScore > maxDeviceScore)
 		{
 			maxDeviceScore = deviceScore;
 			physicalDevice = availableDevice;
-			physicalDeviceName = deviceProperties.deviceName.data();
-			physicalDeviceSurfaceFormats = surfaceFormats;
-			physicalDevicePresentModes = presentModes;
-			graphicsQueueFamilyIndex = graphicsIndex;
-			presentationQueueFamilyIndex = presentationIndex;
+			physicalDeviceInfo = info;
 		}
 	}
 
@@ -240,9 +134,9 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		Logger::logError("No suitable physical devices found. Try updating drivers");
 		return;
 	}
-	Logger::logInfo(std::format("Picked {} as a suitable physical device", physicalDeviceName.data()));
+	Logger::logInfo(std::format("Picked {} as a suitable physical device", physicalDeviceInfo.name));
 
-	std::unordered_set uniqueQueueFamilyIndices{graphicsQueueFamilyIndex, presentationQueueFamilyIndex};
+	std::unordered_set uniqueQueueFamilyIndices{physicalDeviceInfo.graphicsIndex, physicalDeviceInfo.presentationIndex};
 	std::array<float, 1> queuePriorities{1.0f};
 	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 	queueCreateInfos.reserve(uniqueQueueFamilyIndices.size());
@@ -253,11 +147,11 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo), "Created logical device", "Failed to create logical device"))
 		return;
 
-	graphicsQueue = device->getQueue(graphicsQueueFamilyIndex, 0);
-	presentationQueue = device->getQueue(presentationQueueFamilyIndex, 0);
+	graphicsQueue = device->getQueue(physicalDeviceInfo.graphicsIndex, 0);
+	presentationQueue = device->getQueue(physicalDeviceInfo.presentationIndex, 0);
 
-	vk::SurfaceFormatKHR selectedFormat{physicalDeviceSurfaceFormats[0]};
-	for(auto format : physicalDeviceSurfaceFormats)
+	vk::SurfaceFormatKHR selectedFormat{physicalDeviceInfo.surfaceFormats[0]};
+	for(auto format : physicalDeviceInfo.surfaceFormats)
 	{
 		if(format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
 			selectedFormat = format;
@@ -265,7 +159,7 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	Logger::logInfo(std::format("Chose format {} with color space {}", vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
 
 	vk::PresentModeKHR selectedPresentMode{vk::PresentModeKHR::eFifo};
-	for(auto presentMode : physicalDevicePresentModes)
+	for(auto presentMode : physicalDeviceInfo.presentModes)
 	{
 		if(presentMode == vk::PresentModeKHR::eMailbox)
 			selectedPresentMode = presentMode;
@@ -284,6 +178,109 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		swapExtent.height = std::clamp(framebufferSize.second, physicalDeviceSurfaceCapabilities.minImageExtent.height, physicalDeviceSurfaceCapabilities.maxImageExtent.height);
 	}
 	Logger::logInfo(std::format("Swap extent is [{},{}]", swapExtent.width, swapExtent.height));
+}
+
+template<class Value, class Result>
+bool RenderEngine::checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage)
+{
+	if(result.result != vk::Result::eSuccess)
+	{
+		hasError = true;
+		Logger::logError(errorMessage);
+		return true;
+	}
+	else if(!successMessage.empty())
+		Logger::logInfo(successMessage);
+
+	value = std::move(result.value);
+	return false;
+}
+
+std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions)
+{
+	std::pair<int32_t, PhysicalDeviceInfo> result;
+	result.first = -1;
+	auto& [name, formats, presentModes, graphicsIndex, presentationIndex] = result.second;
+
+	auto deviceProperties = device.getProperties();
+	name = deviceProperties.deviceName.data();
+	Logger::logInfo(std::format("Checking {} suitability:", name));
+
+	auto queueFamilyProperties = device.getQueueFamilyProperties();
+	Logger::logInfo(std::format("\t{} queue families available", queueFamilyProperties.size()));
+
+	bool hasGraphicsQueueFamily{};
+	bool hasPresentationQueueFamily{};
+	for(size_t i{}; i < queueFamilyProperties.size(); i++)
+	{
+		if(queueFamilyProperties[i].queueFlags & vk::QueueFlagBits::eGraphics)
+		{
+			hasGraphicsQueueFamily = true;
+			graphicsIndex = i;
+			Logger::logInfo(std::format("\tQueue family with index {} supports graphics", i));
+		}
+
+		vk::Bool32 surfaceSupport;
+		if(checkVulkanErrorOccured(surfaceSupport, device.getSurfaceSupportKHR(i, surface), "", "Failed to get surface support info"))
+			return result;
+		if(surfaceSupport)
+		{
+			hasPresentationQueueFamily = true;
+			presentationIndex = i;
+			Logger::logInfo(std::format("\tQueue family with index {} supports presentation", i));
+		}
+
+		if(hasGraphicsQueueFamily && hasPresentationQueueFamily)
+			break;
+	}
+	if(!hasGraphicsQueueFamily)
+	{
+		Logger::logInfo("\tNo queue family with graphics support found");
+		return result;
+	}
+	if(!hasPresentationQueueFamily)
+	{
+		Logger::logInfo("\tNo queue family with presentation support found");
+		return result;
+	}
+
+	std::vector<vk::ExtensionProperties> deviceExtensions;
+	if(checkVulkanErrorOccured(deviceExtensions, device.enumerateDeviceExtensionProperties(), "", "Failed to enumerate physical device extension properties"))
+		return result;
+	Logger::logInfo(std::format("\t{} physical device extensions available:", deviceExtensions.size()));
+	std::unordered_set<std::string> extensionSet;
+	for(auto extension : requiredExtensions)
+		extensionSet.insert(extension);
+	for(auto const& extension : deviceExtensions)
+	{
+		extensionSet.erase(extension.extensionName);
+		Logger::logInfo(std::format("\t\t{}", extension.extensionName.data()));
+	}
+
+	if(!extensionSet.empty())
+	{
+		Logger::logInfo(std::format("\tRequired physical device extension {} not supported", *extensionSet.begin()));
+		return result;
+	}
+
+	if(checkVulkanErrorOccured(formats, device.getSurfaceFormatsKHR(surface), "", "\tFailed to get surface formats"))
+		return result;
+
+	if(checkVulkanErrorOccured(presentModes, device.getSurfacePresentModesKHR(surface), "", "\tFailed to get surface present modes"))
+		return result;
+
+	if(formats.empty() || presentModes.empty())
+	{
+		Logger::logInfo("\tPhysical device doesn't support swapchain");
+		return result;
+	}
+
+	result.first = 0;
+	if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
+		result.first++;
+	Logger::logInfo(std::format("\tPhysical device is a {}", vk::to_string(deviceProperties.deviceType)));
+
+	return result;
 }
 
 vk::DebugUtilsMessengerCreateInfoEXT RenderEngine::getDebugUtilsMessengerCreateInfo() const
