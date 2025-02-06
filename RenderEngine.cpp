@@ -146,6 +146,8 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions);
 	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo), "Created logical device", "Failed to create logical device"))
 		return;
+	Logger::logInfo("Created logical device");
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 
 	graphicsQueue = device->getQueue(physicalDeviceInfo.graphicsIndex, 0);
 	presentationQueue = device->getQueue(physicalDeviceInfo.presentationIndex, 0);
