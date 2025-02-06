@@ -59,4 +59,5 @@ private:
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
+	vk::UniqueSwapchainKHR swapchain;
 };

@@ -178,6 +178,17 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		swapExtent.height = std::clamp(framebufferSize.second, physicalDeviceSurfaceCapabilities.minImageExtent.height, physicalDeviceSurfaceCapabilities.maxImageExtent.height);
 	}
 	Logger::logInfo(std::format("Swap extent is [{},{}]", swapExtent.width, swapExtent.height));
+
+	uint32_t imageCount{physicalDeviceSurfaceCapabilities.minImageCount + 1};
+	if(physicalDeviceSurfaceCapabilities.maxImageCount > 0 && imageCount > physicalDeviceSurfaceCapabilities.maxImageCount)
+		imageCount = physicalDeviceSurfaceCapabilities.maxImageCount;
+	Logger::logInfo(std::format("Image count is {}", imageCount));
+
+	vk::SharingMode sharingMode = physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+	std::vector<uint32_t> queueFamilyIndices{sharingMode == vk::SharingMode::eConcurrent ? std::vector{physicalDeviceInfo.graphicsIndex, physicalDeviceInfo.presentationIndex} : std::vector<uint32_t>{}};
+	vk::SwapchainCreateInfoKHR swapchainCreateInfo({}, surface.surface, imageCount, selectedFormat.format, selectedFormat.colorSpace, swapExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices, physicalDeviceSurfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE);
+	if(checkVulkanErrorOccured(swapchain, device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
+		return;
 }
 
 template<class Value, class Result>
