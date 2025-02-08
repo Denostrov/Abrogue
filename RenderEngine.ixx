@@ -31,6 +31,8 @@ public:
 	auto getHasError() const { return hasError; }
 
 private:
+	bool recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const;
+
 	template<class Value, class Result>
 	bool checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage) const;
 
@@ -68,4 +70,11 @@ private:
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniqueRenderPass renderPass;
 	vk::UniquePipeline graphicsPipeline;
+	std::vector<vk::UniqueFramebuffer> swapchainFramebuffers;
+	vk::UniqueCommandPool commandPool;
+	std::vector<vk::CommandBuffer> commandBuffers;
+
+	vk::UniqueSemaphore imageAvailableSemaphore;
+	vk::UniqueSemaphore renderFinishedSemaphore;
+	vk::UniqueFence inFlightFence;
 };

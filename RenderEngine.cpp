@@ -263,6 +263,70 @@ RenderEngine::RenderEngine(): surface(instance.get())
 													  &dynamicStateCreateInfo, pipelineLayout.get(), renderPass.get(), 0);
 	if(checkVulkanErrorOccured(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo), "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
+
+	swapchainFramebuffers.resize(swapchainImageViews.size());
+	for(size_t i = 0; i < swapchainFramebuffers.size(); i++)
+	{
+		vk::FramebufferCreateInfo framebufferCreateInfo({}, renderPass.get(), swapchainImageViews[i].get(), swapchainImageExtent.width, swapchainImageExtent.height, 1);
+		if(checkVulkanErrorOccured(swapchainFramebuffers[i], device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
+			return;
+	}
+	Logger::logInfo("Created swapchain framebuffers");
+
+	vk::CommandPoolCreateInfo poolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex);
+	if(checkVulkanErrorOccured(commandPool, device->createCommandPoolUnique(poolCreateInfo), "Created command pool", "Failed to create command pool"))
+		return;
+
+	vk::CommandBufferAllocateInfo bufferAllocateInfo(commandPool.get(), vk::CommandBufferLevel::ePrimary, 1);
+	if(checkVulkanErrorOccured(commandBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
+		return;
+
+	vk::SemaphoreCreateInfo semaphoreCreateInfo;
+	vk::FenceCreateInfo fenceCreateInfo;
+	if(checkVulkanErrorOccured(imageAvailableSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
+	   checkVulkanErrorOccured(renderFinishedSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
+	   checkVulkanErrorOccured(inFlightFence, device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
+		return;
+	Logger::logInfo("Created synchronization objects");
+}
+
+bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const
+{
+	vk::CommandBufferBeginInfo beginInfo;
+	auto result = commandBuffer.begin(beginInfo);
+	if(result != vk::Result::eSuccess)
+	{
+		hasError = true;
+		Logger::logError(std::format("Failed to begin command buffer: {}", vk::to_string(result)));
+		return false;
+	}
+
+	vk::Rect2D renderArea({0, 0}, swapchainImageExtent);
+	vk::ClearValue clearValue(vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f));
+	vk::RenderPassBeginInfo renderPassBeginInfo(renderPass.get(), swapchainFramebuffers[imageIndex].get(), renderArea, clearValue);
+	commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+
+	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
+
+	vk::Viewport viewport(0.0f, 0.0f, swapchainImageExtent.width, swapchainImageExtent.height, 0.0f, 1.0f);
+	commandBuffer.setViewport(0, viewport);
+
+	vk::Rect2D scissor({0, 0}, swapchainImageExtent);
+	commandBuffer.setScissor(0, scissor);
+
+	commandBuffer.draw(4, 1, 0, 0);
+
+	commandBuffer.endRenderPass();
+
+	result = commandBuffer.end();
+	if(result != vk::Result::eSuccess)
+	{
+		hasError = true;
+		Logger::logError(std::format("Failed to end command buffer: {}", vk::to_string(result)));
+		return false;
+	}
+
+	return true;
 }
 
 template<class Value, class Result>

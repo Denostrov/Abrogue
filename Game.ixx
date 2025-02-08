@@ -18,6 +18,13 @@ public:
 		renderEngine.reset();
 	}
 
+	static bool update()
+	{
+
+
+		return true;
+	}
+
 private:
 	inline static std::unique_ptr<RenderEngine> renderEngine;
 };
