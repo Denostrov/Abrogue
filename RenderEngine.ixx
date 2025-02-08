@@ -27,6 +27,9 @@ export class RenderEngine
 {
 public:
 	RenderEngine();
+	~RenderEngine();
+
+	bool drawFrame();
 
 	auto getHasError() const { return hasError; }
 
@@ -35,6 +38,7 @@ private:
 
 	template<class Value, class Result>
 	bool checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage) const;
+	bool checkVulkanErrorOccured(vk::Result result, std::string_view successMessage, std::string_view errorMessage) const;
 
 	struct PhysicalDeviceInfo
 	{

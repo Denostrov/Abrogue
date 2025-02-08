@@ -20,7 +20,8 @@ public:
 
 	static bool update()
 	{
-
+		if(!renderEngine->drawFrame())
+			return false;
 
 		return true;
 	}

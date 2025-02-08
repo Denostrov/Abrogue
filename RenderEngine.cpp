@@ -202,7 +202,7 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	swapchainImageViews.resize(swapchainImages.size());
 	for(size_t i = 0; i < swapchainImageViews.size(); i++)
 	{
-		vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1,0, 1);
+		vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
 		vk::ImageViewCreateInfo viewCreateInfo({}, swapchainImages[i], vk::ImageViewType::e2D, swapchainImageFormat,
 											   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity},
 											   subresourceRange);
@@ -224,17 +224,16 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	std::vector<vk::DynamicState> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
 	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo({}, dynamicStates);
 
-	vk::VertexInputBindingDescription vertexInputBindingDescription;
-	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo({}, vertexInputBindingDescription);
+	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo({});
 
-	vk::PipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, VK_FALSE);
+	vk::PipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleStrip, VK_FALSE);
 
 	vk::Viewport viewport(0.0f, 0.0f, swapchainImageExtent.width, swapchainImageExtent.height, 0.0f, 1.0f);
 	vk::Rect2D scissor({0, 0}, swapchainImageExtent);
 
 	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo({}, viewport, scissor);
 
-	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
+	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eNone, vk::FrontFace::eClockwise, VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
 
 	vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo;
 	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo;
@@ -252,7 +251,8 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	vk::AttachmentReference colorAttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
 
 	vk::SubpassDescription subpassDescription({}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentReference);
-	vk::RenderPassCreateInfo renderPassCreateInfo({}, colorAttachment, subpassDescription);
+	vk::SubpassDependency subpassDependency(VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite);
+	vk::RenderPassCreateInfo renderPassCreateInfo({}, colorAttachment, subpassDescription, subpassDependency);
 
 	if(checkVulkanErrorOccured(renderPass, device->createRenderPassUnique(renderPassCreateInfo), "Created render pass", "Failed to create render pass"))
 		return;
@@ -282,7 +282,7 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		return;
 
 	vk::SemaphoreCreateInfo semaphoreCreateInfo;
-	vk::FenceCreateInfo fenceCreateInfo;
+	vk::FenceCreateInfo fenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
 	if(checkVulkanErrorOccured(imageAvailableSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
 	   checkVulkanErrorOccured(renderFinishedSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
 	   checkVulkanErrorOccured(inFlightFence, device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
@@ -290,16 +290,48 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	Logger::logInfo("Created synchronization objects");
 }
 
+RenderEngine::~RenderEngine()
+{
+	if(device) 
+		device->waitIdle();
+}
+
+bool RenderEngine::drawFrame()
+{
+	auto timeout = std::numeric_limits<uint64_t>::max();
+	if(checkVulkanErrorOccured(device->waitForFences(inFlightFence.get(), VK_TRUE, timeout), "", "Failed to wait for fence"))
+		return false;
+
+	if(checkVulkanErrorOccured(device->resetFences(inFlightFence.get()), "", "Failed to reset fence"))
+		return false;
+
+	uint32_t imageIndex;
+	if(checkVulkanErrorOccured(imageIndex, device->acquireNextImageKHR(swapchain.get(), timeout, imageAvailableSemaphore.get(), {}), "", "Failed to acquire next image"))
+		return false;
+
+	if(checkVulkanErrorOccured(commandBuffers[0].reset(), "", "Failed to reset command buffer"))
+		return false;
+
+	if(!recordCommandBuffer(commandBuffers[0], imageIndex))
+		return false;
+
+	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
+	vk::SubmitInfo submitInfo(imageAvailableSemaphore.get(), waitStage, commandBuffers[0], renderFinishedSemaphore.get());
+	if(checkVulkanErrorOccured(graphicsQueue.submit(submitInfo, inFlightFence.get()), "", "Failed to submit to graphics queue"))
+		return false;
+
+	vk::PresentInfoKHR presentInfo(renderFinishedSemaphore.get(), swapchain.get(), imageIndex);
+	if(checkVulkanErrorOccured(presentationQueue.presentKHR(presentInfo), "", "Failed to present to presentation queue"))
+		return false;
+
+	return true;
+}
+
 bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const
 {
 	vk::CommandBufferBeginInfo beginInfo;
-	auto result = commandBuffer.begin(beginInfo);
-	if(result != vk::Result::eSuccess)
-	{
-		hasError = true;
-		Logger::logError(std::format("Failed to begin command buffer: {}", vk::to_string(result)));
+	if(checkVulkanErrorOccured(commandBuffer.begin(beginInfo), "", "Failed to begin command buffer"))
 		return false;
-	}
 
 	vk::Rect2D renderArea({0, 0}, swapchainImageExtent);
 	vk::ClearValue clearValue(vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f));
@@ -318,13 +350,8 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 
 	commandBuffer.endRenderPass();
 
-	result = commandBuffer.end();
-	if(result != vk::Result::eSuccess)
-	{
-		hasError = true;
-		Logger::logError(std::format("Failed to end command buffer: {}", vk::to_string(result)));
+	if(checkVulkanErrorOccured(commandBuffer.end(), "", "Failed to end command buffer"))
 		return false;
-	}
 
 	return true;
 }
@@ -343,6 +370,21 @@ bool RenderEngine::checkVulkanErrorOccured(Value& value, Result result, std::str
 		Logger::logInfo(successMessage);
 
 	value = std::move(result.value);
+	return false;
+}
+
+bool RenderEngine::checkVulkanErrorOccured(vk::Result result, std::string_view successMessage, std::string_view errorMessage) const
+{
+	if(result != vk::Result::eSuccess)
+	{
+		hasError = true;
+		auto errorString = errorMessage.data() + ": "s + vk::to_string(result);
+		Logger::logError(errorString);
+		return true;
+	}
+	else if(!successMessage.empty())
+		Logger::logInfo(successMessage);
+
 	return false;
 }
 
