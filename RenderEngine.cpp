@@ -209,6 +209,53 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		if(checkVulkanErrorOccured(swapchainImageViews[i], device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
 			return;
 	}
+
+	auto vertexShaderModule = createShaderModule("shaders/quadVert.spv");
+	if(!vertexShaderModule)
+		return;
+
+	auto fragmentShaderModule = createShaderModule("shaders/quadFrag.spv");
+	if(!fragmentShaderModule)
+		return;
+
+	std::vector<vk::PipelineShaderStageCreateInfo> stageCreateInfos{{{}, vk::ShaderStageFlagBits::eVertex, vertexShaderModule.get(), "main"},
+																	{{}, vk::ShaderStageFlagBits::eFragment, fragmentShaderModule.get(), "main"}};
+
+	std::vector<vk::DynamicState> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
+	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo({}, dynamicStates);
+
+	vk::VertexInputBindingDescription vertexInputBindingDescription;
+	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo({}, vertexInputBindingDescription);
+
+	vk::PipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleList, VK_FALSE);
+
+	vk::Viewport viewport(0.0f, 0.0f, swapchainImageExtent.width, swapchainImageExtent.height, 0.0f, 1.0f);
+	vk::Rect2D scissor({0, 0}, swapchainImageExtent);
+
+	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo({}, viewport, scissor);
+
+	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE);
+
+	vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo;
+	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo;
+	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState;
+	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo;
+
+	vk::PipelineLayoutCreateInfo layoutCreateInfo;
+	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo), "Created pipeline layout", "Failed to create pipeline layout"))
+		return;
+
+	vk::AttachmentDescription colorAttachment({}, swapchainImageFormat, vk::SampleCountFlagBits::e1,
+											  vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
+											  vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
+											  vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
+	vk::AttachmentReference colorAttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
+
+	vk::SubpassDescription subpassDescription({}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentReference);
+	vk::RenderPassCreateInfo renderPassCreateInfo({}, colorAttachment, subpassDescription);
+
+	if(checkVulkanErrorOccured(renderPass, device->createRenderPassUnique(renderPassCreateInfo), "Created render pass", "Failed to create render pass"))
+		return;
 }
 
 template<class Value, class Result>
@@ -311,6 +358,30 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 		result.first++;
 	Logger::logInfo(std::format("\tPhysical device is a {}", vk::to_string(deviceProperties.deviceType)));
+
+	return result;
+}
+
+vk::UniqueShaderModule RenderEngine::createShaderModule(std::string_view shaderFileName) const
+{
+	vk::UniqueShaderModule result;
+	std::ifstream shaderFile(shaderFileName.data(), std::ios::ate | std::ios::binary | std::ios::in);
+
+	if(!shaderFile)
+	{
+		hasError = true;
+		Logger::logError(std::format("Failed to open shader file {}", shaderFileName.data()));
+		return result;
+	}
+
+	size_t fileSize{static_cast<size_t>(std::streamoff(shaderFile.tellg()))};
+	std::vector<uint32_t> fileBuffer(fileSize / 4 + 1);
+	shaderFile.seekg(0);
+	shaderFile.read(reinterpret_cast<char*>(fileBuffer.data()), fileSize);
+
+	vk::ShaderModuleCreateInfo createInfo({}, fileSize, fileBuffer.data());
+	if(checkVulkanErrorOccured(result, device->createShaderModuleUnique(createInfo), "Created shader module "s + shaderFileName.data(), "Failed to create shader module "s + shaderFileName.data()))
+		return result;
 
 	return result;
 }

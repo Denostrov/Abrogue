@@ -43,6 +43,8 @@ private:
 	};
 	std::pair<int32_t, PhysicalDeviceInfo> getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions) const;
 
+	vk::UniqueShaderModule createShaderModule(std::string_view shaderFileName) const;
+
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 														VkDebugUtilsMessageTypeFlagsEXT messageType,
 														const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -63,4 +65,6 @@ private:
 	vk::Format swapchainImageFormat;
 	vk::Extent2D swapchainImageExtent;
 	std::vector<vk::UniqueImageView> swapchainImageViews;
+	vk::UniquePipelineLayout pipelineLayout;
+	vk::UniqueRenderPass renderPass;
 };

@@ -16,3 +16,9 @@ set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Relea
 
 make_directory(${CMAKE_CURRENT_BINARY_DIR}/bin)
 configure_file(lib/SDL3.dll ${CMAKE_CURRENT_BINARY_DIR}/bin COPYONLY)
+
+make_directory(${CMAKE_CURRENT_BINARY_DIR}/bin/shaders)
+configure_file(shaders/quad.vert ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
+configure_file(shaders/quad.frag ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
+configure_file(shaders/quadVert.spv ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
+configure_file(shaders/quadFrag.spv ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
