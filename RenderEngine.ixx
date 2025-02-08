@@ -67,4 +67,5 @@ private:
 	std::vector<vk::UniqueImageView> swapchainImageViews;
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniqueRenderPass renderPass;
+	vk::UniquePipeline graphicsPipeline;
 };

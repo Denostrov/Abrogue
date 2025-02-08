@@ -234,12 +234,12 @@ RenderEngine::RenderEngine(): surface(instance.get())
 
 	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo({}, viewport, scissor);
 
-	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE);
+	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
 
 	vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo;
 	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo;
 	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState;
-	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo;
+	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, colorBlendAttachmentState);
 
 	vk::PipelineLayoutCreateInfo layoutCreateInfo;
 	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo), "Created pipeline layout", "Failed to create pipeline layout"))
@@ -255,6 +255,13 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	vk::RenderPassCreateInfo renderPassCreateInfo({}, colorAttachment, subpassDescription);
 
 	if(checkVulkanErrorOccured(renderPass, device->createRenderPassUnique(renderPassCreateInfo), "Created render pass", "Failed to create render pass"))
+		return;
+
+	vk::GraphicsPipelineCreateInfo pipelineCreateInfo({}, stageCreateInfos, &vertexInputStateCreateInfo, &assemblyStateCreateInfo,
+													  nullptr, &viewportStateCreateInfo, &rasterizationStateCreateInfo,
+													  &multisampleStateCreateInfo, &depthStencilStateCreateInfo, &colorBlendStateCreateInfo,
+													  &dynamicStateCreateInfo, pipelineLayout.get(), renderPass.get(), 0);
+	if(checkVulkanErrorOccured(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo), "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
 }
 
