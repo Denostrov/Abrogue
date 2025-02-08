@@ -8,6 +8,8 @@ module RenderEngine;
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
+using namespace std::literals;
+
 RenderEngine::RenderEngine(): surface(instance.get())
 {
 	if(window.getHasError())
@@ -71,7 +73,8 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	}
 
 	vk::InstanceCreateInfo instanceCreateInfo;
-	auto messengerCreateInfo{getDebugUtilsMessengerCreateInfo()};
+	vk::DebugUtilsMessengerCreateInfoEXT messengerCreateInfo{{}, vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+			vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding, debugCallback};
 	if constexpr(isDebugBuild)
 		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredInstanceExtensions, &messengerCreateInfo);
 	else
@@ -158,6 +161,7 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		if(format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
 			selectedFormat = format;
 	}
+	swapchainImageFormat = selectedFormat.format;
 	Logger::logInfo(std::format("Chose format {} with color space {}", vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
 
 	vk::PresentModeKHR selectedPresentMode{vk::PresentModeKHR::eFifo};
@@ -172,14 +176,14 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	if(checkVulkanErrorOccured(physicalDeviceSurfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface), "", "Failed to get surface capabilities"))
 		return;
 
-	auto& swapExtent = physicalDeviceSurfaceCapabilities.currentExtent;
-	if(swapExtent.width == std::numeric_limits<uint32_t>::max())
+	swapchainImageExtent = physicalDeviceSurfaceCapabilities.currentExtent;
+	if(swapchainImageExtent.width == std::numeric_limits<uint32_t>::max())
 	{
 		auto framebufferSize = window.getFramebufferSize();
-		swapExtent.width = std::clamp(framebufferSize.first, physicalDeviceSurfaceCapabilities.minImageExtent.width, physicalDeviceSurfaceCapabilities.maxImageExtent.width);
-		swapExtent.height = std::clamp(framebufferSize.second, physicalDeviceSurfaceCapabilities.minImageExtent.height, physicalDeviceSurfaceCapabilities.maxImageExtent.height);
+		swapchainImageExtent.width = std::clamp(framebufferSize.first, physicalDeviceSurfaceCapabilities.minImageExtent.width, physicalDeviceSurfaceCapabilities.maxImageExtent.width);
+		swapchainImageExtent.height = std::clamp(framebufferSize.second, physicalDeviceSurfaceCapabilities.minImageExtent.height, physicalDeviceSurfaceCapabilities.maxImageExtent.height);
 	}
-	Logger::logInfo(std::format("Swap extent is [{},{}]", swapExtent.width, swapExtent.height));
+	Logger::logInfo(std::format("Swap extent is [{},{}]", swapchainImageExtent.width, swapchainImageExtent.height));
 
 	uint32_t imageCount{physicalDeviceSurfaceCapabilities.minImageCount + 1};
 	if(physicalDeviceSurfaceCapabilities.maxImageCount > 0 && imageCount > physicalDeviceSurfaceCapabilities.maxImageCount)
@@ -188,18 +192,33 @@ RenderEngine::RenderEngine(): surface(instance.get())
 
 	vk::SharingMode sharingMode = physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
 	std::vector<uint32_t> queueFamilyIndices{sharingMode == vk::SharingMode::eConcurrent ? std::vector{physicalDeviceInfo.graphicsIndex, physicalDeviceInfo.presentationIndex} : std::vector<uint32_t>{}};
-	vk::SwapchainCreateInfoKHR swapchainCreateInfo({}, surface.surface, imageCount, selectedFormat.format, selectedFormat.colorSpace, swapExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices, physicalDeviceSurfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE);
+	vk::SwapchainCreateInfoKHR swapchainCreateInfo({}, surface.surface, imageCount, selectedFormat.format, selectedFormat.colorSpace, swapchainImageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices, physicalDeviceSurfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE);
 	if(checkVulkanErrorOccured(swapchain, device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
 		return;
+
+	if(checkVulkanErrorOccured(swapchainImages, device->getSwapchainImagesKHR(swapchain.get()), "", "Failed to get swapchain images"))
+		return;
+
+	swapchainImageViews.resize(swapchainImages.size());
+	for(size_t i = 0; i < swapchainImageViews.size(); i++)
+	{
+		vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1,0, 1);
+		vk::ImageViewCreateInfo viewCreateInfo({}, swapchainImages[i], vk::ImageViewType::e2D, swapchainImageFormat,
+											   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity},
+											   subresourceRange);
+		if(checkVulkanErrorOccured(swapchainImageViews[i], device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
+			return;
+	}
 }
 
 template<class Value, class Result>
-bool RenderEngine::checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage)
+bool RenderEngine::checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage) const
 {
 	if(result.result != vk::Result::eSuccess)
 	{
 		hasError = true;
-		Logger::logError(errorMessage);
+		auto errorString = errorMessage.data() + ": "s + vk::to_string(result.result);
+		Logger::logError(errorString);
 		return true;
 	}
 	else if(!successMessage.empty())
@@ -209,7 +228,7 @@ bool RenderEngine::checkVulkanErrorOccured(Value& value, Result result, std::str
 	return false;
 }
 
-std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions)
+std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions) const
 {
 	std::pair<int32_t, PhysicalDeviceInfo> result;
 	result.first = -1;
@@ -294,12 +313,6 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	Logger::logInfo(std::format("\tPhysical device is a {}", vk::to_string(deviceProperties.deviceType)));
 
 	return result;
-}
-
-vk::DebugUtilsMessengerCreateInfoEXT RenderEngine::getDebugUtilsMessengerCreateInfo() const
-{
-	return {{}, vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-			vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding, debugCallback};
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL RenderEngine::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
