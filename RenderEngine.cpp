@@ -10,8 +10,9 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 using namespace std::literals;
 
-RenderEngine::RenderEngine(): surface(instance.get())
+RenderEngine::RenderEngine()
 {
+	//Check if failed to initialize window
 	if(window.getHasError())
 	{
 		hasError = true;
@@ -20,22 +21,30 @@ RenderEngine::RenderEngine(): surface(instance.get())
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init();
 
+	//Get available instance extensions
 	std::vector<vk::ExtensionProperties> availableExtensionProperties;
-	if(checkVulkanErrorOccured(availableExtensionProperties, vk::enumerateInstanceExtensionProperties(), "", "Failed to enumerate available instance extensions"))
+	if(checkVulkanErrorOccured(availableExtensionProperties, vk::enumerateInstanceExtensionProperties(),
+							   "", "Failed to enumerate available instance extensions"))
 		return;
 	Logger::logInfo(std::format("{} instance extensions available:", availableExtensionProperties.size()));
 	for(auto const& property : availableExtensionProperties)
 		Logger::logInfo(std::format("\t{}", property.extensionName.data()));
 
+	//Get available instance layers
 	std::vector<vk::LayerProperties> availableLayerProperties;
-	if(checkVulkanErrorOccured(availableLayerProperties, vk::enumerateInstanceLayerProperties(), "", "Failed to enumerate available validation layers"))
+	if(checkVulkanErrorOccured(availableLayerProperties, vk::enumerateInstanceLayerProperties(),
+							   "", "Failed to enumerate available validation layers"))
 		return;
 	Logger::logInfo(std::format("{} validation layers available:", availableLayerProperties.size()));
 	for(auto const& property : availableLayerProperties)
 		Logger::logInfo(std::format("\t{}", property.layerName.data()));
 
-	auto applicationVersion = VK_MAKE_VERSION(Configuration::vkAppMajorVersion, Configuration::vkAppMinorVersion, Configuration::vkAppPatchVersion);
-	auto applicationInfo = vk::ApplicationInfo(Configuration::appName.data(), applicationVersion, Configuration::appName.data(), applicationVersion, VK_API_VERSION_1_4);
+	//Define application info
+	auto applicationVersion{VK_MAKE_VERSION(Configuration::vkAppMajorVersion, Configuration::vkAppMinorVersion, Configuration::vkAppPatchVersion)};
+	vk::ApplicationInfo applicationInfo{Configuration::appName.data(), applicationVersion, Configuration::appName.data(),
+		applicationVersion, VK_API_VERSION_1_4};
+
+	//Define required instance layers
 	std::vector<char const*> requiredLayers;
 	if constexpr(isDebugBuild)
 		requiredLayers.emplace_back("VK_LAYER_KHRONOS_validation");
@@ -43,10 +52,11 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	for(auto layer : requiredLayers)
 		Logger::logInfo(std::format("\t{}", layer));
 
+	//Check support for required instance layers
 	std::unordered_set<std::string> layerSet;
 	for(auto layer : requiredLayers)
 		layerSet.emplace(layer);
-	for(auto property : availableLayerProperties)
+	for(auto const& property : availableLayerProperties)
 		layerSet.erase(property.layerName);
 	if(!layerSet.empty())
 	{
@@ -55,49 +65,63 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		return;
 	}
 
-	auto requiredInstanceExtensions = window.getRequiredExtensions();
+	//Define required instance extensions
+	auto requiredInstanceExtensions{window.getRequiredExtensions()};
 	if constexpr(isDebugBuild)
 		requiredInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	Logger::logInfo(std::format("{} Vulkan instance extensions required:", requiredInstanceExtensions.size()));
 	for(auto extension : requiredInstanceExtensions)
 		Logger::logInfo(std::format("\t{}", extension));
 
+	//Check support for required instance extensions
+	std::unordered_set<std::string> extensionSet;
 	for(auto extension : requiredInstanceExtensions)
+		extensionSet.emplace(extension);
+	for(auto const& extension : availableExtensionProperties)
+		extensionSet.erase(extension.extensionName);
+	if(!extensionSet.empty())
 	{
-		if(std::find_if(availableExtensionProperties.begin(), availableExtensionProperties.end(), [extension](auto const& property) { return std::strcmp(property.extensionName, extension) == 0; }) != availableExtensionProperties.end())
-			continue;
-
 		hasError = true;
-		Logger::logError(std::format("Required extension {} not supported", extension));
+		Logger::logError(std::format("Required extension {} not supported", *extensionSet.begin()));
 		return;
 	}
 
+	//Create Vulkan instance
+	vk::DebugUtilsMessengerCreateInfoEXT messengerCreateInfo{{},
+		vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
+		vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation |
+		vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding,
+		debugCallback};
 	vk::InstanceCreateInfo instanceCreateInfo;
-	vk::DebugUtilsMessengerCreateInfoEXT messengerCreateInfo{{}, vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError,
-			vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance | vk::DebugUtilsMessageTypeFlagBitsEXT::eDeviceAddressBinding, debugCallback};
 	if constexpr(isDebugBuild)
 		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredInstanceExtensions, &messengerCreateInfo);
 	else
 		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredInstanceExtensions);
-	if(checkVulkanErrorOccured(instance, vk::createInstanceUnique(instanceCreateInfo), "Created Vulkan instance", "Failed to create Vulkan instance"))
+	if(checkVulkanErrorOccured(instance, vk::createInstanceUnique(instanceCreateInfo),
+							   "Created Vulkan instance", "Failed to create Vulkan instance"))
 		return;
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(instance.get());
 
+	//Create debug messenger
 	if constexpr(isDebugBuild)
 	{
-		if(checkVulkanErrorOccured(debugMessenger, instance->createDebugUtilsMessengerEXTUnique(messengerCreateInfo), "Created debug messenger", "Failed to create debug messenger"))
+		if(checkVulkanErrorOccured(debugMessenger, instance->createDebugUtilsMessengerEXTUnique(messengerCreateInfo),
+								   "Created debug messenger", "Failed to create debug messenger"))
 			return;
 	}
 
+	//Create window surface
 	if(!window.createSurface(instance.get()))
 	{
 		hasError = true;
 		return;
 	}
+	surface.instance = instance.get();
 	surface.surface = window.getSurface();
 	Logger::logInfo("Created surface");
 
+	//Get available physical devices
 	std::vector<vk::PhysicalDevice> availablePhysicalDevices;
 	if(checkVulkanErrorOccured(availablePhysicalDevices, instance->enumeratePhysicalDevices(), "", "Failed to enumerate physical devices"))
 		return;
@@ -107,16 +131,17 @@ RenderEngine::RenderEngine(): surface(instance.get())
 		Logger::logError("No physical device with Vulkan support found. Try updating drivers");
 		return;
 	}
+	Logger::logInfo(std::format("{} physical devices available:", availablePhysicalDevices.size()));
+	for(auto availableDevice : availablePhysicalDevices)
+		Logger::logInfo(std::format("\t{}", availableDevice.getProperties().deviceName.data()));
 
+	//Define physical device extensions
 	std::vector<char const*> requiredPhysicalDeviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 	Logger::logInfo(std::format("{} physical device extensions required:", requiredPhysicalDeviceExtensions.size()));
 	for(auto const& extension : requiredPhysicalDeviceExtensions)
 		Logger::logInfo(std::format("\t{}", extension));
 
-	Logger::logInfo(std::format("{} physical devices available:", availablePhysicalDevices.size()));
-	for(auto availableDevice : availablePhysicalDevices)
-		Logger::logInfo(std::format("\t{}", availableDevice.getProperties().deviceName.data()));
-
+	//Choose best physical device
 	int32_t maxDeviceScore{0};
 	PhysicalDeviceInfo physicalDeviceInfo;
 	for(auto availableDevice : availablePhysicalDevices)
@@ -130,7 +155,6 @@ RenderEngine::RenderEngine(): surface(instance.get())
 			physicalDeviceInfo = info;
 		}
 	}
-
 	if(!physicalDevice)
 	{
 		hasError = true;
@@ -139,22 +163,28 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	}
 	Logger::logInfo(std::format("Picked {} as a suitable physical device", physicalDeviceInfo.name));
 
+	//Define device queues
 	std::unordered_set uniqueQueueFamilyIndices{physicalDeviceInfo.graphicsIndex, physicalDeviceInfo.presentationIndex};
 	std::array<float, 1> queuePriorities{1.0f};
 	std::vector<vk::DeviceQueueCreateInfo> queueCreateInfos;
 	queueCreateInfos.reserve(uniqueQueueFamilyIndices.size());
 	for(auto index : uniqueQueueFamilyIndices)
-		queueCreateInfos.emplace_back(vk::DeviceQueueCreateInfo{{}, index, queuePriorities});
+		queueCreateInfos.emplace_back(vk::DeviceQueueCreateFlags{}, index, queuePriorities);
 
-	vk::DeviceCreateInfo deviceCreateInfo({}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions);
-	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo), "Created logical device", "Failed to create logical device"))
+	//Create logical device
+	vk::DeviceCreateInfo deviceCreateInfo{{}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions};
+	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo),
+							   "Created logical device", "Failed to create logical device"))
 		return;
 	Logger::logInfo("Created logical device");
+
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 
+	//Get queues
 	graphicsQueue = device->getQueue(physicalDeviceInfo.graphicsIndex, 0);
 	presentationQueue = device->getQueue(physicalDeviceInfo.presentationIndex, 0);
 
+	//Choose surface format
 	vk::SurfaceFormatKHR selectedFormat{physicalDeviceInfo.surfaceFormats[0]};
 	for(auto format : physicalDeviceInfo.surfaceFormats)
 	{
@@ -162,8 +192,10 @@ RenderEngine::RenderEngine(): surface(instance.get())
 			selectedFormat = format;
 	}
 	swapchainImageFormat = selectedFormat.format;
-	Logger::logInfo(std::format("Chose format {} with color space {}", vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
+	Logger::logInfo(std::format("Chose format {} with color space {}",
+								vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
 
+	//Choose present mode
 	vk::PresentModeKHR selectedPresentMode{vk::PresentModeKHR::eFifo};
 	for(auto presentMode : physicalDeviceInfo.presentModes)
 	{
@@ -172,10 +204,13 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	}
 	Logger::logInfo(std::format("Chose present mode {}", vk::to_string(selectedPresentMode)));
 
+	//Get physical device surface capabilities
 	vk::SurfaceCapabilitiesKHR physicalDeviceSurfaceCapabilities;
-	if(checkVulkanErrorOccured(physicalDeviceSurfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface), "", "Failed to get surface capabilities"))
+	if(checkVulkanErrorOccured(physicalDeviceSurfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface),
+							   "", "Failed to get surface capabilities"))
 		return;
 
+	//Choose swapchain extent
 	swapchainImageExtent = physicalDeviceSurfaceCapabilities.currentExtent;
 	if(swapchainImageExtent.width == std::numeric_limits<uint32_t>::max())
 	{
@@ -185,83 +220,112 @@ RenderEngine::RenderEngine(): surface(instance.get())
 	}
 	Logger::logInfo(std::format("Swap extent is [{},{}]", swapchainImageExtent.width, swapchainImageExtent.height));
 
+	//Choose swapchain image count
 	uint32_t imageCount{physicalDeviceSurfaceCapabilities.minImageCount + 1};
 	if(physicalDeviceSurfaceCapabilities.maxImageCount > 0 && imageCount > physicalDeviceSurfaceCapabilities.maxImageCount)
 		imageCount = physicalDeviceSurfaceCapabilities.maxImageCount;
 	Logger::logInfo(std::format("Image count is {}", imageCount));
 
-	vk::SharingMode sharingMode = physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive;
+	//Create swapchain
+	vk::SharingMode sharingMode{physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive};
 	std::vector<uint32_t> queueFamilyIndices{sharingMode == vk::SharingMode::eConcurrent ? std::vector{physicalDeviceInfo.graphicsIndex, physicalDeviceInfo.presentationIndex} : std::vector<uint32_t>{}};
-	vk::SwapchainCreateInfoKHR swapchainCreateInfo({}, surface.surface, imageCount, selectedFormat.format, selectedFormat.colorSpace, swapchainImageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices, physicalDeviceSurfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE);
+	vk::SwapchainCreateInfoKHR swapchainCreateInfo{{}, surface.surface, imageCount, selectedFormat.format, selectedFormat.colorSpace,
+		swapchainImageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices,
+		physicalDeviceSurfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE};
 	if(checkVulkanErrorOccured(swapchain, device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
 		return;
 
+	//Get swapchain images
 	if(checkVulkanErrorOccured(swapchainImages, device->getSwapchainImagesKHR(swapchain.get()), "", "Failed to get swapchain images"))
 		return;
 
+	//Create swapchain image views
 	swapchainImageViews.resize(swapchainImages.size());
 	for(size_t i = 0; i < swapchainImageViews.size(); i++)
 	{
-		vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-		vk::ImageViewCreateInfo viewCreateInfo({}, swapchainImages[i], vk::ImageViewType::e2D, swapchainImageFormat,
+		vk::ImageSubresourceRange subresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		vk::ImageViewCreateInfo viewCreateInfo{{}, swapchainImages[i], vk::ImageViewType::e2D, swapchainImageFormat,
 											   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity},
-											   subresourceRange);
+											   subresourceRange};
 		if(checkVulkanErrorOccured(swapchainImageViews[i], device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
 			return;
 	}
 
+	//Create shader modules
 	auto vertexShaderModule = createShaderModule("shaders/quadVert.spv");
 	if(!vertexShaderModule)
 		return;
-
 	auto fragmentShaderModule = createShaderModule("shaders/quadFrag.spv");
 	if(!fragmentShaderModule)
 		return;
 
+	//Define shader stages
 	std::vector<vk::PipelineShaderStageCreateInfo> stageCreateInfos{{{}, vk::ShaderStageFlagBits::eVertex, vertexShaderModule.get(), "main"},
 																	{{}, vk::ShaderStageFlagBits::eFragment, fragmentShaderModule.get(), "main"}};
 
+	//Define dynamic states
 	std::vector<vk::DynamicState> dynamicStates{vk::DynamicState::eViewport, vk::DynamicState::eScissor};
-	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo({}, dynamicStates);
+	vk::PipelineDynamicStateCreateInfo dynamicStateCreateInfo{{}, dynamicStates};
 
-	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo({});
+	//Define vertex input
+	vk::PipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{{}, nullptr, nullptr};
 
-	vk::PipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo({}, vk::PrimitiveTopology::eTriangleStrip, VK_FALSE);
+	//Define input assembly
+	vk::PipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo{{}, vk::PrimitiveTopology::eTriangleStrip, VK_FALSE};
 
-	vk::Viewport viewport(0.0f, 0.0f, swapchainImageExtent.width, swapchainImageExtent.height, 0.0f, 1.0f);
-	vk::Rect2D scissor({0, 0}, swapchainImageExtent);
+	//Define viewport
+	vk::Viewport viewport{0.0f, 0.0f, (float)swapchainImageExtent.width, (float)swapchainImageExtent.height, 0.0f, 1.0f};
+	vk::Rect2D scissor{{0, 0}, swapchainImageExtent};
+	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{{}, viewport, scissor};
 
-	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo({}, viewport, scissor);
+	//Define rasterization
+	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{{}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill,
+																		  vk::CullModeFlagBits::eBack, vk::FrontFace::eClockwise, VK_FALSE,
+																		  0.0f, 0.0f, 0.0f, 1.0f};
 
-	vk::PipelineRasterizationStateCreateInfo rasterizationStateCreateInfo({}, VK_FALSE, VK_FALSE, vk::PolygonMode::eFill, vk::CullModeFlagBits::eNone, vk::FrontFace::eClockwise, VK_FALSE, 0.0f, 0.0f, 0.0f, 1.0f);
+	//Define multisampling
+	vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo{{}, vk::SampleCountFlagBits::e1, VK_FALSE, 0.0, nullptr, VK_FALSE, VK_FALSE};
 
-	vk::PipelineMultisampleStateCreateInfo multisampleStateCreateInfo;
-	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo;
-	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState;
-	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo({}, VK_FALSE, vk::LogicOp::eCopy, colorBlendAttachmentState);
+	//Define depth and stencil
+	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{{}, VK_FALSE, VK_FALSE, vk::CompareOp::eNever, VK_FALSE, VK_FALSE};
 
+	//Define color blending
+	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{VK_FALSE, vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusSrcAlpha,
+																	vk::BlendOp::eAdd, vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
+																	vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
+																	vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
+	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{{}, VK_FALSE, vk::LogicOp::eNoOp, colorBlendAttachmentState, {1.0f, 1.0f, 1.0f, 1.0f}};
+
+
+	//Create pipeline layout
 	vk::PipelineLayoutCreateInfo layoutCreateInfo;
-	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo), "Created pipeline layout", "Failed to create pipeline layout"))
+	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo),
+							   "Created pipeline layout", "Failed to create pipeline layout"))
 		return;
 
-	vk::AttachmentDescription colorAttachment({}, swapchainImageFormat, vk::SampleCountFlagBits::e1,
+	//Define attachment
+	vk::AttachmentDescription colorAttachment{{}, swapchainImageFormat, vk::SampleCountFlagBits::e1,
 											  vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
 											  vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
-											  vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR);
-	vk::AttachmentReference colorAttachmentReference(0, vk::ImageLayout::eColorAttachmentOptimal);
+											  vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
+	vk::AttachmentReference colorAttachmentReference{0, vk::ImageLayout::eColorAttachmentOptimal};
 
+	//Create render pass
 	vk::SubpassDescription subpassDescription({}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentReference);
-	vk::SubpassDependency subpassDependency(VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite);
+	vk::SubpassDependency subpassDependency(VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+											vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite);
 	vk::RenderPassCreateInfo renderPassCreateInfo({}, colorAttachment, subpassDescription, subpassDependency);
-
-	if(checkVulkanErrorOccured(renderPass, device->createRenderPassUnique(renderPassCreateInfo), "Created render pass", "Failed to create render pass"))
+	if(checkVulkanErrorOccured(renderPass, device->createRenderPassUnique(renderPassCreateInfo),
+							   "Created render pass", "Failed to create render pass"))
 		return;
 
+	//Create graphics pipeline
 	vk::GraphicsPipelineCreateInfo pipelineCreateInfo({}, stageCreateInfos, &vertexInputStateCreateInfo, &assemblyStateCreateInfo,
 													  nullptr, &viewportStateCreateInfo, &rasterizationStateCreateInfo,
 													  &multisampleStateCreateInfo, &depthStencilStateCreateInfo, &colorBlendStateCreateInfo,
 													  &dynamicStateCreateInfo, pipelineLayout.get(), renderPass.get(), 0);
-	if(checkVulkanErrorOccured(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo), "Created graphics pipeline", "Failed to create graphics pipeline"))
+	if(checkVulkanErrorOccured(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo),
+							   "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
 
 	swapchainFramebuffers.resize(swapchainImageViews.size());
@@ -292,7 +356,7 @@ RenderEngine::RenderEngine(): surface(instance.get())
 
 RenderEngine::~RenderEngine()
 {
-	if(device) 
+	if(device)
 		device->waitIdle();
 }
 

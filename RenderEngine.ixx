@@ -3,7 +3,6 @@ module;
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #define VULKAN_HPP_NO_EXCEPTIONS
 #include <vulkan/vulkan.hpp>
-#include <vulkan/vulkan_raii.hpp>
 
 export module RenderEngine;
 
@@ -13,13 +12,13 @@ export import Logger;
 
 struct UniqueSurface
 {
-	UniqueSurface(vk::Instance& instance): instance(instance) {}
-	~UniqueSurface() { instance.destroySurfaceKHR(surface);; }
+	UniqueSurface() {}
+	~UniqueSurface() { if(instance && surface) instance.destroySurfaceKHR(surface); }
 
 	auto operator->() const { return surface; }
 	operator vk::SurfaceKHR() const { return surface; }
 
-	vk::Instance& instance;
+	vk::Instance instance;
 	vk::SurfaceKHR surface;
 };
 
