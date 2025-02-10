@@ -311,10 +311,10 @@ RenderEngine::RenderEngine()
 	vk::AttachmentReference colorAttachmentReference{0, vk::ImageLayout::eColorAttachmentOptimal};
 
 	//Create render pass
-	vk::SubpassDescription subpassDescription({}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentReference);
-	vk::SubpassDependency subpassDependency(VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-											vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite);
-	vk::RenderPassCreateInfo renderPassCreateInfo({}, colorAttachment, subpassDescription, subpassDependency);
+	vk::SubpassDescription subpassDescription{{}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentReference};
+	vk::SubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+											vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite};
+	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpassDescription, subpassDependency};
 	if(checkVulkanErrorOccured(renderPass, device->createRenderPassUnique(renderPassCreateInfo),
 							   "Created render pass", "Failed to create render pass"))
 		return;
@@ -328,25 +328,29 @@ RenderEngine::RenderEngine()
 							   "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
 
+	//Create swapchain framebuffers
 	swapchainFramebuffers.resize(swapchainImageViews.size());
 	for(size_t i = 0; i < swapchainFramebuffers.size(); i++)
 	{
-		vk::FramebufferCreateInfo framebufferCreateInfo({}, renderPass.get(), swapchainImageViews[i].get(), swapchainImageExtent.width, swapchainImageExtent.height, 1);
+		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass.get(), swapchainImageViews[i].get(), swapchainImageExtent.width, swapchainImageExtent.height, 1};
 		if(checkVulkanErrorOccured(swapchainFramebuffers[i], device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
 			return;
 	}
 	Logger::logInfo("Created swapchain framebuffers");
 
-	vk::CommandPoolCreateInfo poolCreateInfo(vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex);
+	//Create command pool
+	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
 	if(checkVulkanErrorOccured(commandPool, device->createCommandPoolUnique(poolCreateInfo), "Created command pool", "Failed to create command pool"))
 		return;
 
-	vk::CommandBufferAllocateInfo bufferAllocateInfo(commandPool.get(), vk::CommandBufferLevel::ePrimary, 1);
+	//Allocate command buffers
+	vk::CommandBufferAllocateInfo bufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, 1};
 	if(checkVulkanErrorOccured(commandBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
 		return;
 
+	//Create synchronization objects
 	vk::SemaphoreCreateInfo semaphoreCreateInfo;
-	vk::FenceCreateInfo fenceCreateInfo(vk::FenceCreateFlagBits::eSignaled);
+	vk::FenceCreateInfo fenceCreateInfo{vk::FenceCreateFlagBits::eSignaled};
 	if(checkVulkanErrorOccured(imageAvailableSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
 	   checkVulkanErrorOccured(renderFinishedSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
 	   checkVulkanErrorOccured(inFlightFence, device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
@@ -356,6 +360,7 @@ RenderEngine::RenderEngine()
 
 RenderEngine::~RenderEngine()
 {
+	//Wait until rendering is finished before cleanup
 	if(device)
 		device->waitIdle();
 }
