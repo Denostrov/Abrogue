@@ -344,17 +344,20 @@ RenderEngine::RenderEngine()
 		return;
 
 	//Allocate command buffers
-	vk::CommandBufferAllocateInfo bufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, 1};
+	vk::CommandBufferAllocateInfo bufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, maxFramesInFlight};
 	if(checkVulkanErrorOccured(commandBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
 		return;
 
 	//Create synchronization objects
 	vk::SemaphoreCreateInfo semaphoreCreateInfo;
 	vk::FenceCreateInfo fenceCreateInfo{vk::FenceCreateFlagBits::eSignaled};
-	if(checkVulkanErrorOccured(imageAvailableSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
-	   checkVulkanErrorOccured(renderFinishedSemaphore, device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
-	   checkVulkanErrorOccured(inFlightFence, device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
-		return;
+	for(uint64_t i{0}; i < maxFramesInFlight; i++)
+	{
+		if(checkVulkanErrorOccured(imageAvailableSemaphores[i], device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
+		   checkVulkanErrorOccured(renderFinishedSemaphores[i], device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
+		   checkVulkanErrorOccured(inFlightFences[i], device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
+			return;
+	}
 	Logger::logInfo("Created synchronization objects");
 }
 
@@ -368,30 +371,32 @@ RenderEngine::~RenderEngine()
 bool RenderEngine::drawFrame()
 {
 	auto timeout = std::numeric_limits<uint64_t>::max();
-	if(checkVulkanErrorOccured(device->waitForFences(inFlightFence.get(), VK_TRUE, timeout), "", "Failed to wait for fence"))
+	if(checkVulkanErrorOccured(device->waitForFences(inFlightFences[currentFrameIndex].get(), VK_TRUE, timeout), "", "Failed to wait for fence"))
 		return false;
 
-	if(checkVulkanErrorOccured(device->resetFences(inFlightFence.get()), "", "Failed to reset fence"))
+	if(checkVulkanErrorOccured(device->resetFences(inFlightFences[currentFrameIndex].get()), "", "Failed to reset fence"))
 		return false;
 
 	uint32_t imageIndex;
-	if(checkVulkanErrorOccured(imageIndex, device->acquireNextImageKHR(swapchain.get(), timeout, imageAvailableSemaphore.get(), {}), "", "Failed to acquire next image"))
+	if(checkVulkanErrorOccured(imageIndex, device->acquireNextImageKHR(swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {}), "", "Failed to acquire next image"))
 		return false;
 
-	if(checkVulkanErrorOccured(commandBuffers[0].reset(), "", "Failed to reset command buffer"))
+	if(checkVulkanErrorOccured(commandBuffers[currentFrameIndex].reset(), "", "Failed to reset command buffer"))
 		return false;
 
-	if(!recordCommandBuffer(commandBuffers[0], imageIndex))
+	if(!recordCommandBuffer(commandBuffers[currentFrameIndex], imageIndex))
 		return false;
 
 	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
-	vk::SubmitInfo submitInfo(imageAvailableSemaphore.get(), waitStage, commandBuffers[0], renderFinishedSemaphore.get());
-	if(checkVulkanErrorOccured(graphicsQueue.submit(submitInfo, inFlightFence.get()), "", "Failed to submit to graphics queue"))
+	vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrameIndex].get(), waitStage, commandBuffers[currentFrameIndex], renderFinishedSemaphores[currentFrameIndex].get());
+	if(checkVulkanErrorOccured(graphicsQueue.submit(submitInfo, inFlightFences[currentFrameIndex].get()), "", "Failed to submit to graphics queue"))
 		return false;
 
-	vk::PresentInfoKHR presentInfo(renderFinishedSemaphore.get(), swapchain.get(), imageIndex);
+	vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrameIndex].get(), swapchain.get(), imageIndex);
 	if(checkVulkanErrorOccured(presentationQueue.presentKHR(presentInfo), "", "Failed to present to presentation queue"))
 		return false;
+
+	currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 
 	return true;
 }

@@ -77,7 +77,9 @@ private:
 	vk::UniqueCommandPool commandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
-	vk::UniqueSemaphore imageAvailableSemaphore;
-	vk::UniqueSemaphore renderFinishedSemaphore;
-	vk::UniqueFence inFlightFence;
+	static constexpr uint32_t maxFramesInFlight{2};
+	std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphores;
+	std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphores;
+	std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;
+	uint32_t currentFrameIndex{};
 };
