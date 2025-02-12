@@ -2,6 +2,7 @@ module;
 
 #define VULKAN_HPP_DISPATCH_LOADER_DYNAMIC 1
 #define VULKAN_HPP_NO_EXCEPTIONS
+#define VULKAN_HPP_ASSERT_ON_RESULT
 #include <vulkan/vulkan.hpp>
 
 module RenderEngine;
@@ -377,9 +378,14 @@ bool RenderEngine::drawFrame()
 	if(checkVulkanErrorOccured(device->resetFences(inFlightFences[currentFrameIndex].get()), "", "Failed to reset fence"))
 		return false;
 
-	uint32_t imageIndex;
-	if(checkVulkanErrorOccured(imageIndex, device->acquireNextImageKHR(swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {}), "", "Failed to acquire next image"))
-		return false;
+	auto [result, imageIndex] = device->acquireNextImageKHR(swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {});
+	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+	{
+
+		return true;
+	}
+	else 
+		checkVulkanErrorOccured(result, "", "Failed to acquire next image");
 
 	if(checkVulkanErrorOccured(commandBuffers[currentFrameIndex].reset(), "", "Failed to reset command buffer"))
 		return false;
@@ -393,8 +399,14 @@ bool RenderEngine::drawFrame()
 		return false;
 
 	vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrameIndex].get(), swapchain.get(), imageIndex);
-	if(checkVulkanErrorOccured(presentationQueue.presentKHR(presentInfo), "", "Failed to present to presentation queue"))
-		return false;
+	result = presentationQueue.presentKHR(presentInfo);
+	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
+	{
+
+		return true;
+	}
+	else
+		checkVulkanErrorOccured(result, "", "Failed to present image");
 
 	currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
 
