@@ -11,20 +11,29 @@ export import RenderWindow;
 export import Configuration;
 export import Logger;
 
-struct UniqueSurface
-{
-	UniqueSurface() {}
-	~UniqueSurface() { if(instance && surface) instance.destroySurfaceKHR(surface); }
-
-	auto operator->() const { return surface; }
-	operator vk::SurfaceKHR() const { return surface; }
-
-	vk::Instance instance;
-	vk::SurfaceKHR surface;
-};
-
 export class RenderEngine
 {
+	struct PhysicalDeviceInfo
+	{
+		std::string name;
+		std::vector<vk::SurfaceFormatKHR> surfaceFormats;
+		std::vector<vk::PresentModeKHR> presentModes;
+		vk::SurfaceCapabilitiesKHR surfaceCapabilities;
+		uint32_t graphicsIndex{}, presentationIndex{};
+	};
+
+	struct SwapchainResources
+	{
+		SwapchainResources() = default;
+		SwapchainResources(RenderEngine const& engine, PhysicalDeviceInfo const& info);
+
+		vk::UniqueSwapchainKHR swapchain;
+		std::vector<vk::Image> images;
+		vk::Format imageFormat;
+		vk::Extent2D imageExtent;
+		std::vector<vk::UniqueImageView> imageViews;
+	};
+
 public:
 	RenderEngine();
 	~RenderEngine();
@@ -40,13 +49,6 @@ private:
 	bool checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage) const;
 	bool checkVulkanErrorOccured(vk::Result result, std::string_view successMessage, std::string_view errorMessage) const;
 
-	struct PhysicalDeviceInfo
-	{
-		std::string name;
-		std::vector<vk::SurfaceFormatKHR> surfaceFormats;
-		std::vector<vk::PresentModeKHR> presentModes;
-		uint32_t graphicsIndex{}, presentationIndex{};
-	};
 	std::pair<int32_t, PhysicalDeviceInfo> getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions) const;
 
 	vk::UniqueShaderModule createShaderModule(std::string_view shaderFileName) const;
@@ -61,16 +63,12 @@ private:
 	RenderWindow window;
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
-	UniqueSurface surface;
+	vk::UniqueSurfaceKHR surface;
 	vk::PhysicalDevice physicalDevice;
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
-	vk::UniqueSwapchainKHR swapchain;
-	std::vector<vk::Image> swapchainImages;
-	vk::Format swapchainImageFormat;
-	vk::Extent2D swapchainImageExtent;
-	std::vector<vk::UniqueImageView> swapchainImageViews;
+	SwapchainResources swapchainResources;
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniqueRenderPass renderPass;
 	vk::UniquePipeline graphicsPipeline;

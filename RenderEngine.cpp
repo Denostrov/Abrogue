@@ -11,6 +11,71 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 using namespace std::literals;
 
+RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine, RenderEngine::PhysicalDeviceInfo const& info)
+{
+	//Choose surface format
+	vk::SurfaceFormatKHR selectedFormat{info.surfaceFormats[0]};
+	for(auto format : info.surfaceFormats)
+	{
+		if(format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
+			selectedFormat = format;
+	}
+	imageFormat = selectedFormat.format;
+	Logger::logInfo(std::format("Chose format {} with color space {}",
+								vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
+
+	//Choose present mode
+	vk::PresentModeKHR selectedPresentMode{vk::PresentModeKHR::eFifo};
+	for(auto presentMode : info.presentModes)
+	{
+		if(presentMode == vk::PresentModeKHR::eMailbox)
+			selectedPresentMode = presentMode;
+	}
+	Logger::logInfo(std::format("Chose present mode {}", vk::to_string(selectedPresentMode)));
+
+	//Choose swapchain extent
+	auto const& surfaceCapabilities = info.surfaceCapabilities;
+	imageExtent = surfaceCapabilities.currentExtent;
+	if(imageExtent.width == std::numeric_limits<uint32_t>::max())
+	{
+		auto framebufferSize = engine.window.getFramebufferSize();
+		imageExtent.width = std::clamp(framebufferSize.first, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
+		imageExtent.height = std::clamp(framebufferSize.second, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
+	}
+	Logger::logInfo(std::format("Swap extent is [{},{}]", imageExtent.width, imageExtent.height));
+
+	//Choose swapchain image count
+	uint32_t imageCount{surfaceCapabilities.minImageCount + 1};
+	if(surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
+		imageCount = surfaceCapabilities.maxImageCount;
+	Logger::logInfo(std::format("Image count is {}", imageCount));
+
+	//Create swapchain
+	vk::SharingMode sharingMode{info.graphicsIndex != info.presentationIndex ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive};
+	std::vector<uint32_t> queueFamilyIndices{sharingMode == vk::SharingMode::eConcurrent ? std::vector{info.graphicsIndex, info.presentationIndex} : std::vector<uint32_t>{}};
+	vk::SwapchainCreateInfoKHR swapchainCreateInfo{{}, engine.surface.get(), imageCount, selectedFormat.format, selectedFormat.colorSpace,
+		imageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices,
+		surfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE};
+	if(engine.checkVulkanErrorOccured(swapchain, engine.device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
+		return;
+
+	//Get swapchain images
+	if(engine.checkVulkanErrorOccured(images, engine.device->getSwapchainImagesKHR(swapchain.get()), "", "Failed to get swapchain images"))
+		return;
+
+	//Create swapchain image views
+	imageViews.resize(images.size());
+	for(size_t i = 0; i < imageViews.size(); i++)
+	{
+		vk::ImageSubresourceRange subresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+		vk::ImageViewCreateInfo viewCreateInfo{{}, images[i], vk::ImageViewType::e2D, imageFormat,
+											   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity},
+											   subresourceRange};
+		if(engine.checkVulkanErrorOccured(imageViews[i], engine.device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
+			return;
+	}
+}
+
 RenderEngine::RenderEngine()
 {
 	//Check if failed to initialize window
@@ -113,13 +178,12 @@ RenderEngine::RenderEngine()
 	}
 
 	//Create window surface
-	if(!window.createSurface(instance.get()))
+	surface = vk::UniqueSurfaceKHR(window.createSurface(instance.get()), instance.get());
+	if(!surface)
 	{
 		hasError = true;
 		return;
 	}
-	surface.instance = instance.get();
-	surface.surface = window.getSurface();
 	Logger::logInfo("Created surface");
 
 	//Get available physical devices
@@ -185,72 +249,7 @@ RenderEngine::RenderEngine()
 	graphicsQueue = device->getQueue(physicalDeviceInfo.graphicsIndex, 0);
 	presentationQueue = device->getQueue(physicalDeviceInfo.presentationIndex, 0);
 
-	//Choose surface format
-	vk::SurfaceFormatKHR selectedFormat{physicalDeviceInfo.surfaceFormats[0]};
-	for(auto format : physicalDeviceInfo.surfaceFormats)
-	{
-		if(format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear)
-			selectedFormat = format;
-	}
-	swapchainImageFormat = selectedFormat.format;
-	Logger::logInfo(std::format("Chose format {} with color space {}",
-								vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
-
-	//Choose present mode
-	vk::PresentModeKHR selectedPresentMode{vk::PresentModeKHR::eFifo};
-	for(auto presentMode : physicalDeviceInfo.presentModes)
-	{
-		if(presentMode == vk::PresentModeKHR::eMailbox)
-			selectedPresentMode = presentMode;
-	}
-	Logger::logInfo(std::format("Chose present mode {}", vk::to_string(selectedPresentMode)));
-
-	//Get physical device surface capabilities
-	vk::SurfaceCapabilitiesKHR physicalDeviceSurfaceCapabilities;
-	if(checkVulkanErrorOccured(physicalDeviceSurfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface),
-							   "", "Failed to get surface capabilities"))
-		return;
-
-	//Choose swapchain extent
-	swapchainImageExtent = physicalDeviceSurfaceCapabilities.currentExtent;
-	if(swapchainImageExtent.width == std::numeric_limits<uint32_t>::max())
-	{
-		auto framebufferSize = window.getFramebufferSize();
-		swapchainImageExtent.width = std::clamp(framebufferSize.first, physicalDeviceSurfaceCapabilities.minImageExtent.width, physicalDeviceSurfaceCapabilities.maxImageExtent.width);
-		swapchainImageExtent.height = std::clamp(framebufferSize.second, physicalDeviceSurfaceCapabilities.minImageExtent.height, physicalDeviceSurfaceCapabilities.maxImageExtent.height);
-	}
-	Logger::logInfo(std::format("Swap extent is [{},{}]", swapchainImageExtent.width, swapchainImageExtent.height));
-
-	//Choose swapchain image count
-	uint32_t imageCount{physicalDeviceSurfaceCapabilities.minImageCount + 1};
-	if(physicalDeviceSurfaceCapabilities.maxImageCount > 0 && imageCount > physicalDeviceSurfaceCapabilities.maxImageCount)
-		imageCount = physicalDeviceSurfaceCapabilities.maxImageCount;
-	Logger::logInfo(std::format("Image count is {}", imageCount));
-
-	//Create swapchain
-	vk::SharingMode sharingMode{physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive};
-	std::vector<uint32_t> queueFamilyIndices{sharingMode == vk::SharingMode::eConcurrent ? std::vector{physicalDeviceInfo.graphicsIndex, physicalDeviceInfo.presentationIndex} : std::vector<uint32_t>{}};
-	vk::SwapchainCreateInfoKHR swapchainCreateInfo{{}, surface.surface, imageCount, selectedFormat.format, selectedFormat.colorSpace,
-		swapchainImageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices,
-		physicalDeviceSurfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE};
-	if(checkVulkanErrorOccured(swapchain, device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
-		return;
-
-	//Get swapchain images
-	if(checkVulkanErrorOccured(swapchainImages, device->getSwapchainImagesKHR(swapchain.get()), "", "Failed to get swapchain images"))
-		return;
-
-	//Create swapchain image views
-	swapchainImageViews.resize(swapchainImages.size());
-	for(size_t i = 0; i < swapchainImageViews.size(); i++)
-	{
-		vk::ImageSubresourceRange subresourceRange{vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
-		vk::ImageViewCreateInfo viewCreateInfo{{}, swapchainImages[i], vk::ImageViewType::e2D, swapchainImageFormat,
-											   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity},
-											   subresourceRange};
-		if(checkVulkanErrorOccured(swapchainImageViews[i], device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
-			return;
-	}
+	swapchainResources = SwapchainResources(*this, physicalDeviceInfo);
 
 	//Create shader modules
 	auto vertexShaderModule = createShaderModule("shaders/quadVert.spv");
@@ -275,8 +274,8 @@ RenderEngine::RenderEngine()
 	vk::PipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo{{}, vk::PrimitiveTopology::eTriangleStrip, VK_FALSE};
 
 	//Define viewport
-	vk::Viewport viewport{0.0f, 0.0f, (float)swapchainImageExtent.width, (float)swapchainImageExtent.height, 0.0f, 1.0f};
-	vk::Rect2D scissor{{0, 0}, swapchainImageExtent};
+	vk::Viewport viewport{0.0f, 0.0f, (float)swapchainResources.imageExtent.width, (float)swapchainResources.imageExtent.height, 0.0f, 1.0f};
+	vk::Rect2D scissor{{0, 0}, swapchainResources.imageExtent};
 	vk::PipelineViewportStateCreateInfo viewportStateCreateInfo{{}, viewport, scissor};
 
 	//Define rasterization
@@ -305,7 +304,7 @@ RenderEngine::RenderEngine()
 		return;
 
 	//Define attachment
-	vk::AttachmentDescription colorAttachment{{}, swapchainImageFormat, vk::SampleCountFlagBits::e1,
+	vk::AttachmentDescription colorAttachment{{}, swapchainResources.imageFormat, vk::SampleCountFlagBits::e1,
 											  vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
 											  vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
 											  vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
@@ -330,10 +329,10 @@ RenderEngine::RenderEngine()
 		return;
 
 	//Create swapchain framebuffers
-	swapchainFramebuffers.resize(swapchainImageViews.size());
+	swapchainFramebuffers.resize(swapchainResources.imageViews.size());
 	for(size_t i = 0; i < swapchainFramebuffers.size(); i++)
 	{
-		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass.get(), swapchainImageViews[i].get(), swapchainImageExtent.width, swapchainImageExtent.height, 1};
+		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass.get(), swapchainResources.imageViews[i].get(), swapchainResources.imageExtent.width, swapchainResources.imageExtent.height, 1};
 		if(checkVulkanErrorOccured(swapchainFramebuffers[i], device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
 			return;
 	}
@@ -375,17 +374,17 @@ bool RenderEngine::drawFrame()
 	if(checkVulkanErrorOccured(device->waitForFences(inFlightFences[currentFrameIndex].get(), VK_TRUE, timeout), "", "Failed to wait for fence"))
 		return false;
 
-	if(checkVulkanErrorOccured(device->resetFences(inFlightFences[currentFrameIndex].get()), "", "Failed to reset fence"))
-		return false;
-
-	auto [result, imageIndex] = device->acquireNextImageKHR(swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {});
+	auto [result, imageIndex] = device->acquireNextImageKHR(swapchainResources.swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {});
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 	{
 
 		return true;
 	}
-	else 
+	else
 		checkVulkanErrorOccured(result, "", "Failed to acquire next image");
+
+	if(checkVulkanErrorOccured(device->resetFences(inFlightFences[currentFrameIndex].get()), "", "Failed to reset fence"))
+		return false;
 
 	if(checkVulkanErrorOccured(commandBuffers[currentFrameIndex].reset(), "", "Failed to reset command buffer"))
 		return false;
@@ -398,7 +397,7 @@ bool RenderEngine::drawFrame()
 	if(checkVulkanErrorOccured(graphicsQueue.submit(submitInfo, inFlightFences[currentFrameIndex].get()), "", "Failed to submit to graphics queue"))
 		return false;
 
-	vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrameIndex].get(), swapchain.get(), imageIndex);
+	vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrameIndex].get(), swapchainResources.swapchain.get(), imageIndex);
 	result = presentationQueue.presentKHR(presentInfo);
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 	{
@@ -419,17 +418,17 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 	if(checkVulkanErrorOccured(commandBuffer.begin(beginInfo), "", "Failed to begin command buffer"))
 		return false;
 
-	vk::Rect2D renderArea({0, 0}, swapchainImageExtent);
+	vk::Rect2D renderArea({0, 0}, swapchainResources.imageExtent);
 	vk::ClearValue clearValue(vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f));
 	vk::RenderPassBeginInfo renderPassBeginInfo(renderPass.get(), swapchainFramebuffers[imageIndex].get(), renderArea, clearValue);
 	commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());
 
-	vk::Viewport viewport(0.0f, 0.0f, swapchainImageExtent.width, swapchainImageExtent.height, 0.0f, 1.0f);
+	vk::Viewport viewport(0.0f, 0.0f, swapchainResources.imageExtent.width, swapchainResources.imageExtent.height, 0.0f, 1.0f);
 	commandBuffer.setViewport(0, viewport);
 
-	vk::Rect2D scissor({0, 0}, swapchainImageExtent);
+	vk::Rect2D scissor({0, 0}, swapchainResources.imageExtent);
 	commandBuffer.setScissor(0, scissor);
 
 	commandBuffer.draw(4, 1, 0, 0);
@@ -478,7 +477,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 {
 	std::pair<int32_t, PhysicalDeviceInfo> result;
 	result.first = -1;
-	auto& [name, formats, presentModes, graphicsIndex, presentationIndex] = result.second;
+	auto& [name, formats, presentModes, surfaceCapabilities, graphicsIndex, presentationIndex] = result.second;
 
 	auto deviceProperties = device.getProperties();
 	name = deviceProperties.deviceName.data();
@@ -499,7 +498,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 		}
 
 		vk::Bool32 surfaceSupport;
-		if(checkVulkanErrorOccured(surfaceSupport, device.getSurfaceSupportKHR(i, surface), "", "Failed to get surface support info"))
+		if(checkVulkanErrorOccured(surfaceSupport, device.getSurfaceSupportKHR(i, surface.get()), "", "Failed to get surface support info"))
 			return result;
 		if(surfaceSupport)
 		{
@@ -541,10 +540,13 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 		return result;
 	}
 
-	if(checkVulkanErrorOccured(formats, device.getSurfaceFormatsKHR(surface), "", "\tFailed to get surface formats"))
+	if(checkVulkanErrorOccured(formats, device.getSurfaceFormatsKHR(surface.get()), "", "\tFailed to get surface formats"))
 		return result;
 
-	if(checkVulkanErrorOccured(presentModes, device.getSurfacePresentModesKHR(surface), "", "\tFailed to get surface present modes"))
+	if(checkVulkanErrorOccured(presentModes, device.getSurfacePresentModesKHR(surface.get()), "", "\tFailed to get surface present modes"))
+		return result;
+
+	if(checkVulkanErrorOccured(surfaceCapabilities, device.getSurfaceCapabilitiesKHR(surface.get()), "", "\tFailed to get surface capabilities"))
 		return result;
 
 	if(formats.empty() || presentModes.empty())

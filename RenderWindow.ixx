@@ -13,13 +13,12 @@ public:
 	RenderWindow();
 	~RenderWindow();
 
-	bool createSurface(VkInstance instance);
+	[[nodiscard]] VkSurfaceKHR createSurface(VkInstance instance);
 
-	auto getHasError() const { return hasError; }
+	[[nodiscard]] auto getHasError() const { return hasError; }
 
-	auto const& getRequiredExtensions() const { return requiredExtensions; }
-	auto getSurface() const { return surface; }
-	std::pair<uint32_t, uint32_t> getFramebufferSize() const;
+	[[nodiscard]] auto const& getRequiredExtensions() const { return requiredExtensions; }
+	[[nodiscard]] std::pair<uint32_t, uint32_t> getFramebufferSize() const;
 
 private:
 	bool checkSDLErrorOccured(bool checkValue);
@@ -27,8 +26,6 @@ private:
 	bool hasError{};
 	SDL_Window* window{};
 	std::vector<char const*> requiredExtensions{};
-	VkInstance instance{};
-	VkSurfaceKHR surface{};
 };
 
 

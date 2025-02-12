@@ -51,13 +51,13 @@ RenderWindow::RenderWindow()
 	if(checkSDLErrorOccured(!window))
 		return;
 
-	uint32_t instanceCount{};
-	auto extensionsArray = SDL_Vulkan_GetInstanceExtensions(&instanceCount);
+	uint32_t extensionCount{};
+	auto extensionsArray = SDL_Vulkan_GetInstanceExtensions(&extensionCount);
 	if(checkSDLErrorOccured(!extensionsArray))
 		return;
 
-	requiredExtensions.reserve(instanceCount);
-	for(uint32_t i{}; i < instanceCount; i++)
+	requiredExtensions.reserve(extensionCount);
+	for(uint32_t i{}; i < extensionCount; i++)
 		requiredExtensions.emplace_back(extensionsArray[i]);
 }
 
@@ -69,12 +69,13 @@ RenderWindow::~RenderWindow()
 	SDL_Quit();
 }
 
-bool RenderWindow::createSurface(VkInstance instance)
+VkSurfaceKHR RenderWindow::createSurface(VkInstance instance)
 {
-	if(checkSDLErrorOccured(!SDL_Vulkan_CreateSurface(window, instance, nullptr, &surface)))
-		return false;
+	VkSurfaceKHR result;
+	if(checkSDLErrorOccured(!SDL_Vulkan_CreateSurface(window, instance, nullptr, &result)))
+		return VkSurfaceKHR{};
 
-	return true;
+	return result;
 }
 
 std::pair<uint32_t, uint32_t> RenderWindow::getFramebufferSize() const
