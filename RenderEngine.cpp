@@ -76,6 +76,20 @@ RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine,
 	}
 }
 
+RenderEngine::SwapchainFramebuffers::SwapchainFramebuffers(RenderEngine const& engine)
+{
+	//Create swapchain framebuffers
+	framebuffers.resize(engine.swapchainResources.imageViews.size());
+	for(size_t i = 0; i < framebuffers.size(); i++)
+	{
+		vk::FramebufferCreateInfo framebufferCreateInfo{{}, engine.renderPass.get(), engine.swapchainResources.imageViews[i].get(),
+			engine.swapchainResources.imageExtent.width, engine.swapchainResources.imageExtent.height, 1};
+		if(engine.checkVulkanErrorOccured(framebuffers[i], engine.device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
+			return;
+	}
+	Logger::logInfo("Created swapchain framebuffers");
+}
+
 RenderEngine::RenderEngine()
 {
 	//Check if failed to initialize window
@@ -208,7 +222,6 @@ RenderEngine::RenderEngine()
 
 	//Choose best physical device
 	int32_t maxDeviceScore{0};
-	PhysicalDeviceInfo physicalDeviceInfo;
 	for(auto availableDevice : availablePhysicalDevices)
 	{
 		auto [deviceScore, info] = getPhysicalDeviceInfo(availableDevice, requiredPhysicalDeviceExtensions);
@@ -296,7 +309,6 @@ RenderEngine::RenderEngine()
 																	vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
 	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{{}, VK_FALSE, vk::LogicOp::eNoOp, colorBlendAttachmentState, {1.0f, 1.0f, 1.0f, 1.0f}};
 
-
 	//Create pipeline layout
 	vk::PipelineLayoutCreateInfo layoutCreateInfo;
 	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo),
@@ -328,15 +340,7 @@ RenderEngine::RenderEngine()
 							   "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
 
-	//Create swapchain framebuffers
-	swapchainFramebuffers.resize(swapchainResources.imageViews.size());
-	for(size_t i = 0; i < swapchainFramebuffers.size(); i++)
-	{
-		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass.get(), swapchainResources.imageViews[i].get(), swapchainResources.imageExtent.width, swapchainResources.imageExtent.height, 1};
-		if(checkVulkanErrorOccured(swapchainFramebuffers[i], device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
-			return;
-	}
-	Logger::logInfo("Created swapchain framebuffers");
+	swapchainFramebuffers = SwapchainFramebuffers(*this);
 
 	//Create command pool
 	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
@@ -376,10 +380,7 @@ bool RenderEngine::drawFrame()
 
 	auto [result, imageIndex] = device->acquireNextImageKHR(swapchainResources.swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {});
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
-	{
-
-		return true;
-	}
+		return recreateSwapchain();
 	else
 		checkVulkanErrorOccured(result, "", "Failed to acquire next image");
 
@@ -400,14 +401,29 @@ bool RenderEngine::drawFrame()
 	vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrameIndex].get(), swapchainResources.swapchain.get(), imageIndex);
 	result = presentationQueue.presentKHR(presentInfo);
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
-	{
-
-		return true;
-	}
+		return recreateSwapchain();
 	else
 		checkVulkanErrorOccured(result, "", "Failed to present image");
 
 	currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
+
+	return true;
+}
+
+bool RenderEngine::recreateSwapchain()
+{
+	device->waitIdle();
+
+	swapchainFramebuffers = {};
+	swapchainResources = {};
+
+	swapchainResources = SwapchainResources(*this, physicalDeviceInfo);
+	if(hasError) 
+		return false;
+
+	swapchainFramebuffers = SwapchainFramebuffers(*this);
+	if(hasError)
+		return false;
 
 	return true;
 }
@@ -420,7 +436,7 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 
 	vk::Rect2D renderArea({0, 0}, swapchainResources.imageExtent);
 	vk::ClearValue clearValue(vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f));
-	vk::RenderPassBeginInfo renderPassBeginInfo(renderPass.get(), swapchainFramebuffers[imageIndex].get(), renderArea, clearValue);
+	vk::RenderPassBeginInfo renderPassBeginInfo(renderPass.get(), swapchainFramebuffers.framebuffers[imageIndex].get(), renderArea, clearValue);
 	commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());

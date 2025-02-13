@@ -34,6 +34,14 @@ export class RenderEngine
 		std::vector<vk::UniqueImageView> imageViews;
 	};
 
+	struct SwapchainFramebuffers
+	{
+		SwapchainFramebuffers() = default;
+		SwapchainFramebuffers(RenderEngine const& engine);
+
+		std::vector<vk::UniqueFramebuffer> framebuffers;
+	};
+
 public:
 	RenderEngine();
 	~RenderEngine();
@@ -43,6 +51,8 @@ public:
 	auto getHasError() const { return hasError; }
 
 private:
+	bool recreateSwapchain();
+
 	bool recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const;
 
 	template<class Value, class Result>
@@ -65,6 +75,7 @@ private:
 	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
 	vk::UniqueSurfaceKHR surface;
 	vk::PhysicalDevice physicalDevice;
+	PhysicalDeviceInfo physicalDeviceInfo;
 	vk::UniqueDevice device;
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
@@ -72,7 +83,7 @@ private:
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniqueRenderPass renderPass;
 	vk::UniquePipeline graphicsPipeline;
-	std::vector<vk::UniqueFramebuffer> swapchainFramebuffers;
+	SwapchainFramebuffers swapchainFramebuffers;
 	vk::UniqueCommandPool commandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
