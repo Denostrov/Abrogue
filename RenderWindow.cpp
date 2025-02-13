@@ -47,7 +47,7 @@ RenderWindow::RenderWindow()
 	if(checkSDLErrorOccured(!SDL_Init(SDL_INIT_VIDEO)))
 		return;
 
-	window = SDL_CreateWindow(fullAppName.c_str(), Configuration::getWindowWidth(), Configuration::getWindowHeight(), SDL_WINDOW_VULKAN);
+	window = SDL_CreateWindow(fullAppName.c_str(), Configuration::getWindowWidth(), Configuration::getWindowHeight(), SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 	if(checkSDLErrorOccured(!window))
 		return;
 

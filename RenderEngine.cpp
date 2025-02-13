@@ -11,7 +11,7 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 using namespace std::literals;
 
-RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine, RenderEngine::PhysicalDeviceInfo const& info)
+RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine, RenderEngine::PhysicalDeviceInfo const& info, vk::SwapchainKHR oldSwapchain)
 {
 	//Choose surface format
 	vk::SurfaceFormatKHR selectedFormat{info.surfaceFormats[0]};
@@ -55,7 +55,7 @@ RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine,
 	std::vector<uint32_t> queueFamilyIndices{sharingMode == vk::SharingMode::eConcurrent ? std::vector{info.graphicsIndex, info.presentationIndex} : std::vector<uint32_t>{}};
 	vk::SwapchainCreateInfoKHR swapchainCreateInfo{{}, engine.surface.get(), imageCount, selectedFormat.format, selectedFormat.colorSpace,
 		imageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices,
-		surfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE};
+		surfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE, oldSwapchain};
 	if(engine.checkVulkanErrorOccured(swapchain, engine.device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
 		return;
 
@@ -74,16 +74,29 @@ RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine,
 		if(engine.checkVulkanErrorOccured(imageViews[i], engine.device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
 			return;
 	}
-}
 
-RenderEngine::SwapchainFramebuffers::SwapchainFramebuffers(RenderEngine const& engine)
-{
+	//Define attachment
+	vk::AttachmentDescription colorAttachment{{}, imageFormat, vk::SampleCountFlagBits::e1,
+											  vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
+											  vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
+											  vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
+	vk::AttachmentReference colorAttachmentReference{0, vk::ImageLayout::eColorAttachmentOptimal};
+
+	//Create render pass
+	vk::SubpassDescription subpassDescription{{}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentReference};
+	vk::SubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+											vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite};
+	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpassDescription, subpassDependency};
+	if(engine.checkVulkanErrorOccured(renderPass, engine.device->createRenderPassUnique(renderPassCreateInfo),
+							   "Created render pass", "Failed to create render pass"))
+		return;
+
 	//Create swapchain framebuffers
-	framebuffers.resize(engine.swapchainResources.imageViews.size());
+	framebuffers.resize(imageViews.size());
 	for(size_t i = 0; i < framebuffers.size(); i++)
 	{
-		vk::FramebufferCreateInfo framebufferCreateInfo{{}, engine.renderPass.get(), engine.swapchainResources.imageViews[i].get(),
-			engine.swapchainResources.imageExtent.width, engine.swapchainResources.imageExtent.height, 1};
+		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass.get(), imageViews[i].get(),
+			imageExtent.width, imageExtent.height, 1};
 		if(engine.checkVulkanErrorOccured(framebuffers[i], engine.device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
 			return;
 	}
@@ -315,32 +328,14 @@ RenderEngine::RenderEngine()
 							   "Created pipeline layout", "Failed to create pipeline layout"))
 		return;
 
-	//Define attachment
-	vk::AttachmentDescription colorAttachment{{}, swapchainResources.imageFormat, vk::SampleCountFlagBits::e1,
-											  vk::AttachmentLoadOp::eClear, vk::AttachmentStoreOp::eStore,
-											  vk::AttachmentLoadOp::eDontCare, vk::AttachmentStoreOp::eDontCare,
-											  vk::ImageLayout::eUndefined, vk::ImageLayout::ePresentSrcKHR};
-	vk::AttachmentReference colorAttachmentReference{0, vk::ImageLayout::eColorAttachmentOptimal};
-
-	//Create render pass
-	vk::SubpassDescription subpassDescription{{}, vk::PipelineBindPoint::eGraphics, {}, colorAttachmentReference};
-	vk::SubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
-											vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite};
-	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpassDescription, subpassDependency};
-	if(checkVulkanErrorOccured(renderPass, device->createRenderPassUnique(renderPassCreateInfo),
-							   "Created render pass", "Failed to create render pass"))
-		return;
-
 	//Create graphics pipeline
 	vk::GraphicsPipelineCreateInfo pipelineCreateInfo({}, stageCreateInfos, &vertexInputStateCreateInfo, &assemblyStateCreateInfo,
 													  nullptr, &viewportStateCreateInfo, &rasterizationStateCreateInfo,
 													  &multisampleStateCreateInfo, &depthStencilStateCreateInfo, &colorBlendStateCreateInfo,
-													  &dynamicStateCreateInfo, pipelineLayout.get(), renderPass.get(), 0);
+													  &dynamicStateCreateInfo, pipelineLayout.get(), swapchainResources.renderPass.get(), 0);
 	if(checkVulkanErrorOccured(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo),
 							   "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
-
-	swapchainFramebuffers = SwapchainFramebuffers(*this);
 
 	//Create command pool
 	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
@@ -381,8 +376,8 @@ bool RenderEngine::drawFrame()
 	auto [result, imageIndex] = device->acquireNextImageKHR(swapchainResources.swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {});
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		return recreateSwapchain();
-	else
-		checkVulkanErrorOccured(result, "", "Failed to acquire next image");
+	else if(checkVulkanErrorOccured(result, "", "Failed to acquire next image"))
+		return false;
 
 	if(checkVulkanErrorOccured(device->resetFences(inFlightFences[currentFrameIndex].get()), "", "Failed to reset fence"))
 		return false;
@@ -402,30 +397,40 @@ bool RenderEngine::drawFrame()
 	result = presentationQueue.presentKHR(presentInfo);
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		return recreateSwapchain();
-	else
-		checkVulkanErrorOccured(result, "", "Failed to present image");
+	else if(checkVulkanErrorOccured(result, "", "Failed to present image"))
+		return false;
 
 	currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
+	if(oldSwapchainResources.swapchain)
+	{
+		if(oldRendersRemaining == 0)
+			oldSwapchainResources = {};
+		else
+			oldRendersRemaining--;
+	}
 
 	return true;
 }
 
 bool RenderEngine::recreateSwapchain()
 {
-	device->waitIdle();
+	auto [width, height] = window.getFramebufferSize();
+	if(width == 0 || height == 0)
+		return true;
 
-	swapchainFramebuffers = {};
-	swapchainResources = {};
-
-	swapchainResources = SwapchainResources(*this, physicalDeviceInfo);
-	if(hasError) 
+	if(checkVulkanErrorOccured(physicalDeviceInfo.surfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface.get()), "", "Failed to get surface capabilities"))
 		return false;
 
-	swapchainFramebuffers = SwapchainFramebuffers(*this);
-	if(hasError)
+	if(checkVulkanErrorOccured(physicalDeviceInfo.surfaceFormats, physicalDevice.getSurfaceFormatsKHR(surface.get()), "", "Failed to get surface formats"))
 		return false;
 
-	return true;
+	if(checkVulkanErrorOccured(physicalDeviceInfo.presentModes, physicalDevice.getSurfacePresentModesKHR(surface.get()), "", "Failed to get surface present modes"))
+		return false;
+
+	oldSwapchainResources = std::move(swapchainResources);
+	oldRendersRemaining = oldSwapchainResources.framebuffers.size();
+	swapchainResources = SwapchainResources(*this, physicalDeviceInfo, oldSwapchainResources.swapchain.get());
+	return !hasError;
 }
 
 bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const
@@ -436,7 +441,7 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 
 	vk::Rect2D renderArea({0, 0}, swapchainResources.imageExtent);
 	vk::ClearValue clearValue(vk::ClearColorValue(0.0f, 0.0f, 0.0f, 1.0f));
-	vk::RenderPassBeginInfo renderPassBeginInfo(renderPass.get(), swapchainFramebuffers.framebuffers[imageIndex].get(), renderArea, clearValue);
+	vk::RenderPassBeginInfo renderPassBeginInfo(swapchainResources.renderPass.get(), swapchainResources.framebuffers[imageIndex].get(), renderArea, clearValue);
 	commandBuffer.beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
 	commandBuffer.bindPipeline(vk::PipelineBindPoint::eGraphics, graphicsPipeline.get());

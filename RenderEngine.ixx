@@ -25,20 +25,14 @@ export class RenderEngine
 	struct SwapchainResources
 	{
 		SwapchainResources() = default;
-		SwapchainResources(RenderEngine const& engine, PhysicalDeviceInfo const& info);
+		SwapchainResources(RenderEngine const& engine, PhysicalDeviceInfo const& info, vk::SwapchainKHR oldSwapchain = {});
 
 		vk::UniqueSwapchainKHR swapchain;
 		std::vector<vk::Image> images;
 		vk::Format imageFormat;
 		vk::Extent2D imageExtent;
 		std::vector<vk::UniqueImageView> imageViews;
-	};
-
-	struct SwapchainFramebuffers
-	{
-		SwapchainFramebuffers() = default;
-		SwapchainFramebuffers(RenderEngine const& engine);
-
+		vk::UniqueRenderPass renderPass;
 		std::vector<vk::UniqueFramebuffer> framebuffers;
 	};
 
@@ -81,9 +75,7 @@ private:
 	vk::Queue presentationQueue;
 	SwapchainResources swapchainResources;
 	vk::UniquePipelineLayout pipelineLayout;
-	vk::UniqueRenderPass renderPass;
 	vk::UniquePipeline graphicsPipeline;
-	SwapchainFramebuffers swapchainFramebuffers;
 	vk::UniqueCommandPool commandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
@@ -92,4 +84,7 @@ private:
 	std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphores;
 	std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;
 	uint32_t currentFrameIndex{};
+
+	uint32_t oldRendersRemaining{};
+	SwapchainResources oldSwapchainResources;
 };
