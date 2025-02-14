@@ -88,7 +88,7 @@ RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine,
 											vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite};
 	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpassDescription, subpassDependency};
 	if(engine.checkVulkanErrorOccured(renderPass, engine.device->createRenderPassUnique(renderPassCreateInfo),
-							   "Created render pass", "Failed to create render pass"))
+									  "Created render pass", "Failed to create render pass"))
 		return;
 
 	//Create swapchain framebuffers
@@ -263,7 +263,12 @@ RenderEngine::RenderEngine()
 		queueCreateInfos.emplace_back(vk::DeviceQueueCreateFlags{}, index, queuePriorities);
 
 	//Create logical device
-	vk::DeviceCreateInfo deviceCreateInfo{{}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions};
+	vk::PhysicalDeviceVulkan12Features features12;
+	features12.bufferDeviceAddress = VK_TRUE;
+	vk::PhysicalDeviceVulkan11Features features11;
+	features11.pNext = &features12;
+	vk::PhysicalDeviceFeatures2 requiredPhysicalDeviceFeatures({}, &features11);
+	vk::DeviceCreateInfo deviceCreateInfo{{}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions, nullptr, &requiredPhysicalDeviceFeatures};
 	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo),
 							   "Created logical device", "Failed to create logical device"))
 		return;
@@ -323,7 +328,8 @@ RenderEngine::RenderEngine()
 	vk::PipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{{}, VK_FALSE, vk::LogicOp::eNoOp, colorBlendAttachmentState, {1.0f, 1.0f, 1.0f, 1.0f}};
 
 	//Create pipeline layout
-	vk::PipelineLayoutCreateInfo layoutCreateInfo;
+	vk::PushConstantRange pushConstantRange(vk::ShaderStageFlagBits::eVertex, 0, sizeof(QuadData));
+	vk::PipelineLayoutCreateInfo layoutCreateInfo({}, {}, pushConstantRange);
 	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo),
 							   "Created pipeline layout", "Failed to create pipeline layout"))
 		return;
@@ -336,6 +342,44 @@ RenderEngine::RenderEngine()
 	if(checkVulkanErrorOccured(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo),
 							   "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
+
+	vk::BufferCreateInfo bufferCreateInfo({}, sizeof(QuadData) * 2048, vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::SharingMode::eExclusive, physicalDeviceInfo.graphicsIndex);
+	if(checkVulkanErrorOccured(quadDataBuffer, device->createBufferUnique(bufferCreateInfo), "Created quad data buffer", "Failed to create quad data buffer"))
+		return;
+	auto memoryRequirements = device->getBufferMemoryRequirements(quadDataBuffer.get());
+	vk::MemoryPropertyFlags memoryProperties{vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
+	int32_t selectedMemoryType{-1};
+	for(uint32_t i{0}; i < physicalDeviceInfo.memoryProperties.memoryTypeCount; i++)
+	{
+		if((memoryRequirements.memoryTypeBits & (1 << i)) && (physicalDeviceInfo.memoryProperties.memoryTypes[i].propertyFlags & memoryProperties) == memoryProperties)
+		{
+			selectedMemoryType = i;
+			break;
+		}
+	}
+	if(selectedMemoryType == -1)
+	{
+		hasError = true;
+		Logger::logError("Failed to find suitable memory type for quad data buffer");
+		return;
+	}
+
+	vk::MemoryAllocateFlagsInfo memoryAllocateFlagsInfo(vk::MemoryAllocateFlagBits::eDeviceAddress);
+	vk::MemoryAllocateInfo memoryAllocateInfo(memoryRequirements.size, selectedMemoryType, &memoryAllocateFlagsInfo);
+	if(checkVulkanErrorOccured(quadDataBufferMemory, device->allocateMemoryUnique(memoryAllocateInfo), "Allocated quad data buffer memory", "Failed to allocate quad data buffer memory"))
+		return;
+
+	if(checkVulkanErrorOccured(device->bindBufferMemory(quadDataBuffer.get(), quadDataBufferMemory.get(), 0), "Bound quad data buffer memory", "Failed to bind quad data buffer memory"))
+		return;
+
+	vk::BufferDeviceAddressInfo deviceAddressInfo(quadDataBuffer.get());
+	quadDataBufferAddress = device->getBufferAddress(deviceAddressInfo);
+	if(!quadDataBufferAddress)
+	{
+		hasError = true;
+		Logger::logError("Failed to get buffer address of quad data buffer");
+		return;
+	}
 
 	//Create command pool
 	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
@@ -498,7 +542,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 {
 	std::pair<int32_t, PhysicalDeviceInfo> result;
 	result.first = -1;
-	auto& [name, formats, presentModes, surfaceCapabilities, graphicsIndex, presentationIndex] = result.second;
+	auto& [name, formats, presentModes, surfaceCapabilities, graphicsIndex, presentationIndex, memoryProperties] = result.second;
 
 	auto deviceProperties = device.getProperties();
 	name = deviceProperties.deviceName.data();
@@ -570,9 +614,22 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	if(checkVulkanErrorOccured(surfaceCapabilities, device.getSurfaceCapabilitiesKHR(surface.get()), "", "\tFailed to get surface capabilities"))
 		return result;
 
+	memoryProperties = device.getMemoryProperties();
+
 	if(formats.empty() || presentModes.empty())
 	{
 		Logger::logInfo("\tPhysical device doesn't support swapchain");
+		return result;
+	}
+
+	vk::PhysicalDeviceVulkan12Features features12;
+	vk::PhysicalDeviceVulkan11Features features11;
+	features11.pNext = &features12;
+	vk::PhysicalDeviceFeatures2 features({}, &features11);
+	device.getFeatures2(&features);
+	if(!features12.bufferDeviceAddress)
+	{
+		Logger::logInfo("\tPhysical device doesn't support buffer device address");
 		return result;
 	}
 

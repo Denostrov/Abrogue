@@ -4,12 +4,18 @@ module;
 #define VULKAN_HPP_NO_EXCEPTIONS
 #define VULKAN_HPP_ASSERT_ON_RESULT
 #include <vulkan/vulkan.hpp>
+#include <glm/glm.hpp>
 
 export module RenderEngine;
 
 export import RenderWindow;
 export import Configuration;
 export import Logger;
+
+struct QuadData
+{
+	glm::vec2 pos;
+};
 
 export class RenderEngine
 {
@@ -20,6 +26,7 @@ export class RenderEngine
 		std::vector<vk::PresentModeKHR> presentModes;
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities;
 		uint32_t graphicsIndex{}, presentationIndex{};
+		vk::PhysicalDeviceMemoryProperties memoryProperties;
 	};
 
 	struct SwapchainResources
@@ -34,6 +41,11 @@ export class RenderEngine
 		std::vector<vk::UniqueImageView> imageViews;
 		vk::UniqueRenderPass renderPass;
 		std::vector<vk::UniqueFramebuffer> framebuffers;
+	};
+
+	struct PushConstantsBlock
+	{
+		vk::DeviceAddress quadReference;
 	};
 
 public:
@@ -87,4 +99,9 @@ private:
 
 	uint32_t oldRendersRemaining{};
 	SwapchainResources oldSwapchainResources;
+
+	vk::UniqueBuffer quadDataBuffer;
+	vk::UniqueDeviceMemory quadDataBufferMemory;
+	vk::DeviceAddress quadDataBufferAddress;
+	std::vector<QuadData> quadData;
 };
