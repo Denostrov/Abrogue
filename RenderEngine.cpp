@@ -402,7 +402,7 @@ bool RenderEngine::drawFrame()
 	if(!recordCommandBuffer(commandBuffers[currentFrameIndex], imageIndex))
 		return false;
 
-	memcpy(quadDataBuffers[currentFrameIndex].dataMapped, quadData.data(), sizeof(QuadData) * quadData.size());
+	memcpy(quadDataBuffers[currentFrameIndex].dataMapped, QuadPool::getData(), sizeof(QuadData) * QuadPool::getSize());
 
 	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrameIndex].get(), waitStage, commandBuffers[currentFrameIndex], renderFinishedSemaphores[currentFrameIndex].get());
@@ -430,12 +430,11 @@ bool RenderEngine::drawFrame()
 
 bool RenderEngine::recreateSwapchain()
 {
-	auto [width, height] = window.getFramebufferSize();
-	if(width == 0 || height == 0)
-		return true;
-
 	if(checkVulkanErrorOccured(physicalDeviceInfo.surfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface.get()), "", "Failed to get surface capabilities"))
 		return false;
+
+	if(physicalDeviceInfo.surfaceCapabilities.currentExtent.width == 0 || physicalDeviceInfo.surfaceCapabilities.currentExtent.height == 0)
+		return true;
 
 	if(checkVulkanErrorOccured(physicalDeviceInfo.surfaceFormats, physicalDevice.getSurfaceFormatsKHR(surface.get()), "", "Failed to get surface formats"))
 		return false;
@@ -471,7 +470,7 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 	PushConstantsBlock pushConstants{quadDataBuffers[currentFrameIndex].bufferAddress};
 	commandBuffer.pushConstants<PushConstantsBlock>(pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0u, pushConstants);
 
-	commandBuffer.draw(4, quadData.size(), 0, 0);
+	commandBuffer.draw(4, QuadPool::getSize(), 0, 0);
 
 	commandBuffer.endRenderPass();
 

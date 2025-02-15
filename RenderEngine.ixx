@@ -9,14 +9,9 @@ module;
 export module RenderEngine;
 
 export import RenderWindow;
+export import ObjectPools;
 export import Configuration;
 export import Logger;
-
-struct QuadData
-{
-	glm::vec2 pos;
-	glm::vec2 scale;
-};
 
 export class RenderEngine
 {
@@ -115,6 +110,4 @@ private:
 
 	uint32_t oldRendersRemaining{};
 	SwapchainResources oldSwapchainResources;
-
-	std::vector<QuadData> quadData{QuadData{{0.5, 0.0}, {0.01, 0.02}}, QuadData{{0.0, 0.0}, {0.01, 0.01}}};
 };

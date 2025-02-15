@@ -31,8 +31,18 @@ SDL_AppResult SDL_AppIterate(void* appstate)
 
 SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 {
-	if(event->type == SDL_EVENT_QUIT)
-		return SDL_APP_SUCCESS;
+	switch(event->type)
+	{
+		case SDL_EVENT_QUIT:
+			return SDL_APP_SUCCESS;
+		case SDL_EVENT_KEY_DOWN:
+			Game::onKeyPressed(event->key.scancode);
+			break;
+		case SDL_EVENT_KEY_UP:
+			Game::onKeyReleased(event->key.scancode);
+			break;
+		default: break;
+	}
 
 	return SDL_APP_CONTINUE;
 }

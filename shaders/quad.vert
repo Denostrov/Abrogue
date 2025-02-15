@@ -26,5 +26,5 @@ void main()
 {
 	QuadReference quadData = pushConstants.quadDataReference[gl_InstanceIndex];
 
-	gl_Position = vec4(positions[gl_VertexIndex].x * quadData.scale.x + quadData.position.x, positions[gl_VertexIndex].y * quadData.scale.y + quadData.position.y, 0.0, 1.0);
+	gl_Position = vec4((positions[gl_VertexIndex].x * quadData.scale.x + quadData.position.x) / 16.0 * 9.0, positions[gl_VertexIndex].y * quadData.scale.y + quadData.position.y, 0.0, 1.0);
 }
