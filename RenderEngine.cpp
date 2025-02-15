@@ -267,6 +267,7 @@ RenderEngine::RenderEngine()
 	//Create logical device
 	vk::PhysicalDeviceVulkan12Features features12;
 	features12.bufferDeviceAddress = VK_TRUE;
+	features12.scalarBlockLayout = VK_TRUE;
 	vk::PhysicalDeviceVulkan11Features features11;
 	features11.pNext = &features12;
 	vk::PhysicalDeviceFeatures2 requiredPhysicalDeviceFeatures({}, &features11);
@@ -604,6 +605,11 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	if(!features.features.shaderInt64)
 	{
 		Logger::logInfo("\tPhysical device doesn't support 64 bit integers");
+		return result;
+	}
+	if(!features12.scalarBlockLayout)
+	{
+		Logger::logInfo("\tPhysical device doesn't support scalar block layout");
 		return result;
 	}
 	if(!features12.bufferDeviceAddress)
