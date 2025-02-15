@@ -11,8 +11,10 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 using namespace std::literals;
 
-RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine, RenderEngine::PhysicalDeviceInfo const& info, vk::SwapchainKHR oldSwapchain)
+RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine)
 {
+	auto const& info = engine.physicalDeviceInfo;
+
 	//Choose surface format
 	vk::SurfaceFormatKHR selectedFormat{info.surfaceFormats[0]};
 	for(auto format : info.surfaceFormats)
@@ -55,7 +57,7 @@ RenderEngine::SwapchainResources::SwapchainResources(RenderEngine const& engine,
 	std::vector<uint32_t> queueFamilyIndices{sharingMode == vk::SharingMode::eConcurrent ? std::vector{info.graphicsIndex, info.presentationIndex} : std::vector<uint32_t>{}};
 	vk::SwapchainCreateInfoKHR swapchainCreateInfo{{}, engine.surface.get(), imageCount, selectedFormat.format, selectedFormat.colorSpace,
 		imageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices,
-		surfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE, oldSwapchain};
+		surfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE, engine.oldSwapchainResources.swapchain.get()};
 	if(engine.checkVulkanErrorOccured(swapchain, engine.device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
 		return;
 
@@ -268,6 +270,7 @@ RenderEngine::RenderEngine()
 	vk::PhysicalDeviceVulkan11Features features11;
 	features11.pNext = &features12;
 	vk::PhysicalDeviceFeatures2 requiredPhysicalDeviceFeatures({}, &features11);
+	requiredPhysicalDeviceFeatures.features.shaderInt64 = VK_TRUE;
 	vk::DeviceCreateInfo deviceCreateInfo{{}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions, nullptr, &requiredPhysicalDeviceFeatures};
 	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo),
 							   "Created logical device", "Failed to create logical device"))
@@ -280,7 +283,7 @@ RenderEngine::RenderEngine()
 	graphicsQueue = device->getQueue(physicalDeviceInfo.graphicsIndex, 0);
 	presentationQueue = device->getQueue(physicalDeviceInfo.presentationIndex, 0);
 
-	swapchainResources = SwapchainResources(*this, physicalDeviceInfo);
+	swapchainResources = SwapchainResources(*this);
 
 	//Create shader modules
 	auto vertexShaderModule = createShaderModule("shaders/quadVert.spv");
@@ -343,43 +346,9 @@ RenderEngine::RenderEngine()
 							   "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return;
 
-	vk::BufferCreateInfo bufferCreateInfo({}, sizeof(QuadData) * 2048, vk::BufferUsageFlagBits::eShaderDeviceAddress, vk::SharingMode::eExclusive, physicalDeviceInfo.graphicsIndex);
-	if(checkVulkanErrorOccured(quadDataBuffer, device->createBufferUnique(bufferCreateInfo), "Created quad data buffer", "Failed to create quad data buffer"))
-		return;
-	auto memoryRequirements = device->getBufferMemoryRequirements(quadDataBuffer.get());
-	vk::MemoryPropertyFlags memoryProperties{vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
-	int32_t selectedMemoryType{-1};
-	for(uint32_t i{0}; i < physicalDeviceInfo.memoryProperties.memoryTypeCount; i++)
-	{
-		if((memoryRequirements.memoryTypeBits & (1 << i)) && (physicalDeviceInfo.memoryProperties.memoryTypes[i].propertyFlags & memoryProperties) == memoryProperties)
-		{
-			selectedMemoryType = i;
-			break;
-		}
-	}
-	if(selectedMemoryType == -1)
-	{
-		hasError = true;
-		Logger::logError("Failed to find suitable memory type for quad data buffer");
-		return;
-	}
-
-	vk::MemoryAllocateFlagsInfo memoryAllocateFlagsInfo(vk::MemoryAllocateFlagBits::eDeviceAddress);
-	vk::MemoryAllocateInfo memoryAllocateInfo(memoryRequirements.size, selectedMemoryType, &memoryAllocateFlagsInfo);
-	if(checkVulkanErrorOccured(quadDataBufferMemory, device->allocateMemoryUnique(memoryAllocateInfo), "Allocated quad data buffer memory", "Failed to allocate quad data buffer memory"))
-		return;
-
-	if(checkVulkanErrorOccured(device->bindBufferMemory(quadDataBuffer.get(), quadDataBufferMemory.get(), 0), "Bound quad data buffer memory", "Failed to bind quad data buffer memory"))
-		return;
-
-	vk::BufferDeviceAddressInfo deviceAddressInfo(quadDataBuffer.get());
-	quadDataBufferAddress = device->getBufferAddress(deviceAddressInfo);
-	if(!quadDataBufferAddress)
-	{
-		hasError = true;
-		Logger::logError("Failed to get buffer address of quad data buffer");
-		return;
-	}
+	for(uint64_t i{0}; i < quadDataBuffers.size(); i++)
+		quadDataBuffers[i] = BufferResources<QuadData>(*this, 2048, vk::BufferUsageFlagBits::eShaderDeviceAddress);
+	Logger::logInfo("Created quad data buffers");
 
 	//Create command pool
 	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
@@ -408,7 +377,7 @@ RenderEngine::~RenderEngine()
 {
 	//Wait until rendering is finished before cleanup
 	if(device)
-		device->waitIdle();
+		auto result = device->waitIdle();
 }
 
 bool RenderEngine::drawFrame()
@@ -431,6 +400,8 @@ bool RenderEngine::drawFrame()
 
 	if(!recordCommandBuffer(commandBuffers[currentFrameIndex], imageIndex))
 		return false;
+
+	memcpy(quadDataBuffers[currentFrameIndex].dataMapped, quadData.data(), sizeof(QuadData) * quadData.size());
 
 	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrameIndex].get(), waitStage, commandBuffers[currentFrameIndex], renderFinishedSemaphores[currentFrameIndex].get());
@@ -473,7 +444,7 @@ bool RenderEngine::recreateSwapchain()
 
 	oldSwapchainResources = std::move(swapchainResources);
 	oldRendersRemaining = oldSwapchainResources.framebuffers.size();
-	swapchainResources = SwapchainResources(*this, physicalDeviceInfo, oldSwapchainResources.swapchain.get());
+	swapchainResources = SwapchainResources(*this);
 	return !hasError;
 }
 
@@ -496,7 +467,10 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 	vk::Rect2D scissor({0, 0}, swapchainResources.imageExtent);
 	commandBuffer.setScissor(0, scissor);
 
-	commandBuffer.draw(4, 1, 0, 0);
+	PushConstantsBlock pushConstants{quadDataBuffers[currentFrameIndex].bufferAddress};
+	commandBuffer.pushConstants<PushConstantsBlock>(pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0u, pushConstants);
+
+	commandBuffer.draw(4, quadData.size(), 0, 0);
 
 	commandBuffer.endRenderPass();
 
@@ -627,6 +601,11 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	features11.pNext = &features12;
 	vk::PhysicalDeviceFeatures2 features({}, &features11);
 	device.getFeatures2(&features);
+	if(!features.features.shaderInt64)
+	{
+		Logger::logInfo("\tPhysical device doesn't support 64 bit integers");
+		return result;
+	}
 	if(!features12.bufferDeviceAddress)
 	{
 		Logger::logInfo("\tPhysical device doesn't support buffer device address");
@@ -663,6 +642,53 @@ vk::UniqueShaderModule RenderEngine::createShaderModule(std::string_view shaderF
 		return result;
 
 	return result;
+}
+
+template<class T>
+RenderEngine::BufferResources<T>::BufferResources(RenderEngine const& engine, uint32_t size, vk::BufferUsageFlags usage)
+{
+	auto const& info = engine.physicalDeviceInfo;
+
+	vk::BufferCreateInfo bufferCreateInfo({}, sizeof(T) * size, usage, vk::SharingMode::eExclusive, info.graphicsIndex);
+	if(engine.checkVulkanErrorOccured(buffer, engine.device->createBufferUnique(bufferCreateInfo), "", "Failed to create buffer"))
+		return;
+	auto memoryRequirements = engine.device->getBufferMemoryRequirements(buffer.get());
+	vk::MemoryPropertyFlags memoryProperties{vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
+	int32_t selectedMemoryType{-1};
+	for(uint32_t i{0}; i < info.memoryProperties.memoryTypeCount; i++)
+	{
+		if((memoryRequirements.memoryTypeBits & (1 << i)) && (info.memoryProperties.memoryTypes[i].propertyFlags & memoryProperties) == memoryProperties)
+		{
+			selectedMemoryType = i;
+			break;
+		}
+	}
+	if(selectedMemoryType == -1)
+	{
+		engine.hasError = true;
+		Logger::logError("Failed to find suitable memory type for buffer");
+		return;
+	}
+
+	vk::MemoryAllocateFlagsInfo memoryAllocateFlagsInfo(vk::MemoryAllocateFlagBits::eDeviceAddress);
+	vk::MemoryAllocateInfo memoryAllocateInfo(memoryRequirements.size, selectedMemoryType, &memoryAllocateFlagsInfo);
+	if(engine.checkVulkanErrorOccured(bufferMemory, engine.device->allocateMemoryUnique(memoryAllocateInfo), "", "Failed to allocate buffer memory"))
+		return;
+
+	if(engine.checkVulkanErrorOccured(engine.device->bindBufferMemory(buffer.get(), bufferMemory.get(), 0), "", "Failed to bind buffer memory"))
+		return;
+
+	vk::BufferDeviceAddressInfo deviceAddressInfo(buffer.get());
+	bufferAddress = engine.device->getBufferAddress(deviceAddressInfo);
+	if(!bufferAddress)
+	{
+		engine.hasError = true;
+		Logger::logError("Failed to get buffer address");
+		return;
+	}
+
+	if(engine.checkVulkanErrorOccured(dataMapped, engine.device->mapMemory(bufferMemory.get(), 0, bufferCreateInfo.size), "", "Failed to map buffer memory"))
+		return;
 }
 
 VKAPI_ATTR VkBool32 VKAPI_CALL RenderEngine::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

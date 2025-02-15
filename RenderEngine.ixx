@@ -15,6 +15,7 @@ export import Logger;
 struct QuadData
 {
 	glm::vec2 pos;
+	glm::vec2 scale;
 };
 
 export class RenderEngine
@@ -32,7 +33,7 @@ export class RenderEngine
 	struct SwapchainResources
 	{
 		SwapchainResources() = default;
-		SwapchainResources(RenderEngine const& engine, PhysicalDeviceInfo const& info, vk::SwapchainKHR oldSwapchain = {});
+		SwapchainResources(RenderEngine const& engine);
 
 		vk::UniqueSwapchainKHR swapchain;
 		std::vector<vk::Image> images;
@@ -41,6 +42,19 @@ export class RenderEngine
 		std::vector<vk::UniqueImageView> imageViews;
 		vk::UniqueRenderPass renderPass;
 		std::vector<vk::UniqueFramebuffer> framebuffers;
+	};
+
+	template<class T>
+	struct BufferResources
+	{
+		BufferResources() = default;
+		BufferResources(RenderEngine const& engine, uint32_t size, vk::BufferUsageFlags usage);
+
+		vk::UniqueBuffer buffer;
+		vk::UniqueDeviceMemory bufferMemory;
+		vk::DeviceAddress bufferAddress;
+		std::vector<T> data;
+		void* dataMapped{};
 	};
 
 	struct PushConstantsBlock
@@ -76,6 +90,8 @@ private:
 
 	mutable bool hasError{};
 
+	static constexpr uint32_t maxFramesInFlight{2};
+
 	RenderWindow window;
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
@@ -88,10 +104,10 @@ private:
 	SwapchainResources swapchainResources;
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniquePipeline graphicsPipeline;
+	std::array<BufferResources<QuadData>, maxFramesInFlight> quadDataBuffers;
 	vk::UniqueCommandPool commandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
 
-	static constexpr uint32_t maxFramesInFlight{2};
 	std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphores;
 	std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphores;
 	std::array<vk::UniqueFence, maxFramesInFlight> inFlightFences;
@@ -100,8 +116,5 @@ private:
 	uint32_t oldRendersRemaining{};
 	SwapchainResources oldSwapchainResources;
 
-	vk::UniqueBuffer quadDataBuffer;
-	vk::UniqueDeviceMemory quadDataBufferMemory;
-	vk::DeviceAddress quadDataBufferAddress;
-	std::vector<QuadData> quadData;
+	std::vector<QuadData> quadData{QuadData{{0.5, 0.0}, {0.01, 0.02}}, QuadData{{0.0, 0.0}, {0.01, 0.01}}};
 };
