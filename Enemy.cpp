@@ -4,7 +4,8 @@ import Game;
 
 Enemy::Enemy()
 {
-	setMass(5.0 + ((double)std::random_device()() / std::numeric_limits<std::uint32_t>::max()));
+	setMass(5.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 5.0);
+	setMaxSpeed(0.5 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
 }
 
 void Enemy::update()

@@ -7,51 +7,16 @@ export import ObjectPools;
 export class PhysicsComponent
 {
 public:
-	PhysicsComponent()
-	{
-		quadReference = QuadPool::insert(QuadData{{x, y}, {0.02f, 0.04f}});
-	}
+	PhysicsComponent();
 
 	std::pair<double, double> getPosition() const { return {x, y}; }
 
 	void setMass(double newMass) { mass = newMass; }
+	void setMaxSpeed(double newMaxSpeed) { maxSpeed = newMaxSpeed; }
 	void setMovementX(std::int32_t direction) { movementDirectionX = direction; }
 	void setMovementY(std::int32_t direction) { movementDirectionY = direction; }
 
-	void update()
-	{
-		double frictionCoefficient{1.0};
-		double resistanceCoefficient{20.0};
-		double walkingForce{maxSpeed * resistanceCoefficient};
-
-		auto calculateVelocityAfterFriction = [this, frictionCoefficient, resistanceCoefficient](double velocity)
-		{
-			if(std::abs(velocity) > 0.0)
-			{
-				auto velocitySign = std::signbit(velocity);
-				auto slowSpeed = std::max(0.2 * maxSpeed, std::abs(velocity));
-				velocity -= std::copysign(slowSpeed, velocity) * frictionCoefficient * resistanceCoefficient / mass * Constants::tickDuration;
-				if(std::signbit(velocity) != velocitySign)
-					velocity = 0.0;
-			}
-
-			return velocity;
-		};
-
-		velocityX = calculateVelocityAfterFriction(velocityX);
-		velocityY = calculateVelocityAfterFriction(velocityY);
-
-		double forceX = movementDirectionX * walkingForce * (movementDirectionX != 0 ? 1.0 / std::sqrt(2.0) : 1.0);
-		double forceY = movementDirectionY * walkingForce * (movementDirectionY != 0 ? 1.0 / std::sqrt(2.0) : 1.0);
-
-		velocityX += forceX / mass * frictionCoefficient * Constants::tickDuration;
-		velocityY += forceY / mass * frictionCoefficient * Constants::tickDuration;
-
-		x += velocityX * Constants::tickDuration;
-		y += velocityY * Constants::tickDuration;
-
-		quadReference.set(QuadData{{x, y}, {0.02f, 0.04f}});
-	}
+	void update();
 
 private:
 	double x{}, y{};
