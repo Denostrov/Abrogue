@@ -15,18 +15,29 @@ export struct QuadData
 export class QuadPool
 {
 public:
-	static void setData(size_t index, QuadData const& newData)
+	class Reference
 	{
-		data[index] = newData;
-	}
-	static void insert(QuadData const& newData)
+	public:
+		Reference() = default;
+		Reference(size_t index): index(index) {}
+
+		void set(QuadData const& newData) const
+		{
+			data[index] = newData;
+		}
+
+	private:
+		size_t index{};
+	};
+
+	[[nodiscard]] static Reference insert(QuadData const& newData)
 	{
 		data[size] = newData;
-		size++;
+		return Reference{size++};
 	}
 
-	static auto getData() { return data.data(); }
-	static auto getSize() { return size; }
+	[[nodiscard]] static auto getData() { return data.data(); }
+	[[nodiscard]] static auto getSize() { return size; }
 
 private:
 	inline static std::array<QuadData, 2048> data;

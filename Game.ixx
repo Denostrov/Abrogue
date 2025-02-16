@@ -6,51 +6,8 @@ module;
 export module Game;
 
 export import RenderEngine;
-export import Constants;
-
-class Player
-{
-public:
-	Player()
-	{
-		QuadPool::insert(QuadData{{x, y}, {0.02f, 0.04f}});
-	}
-
-	void setMovementX(int direction) { movementDirectionX = direction; }
-	void setMovementY(int direction) { movementDirectionY = direction; }
-
-	void update()
-	{
-		auto calculateAcceleration = [](double oldVelocity, double force, double mass, double friction, double resistance)
-		{
-			double result = force / mass * friction - oldVelocity * resistance * friction / mass;
-			return result;
-		};
-
-		double forceX = movementDirectionX * 15.0 * (movementDirectionY != 0 ? 1.0 / std::sqrt(2.0) : 1.0);
-		double forceY = movementDirectionY * 15.0 * (movementDirectionX != 0 ? 1.0 / std::sqrt(2.0) : 1.0);
-
-		velocityX += calculateAcceleration(velocityX, forceX, mass, 1.0, 20.0) * Constants::tickDuration;
-		if(std::abs(velocityX) < 1e-6) 
-			velocityX = 0.0;
-
-		velocityY += calculateAcceleration(velocityY, forceY, mass, 1.0, 20.0) * Constants::tickDuration;
-		if(std::abs(velocityY) < 1e-6)
-			velocityY = 0.0;
-
-		x += velocityX * Constants::tickDuration;
-		y += velocityY * Constants::tickDuration;
-
-		QuadPool::setData(0, QuadData{{x, y}, {0.02f, 0.04f}});
-	}
-
-private:
-	double x{}, y{};
-	double velocityX{}, velocityY{};
-	double mass{1.0};
-
-	int movementDirectionX{}, movementDirectionY{};
-};
+export import Player;
+export import Enemy;
 
 export class Game
 {
@@ -80,6 +37,11 @@ public:
 		while(currentTime - lastUpdateTime > Constants::tickDurationNS)
 		{
 			player.update();
+
+			if(lastUpdateTime / 5000000000 > enemies.size())
+				enemies.emplace_back();
+			for(auto& enemy : enemies) enemy.update();
+
 			lastUpdateTime += Constants::tickDurationNS;
 
 			updateCount++;
@@ -115,6 +77,8 @@ public:
 		pressedButtons[scanCode] = false;
 	}
 
+	static std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
+
 private:
 	inline static std::unique_ptr<RenderEngine> renderEngine;
 
@@ -124,5 +88,7 @@ private:
 	inline static uint64_t lastFPSLogTime{};
 
 	inline static Player player;
+	inline static std::vector<Enemy> enemies;
+
 	inline static std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };
