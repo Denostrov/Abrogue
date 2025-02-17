@@ -22,3 +22,10 @@ configure_file(shaders/quad.vert ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONL
 configure_file(shaders/quad.frag ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
 configure_file(shaders/quadVert.spv ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
 configure_file(shaders/quadFrag.spv ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
+
+add_executable(BitmapGenerator BitmapGenerator/main.cpp)
+target_sources(BitmapGenerator PUBLIC FILE_SET modules TYPE CXX_MODULES FILES "std.ixx")
+target_include_directories(BitmapGenerator PUBLIC include)
+set_target_properties(BitmapGenerator PROPERTIES RUNTIME_OUTPUT_DIRECTORY bin)
+set_target_properties(BitmapGenerator PROPERTIES CXX_STANDARD 26)
+set_target_properties(BitmapGenerator PROPERTIES CXX_SCAN_FOR_MODULES ON)
