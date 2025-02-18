@@ -2,20 +2,11 @@ cmake_minimum_required(VERSION 3.30)
 
 project(Abrogue LANGUAGES CXX)
 
-add_executable(${PROJECT_NAME} main.cpp "RenderWindow.cpp" "Configuration.cpp" "Logger.cpp" "RenderEngine.cpp" "PhysicsComponent.cpp" "Enemy.cpp" "ImageLoader.cpp")
-target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES FILES "RenderEngine.ixx" "std.ixx" "RenderWindow.ixx" "Configuration.ixx" "Logger.ixx" "Game.ixx" "ObjectPools.ixx" "Constants.ixx" "Player.ixx" "Enemy.ixx" "PhysicsComponent.ixx" "ImageLoader.ixx")
-
-target_link_directories(${PROJECT_NAME} PUBLIC lib)
-target_include_directories(${PROJECT_NAME} PUBLIC include)
-target_link_libraries(${PROJECT_NAME} SDL3 vulkan-1)
-
-set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY bin)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 26)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
-set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release,RelWithDebInfo,MinSizeRel>)
-
 make_directory(${CMAKE_CURRENT_BINARY_DIR}/bin)
 configure_file(lib/SDL3.dll ${CMAKE_CURRENT_BINARY_DIR}/bin COPYONLY)
+
+make_directory(${CMAKE_CURRENT_BINARY_DIR}/bin/textures)
+configure_file(textures/tiles.png ${CMAKE_CURRENT_BINARY_DIR}/bin/textures COPYONLY)
 
 make_directory(${CMAKE_CURRENT_BINARY_DIR}/bin/shaders)
 configure_file(shaders/quad.vert ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
@@ -23,9 +14,13 @@ configure_file(shaders/quad.frag ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONL
 configure_file(shaders/quadVert.spv ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
 configure_file(shaders/quadFrag.spv ${CMAKE_CURRENT_BINARY_DIR}/bin/shaders COPYONLY)
 
-add_executable(BitmapGenerator BitmapGenerator/main.cpp)
-target_sources(BitmapGenerator PUBLIC FILE_SET modules TYPE CXX_MODULES FILES "std.ixx")
-target_include_directories(BitmapGenerator PUBLIC include)
-set_target_properties(BitmapGenerator PROPERTIES RUNTIME_OUTPUT_DIRECTORY bin)
-set_target_properties(BitmapGenerator PROPERTIES CXX_STANDARD 26)
-set_target_properties(BitmapGenerator PROPERTIES CXX_SCAN_FOR_MODULES ON)
+set(ABROGUE_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(STANDARD_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/std.ixx)
+
+add_subdirectory(src/BitmapGenerator)
+add_subdirectory(src/Abrogue)
+
+
+
+
+
