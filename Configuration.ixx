@@ -1,7 +1,3 @@
-module;
-
-#include <json.hpp>
-
 export module Configuration;
 
 export import std;
