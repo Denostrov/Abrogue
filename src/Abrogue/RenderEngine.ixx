@@ -48,8 +48,7 @@ export class RenderEngine
 		vk::UniqueBuffer buffer;
 		vk::UniqueDeviceMemory bufferMemory;
 		vk::DeviceAddress bufferAddress;
-		std::vector<T> data;
-		void* dataMapped{};
+		void* data{};
 	};
 
 	struct PushConstantsBlock
@@ -75,6 +74,8 @@ private:
 	bool checkVulkanErrorOccured(vk::Result result, std::string_view successMessage, std::string_view errorMessage) const;
 
 	std::pair<int32_t, PhysicalDeviceInfo> getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions) const;
+
+	int32_t getMemoryType(vk::MemoryRequirements const& requirements, vk::MemoryPropertyFlags properties) const;
 
 	vk::UniqueShaderModule createShaderModule(std::string_view shaderFileName) const;
 
@@ -102,6 +103,8 @@ private:
 	std::array<BufferResources<QuadData>, maxFramesInFlight> quadDataBuffers;
 	vk::UniqueCommandPool commandPool;
 	std::vector<vk::CommandBuffer> commandBuffers;
+	vk::UniqueImage textureImage;
+	vk::UniqueDeviceMemory textureImageMemory;
 
 	std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphores;
 	std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphores;

@@ -25,6 +25,9 @@ void PhysicsComponent::update()
 		return velocity;
 	};
 
+	x += velocityX * Constants::tickDuration;
+	y += velocityY * Constants::tickDuration;
+
 	velocityX = calculateVelocityAfterFriction(velocityX);
 	velocityY = calculateVelocityAfterFriction(velocityY);
 
@@ -33,9 +36,6 @@ void PhysicsComponent::update()
 
 	velocityX += forceX / mass * frictionCoefficient * Constants::tickDuration;
 	velocityY += forceY / mass * frictionCoefficient * Constants::tickDuration;
-
-	x += velocityX * Constants::tickDuration;
-	y += velocityY * Constants::tickDuration;
 
 	quadReference.set(QuadData{{x, y}, {0.02f, 0.04f}});
 }

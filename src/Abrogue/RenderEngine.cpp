@@ -7,6 +7,8 @@ module;
 
 module RenderEngine;
 
+import ImageLoader;
+
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 using namespace std::literals;
@@ -349,6 +351,8 @@ RenderEngine::RenderEngine()
 
 	for(uint64_t i{0}; i < quadDataBuffers.size(); i++)
 		quadDataBuffers[i] = BufferResources<QuadData>(*this, 2048, vk::BufferUsageFlagBits::eShaderDeviceAddress);
+	if(hasError)
+		return;
 	Logger::logInfo("Created quad data buffers");
 
 	//Create command pool
@@ -359,6 +363,26 @@ RenderEngine::RenderEngine()
 	//Allocate command buffers
 	vk::CommandBufferAllocateInfo bufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, maxFramesInFlight};
 	if(checkVulkanErrorOccured(commandBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
+		return;
+
+	auto tileImage = ImageLoader("textures/tiles.png");
+	vk::DeviceSize imageSize{(size_t)tileImage.width * tileImage.height * 4};
+	BufferResources<uint8_t> stagingBufferResources(*this, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
+	if(hasError)
+		return;
+	memcpy(stagingBufferResources.data, tileImage.data, (size_t)imageSize);
+	vk::ImageCreateInfo imageCreateInfo({}, vk::ImageType::e2D, vk::Format::eR8G8B8A8Srgb, vk::Extent3D{(uint32_t)tileImage.width, (uint32_t)tileImage.height, 1u},
+										1, 1, vk::SampleCountFlagBits::e1, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+										vk::SharingMode::eExclusive, physicalDeviceInfo.graphicsIndex, vk::ImageLayout::eUndefined);
+	if(checkVulkanErrorOccured(textureImage, device->createImageUnique(imageCreateInfo), "Created tile texture image", "Failed to create tile texture image"))
+		return;
+
+	auto memoryRequirements = device->getImageMemoryRequirements(textureImage.get());
+	vk::MemoryAllocateInfo imageMemoryAllocateInfo(memoryRequirements.size, getMemoryType(memoryRequirements, vk::MemoryPropertyFlagBits::eDeviceLocal));
+	if(checkVulkanErrorOccured(textureImageMemory, device->allocateMemoryUnique(imageMemoryAllocateInfo), "Allocated tile texture memory", "Failed to allocate tile texture memory"))
+		return;
+
+	if(checkVulkanErrorOccured(device->bindImageMemory(textureImage.get(), textureImageMemory.get(), 0), "Bound tile texture memory", "Failed to bind tile texture memory"))
 		return;
 
 	//Create synchronization objects
@@ -402,7 +426,7 @@ bool RenderEngine::drawFrame()
 	if(!recordCommandBuffer(commandBuffers[currentFrameIndex], imageIndex))
 		return false;
 
-	memcpy(quadDataBuffers[currentFrameIndex].dataMapped, QuadPool::getData(), sizeof(QuadData) * QuadPool::getSize());
+	memcpy(quadDataBuffers[currentFrameIndex].data, QuadPool::getData(), sizeof(QuadData) * QuadPool::getSize());
 
 	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrameIndex].get(), waitStage, commandBuffers[currentFrameIndex], renderFinishedSemaphores[currentFrameIndex].get());
@@ -625,6 +649,25 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	return result;
 }
 
+int32_t RenderEngine::getMemoryType(vk::MemoryRequirements const& requirements, vk::MemoryPropertyFlags properties) const
+{
+	int32_t selectedMemoryType{-1};
+	for(uint32_t i{0}; i < physicalDeviceInfo.memoryProperties.memoryTypeCount; i++)
+	{
+		if((requirements.memoryTypeBits & (1 << i)) && (physicalDeviceInfo.memoryProperties.memoryTypes[i].propertyFlags & properties) == properties)
+		{
+			selectedMemoryType = i;
+			break;
+		}
+	}
+	if(selectedMemoryType == -1)
+	{
+		hasError = true;
+		Logger::logError("Failed to find suitable memory type for buffer");
+	}
+	return selectedMemoryType;
+}
+
 vk::UniqueShaderModule RenderEngine::createShaderModule(std::string_view shaderFileName) const
 {
 	vk::UniqueShaderModule result;
@@ -658,24 +701,21 @@ RenderEngine::BufferResources<T>::BufferResources(RenderEngine const& engine, ui
 	if(engine.checkVulkanErrorOccured(buffer, engine.device->createBufferUnique(bufferCreateInfo), "", "Failed to create buffer"))
 		return;
 	auto memoryRequirements = engine.device->getBufferMemoryRequirements(buffer.get());
-	vk::MemoryPropertyFlags memoryProperties{vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
-	int32_t selectedMemoryType{-1};
-	for(uint32_t i{0}; i < info.memoryProperties.memoryTypeCount; i++)
-	{
-		if((memoryRequirements.memoryTypeBits & (1 << i)) && (info.memoryProperties.memoryTypes[i].propertyFlags & memoryProperties) == memoryProperties)
-		{
-			selectedMemoryType = i;
-			break;
-		}
-	}
-	if(selectedMemoryType == -1)
-	{
-		engine.hasError = true;
-		Logger::logError("Failed to find suitable memory type for buffer");
-		return;
-	}
 
-	vk::MemoryAllocateFlagsInfo memoryAllocateFlagsInfo(vk::MemoryAllocateFlagBits::eDeviceAddress);
+	vk::MemoryPropertyFlags memoryProperties{vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
+	if(usage == vk::BufferUsageFlagBits::eShaderDeviceAddress)
+		memoryProperties = {vk::MemoryPropertyFlagBits::eDeviceLocal | vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
+	else if(usage == vk::BufferUsageFlagBits::eTransferSrc)
+		memoryProperties = {vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent};
+
+	auto selectedMemoryType = engine.getMemoryType(memoryRequirements, memoryProperties);
+	if(selectedMemoryType == -1)
+		return;
+
+	vk::MemoryAllocateFlagsInfo memoryAllocateFlagsInfo;
+	if(usage == vk::BufferUsageFlagBits::eShaderDeviceAddress)
+		memoryAllocateFlagsInfo = {vk::MemoryAllocateFlagBits::eDeviceAddress};
+
 	vk::MemoryAllocateInfo memoryAllocateInfo(memoryRequirements.size, selectedMemoryType, &memoryAllocateFlagsInfo);
 	if(engine.checkVulkanErrorOccured(bufferMemory, engine.device->allocateMemoryUnique(memoryAllocateInfo), "", "Failed to allocate buffer memory"))
 		return;
@@ -683,16 +723,19 @@ RenderEngine::BufferResources<T>::BufferResources(RenderEngine const& engine, ui
 	if(engine.checkVulkanErrorOccured(engine.device->bindBufferMemory(buffer.get(), bufferMemory.get(), 0), "", "Failed to bind buffer memory"))
 		return;
 
-	vk::BufferDeviceAddressInfo deviceAddressInfo(buffer.get());
-	bufferAddress = engine.device->getBufferAddress(deviceAddressInfo);
-	if(!bufferAddress)
+	if(usage == vk::BufferUsageFlagBits::eShaderDeviceAddress)
 	{
-		engine.hasError = true;
-		Logger::logError("Failed to get buffer address");
-		return;
+		vk::BufferDeviceAddressInfo deviceAddressInfo(buffer.get());
+		bufferAddress = engine.device->getBufferAddress(deviceAddressInfo);
+		if(!bufferAddress)
+		{
+			engine.hasError = true;
+			Logger::logError("Failed to get buffer address");
+			return;
+		}
 	}
 
-	if(engine.checkVulkanErrorOccured(dataMapped, engine.device->mapMemory(bufferMemory.get(), 0, bufferCreateInfo.size), "", "Failed to map buffer memory"))
+	if(engine.checkVulkanErrorOccured(data, engine.device->mapMemory(bufferMemory.get(), 0, bufferCreateInfo.size), "", "Failed to map buffer memory"))
 		return;
 }
 

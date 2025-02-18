@@ -4,7 +4,7 @@ import Game;
 
 Enemy::Enemy()
 {
-	setMass(5.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 5.0);
+	setMass(10.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 10.0);
 	setFrictionCoefficient((double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
 	setMaxSpeed(0.5 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
 }

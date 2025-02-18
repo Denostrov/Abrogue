@@ -31,7 +31,7 @@ struct CodepointData
 	CodepointData() = default;
 	CodepointData(stbtt_fontinfo const& fontInfo, float scale, int codepoint, int padding)
 	{
-		auto pixelStep = padding == 0 ? 32.0f : 128.0f / padding;
+		auto pixelStep = padding == 0 ? 128.0f : 128.0f / padding;
 		sdfData = stbtt_GetCodepointSDF(&fontInfo, scale, codepoint, padding, 128, pixelStep, &width, &height, &xOffset, &yOffset);
 	}
 	~CodepointData()
