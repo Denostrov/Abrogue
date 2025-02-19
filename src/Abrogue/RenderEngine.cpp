@@ -385,6 +385,32 @@ RenderEngine::RenderEngine()
 	if(checkVulkanErrorOccured(device->bindImageMemory(textureImage.get(), textureImageMemory.get(), 0), "Bound tile texture memory", "Failed to bind tile texture memory"))
 		return;
 
+	{
+		SingleUseCommandBuffer transitionCommandBuffer(*this, graphicsQueue);
+
+		vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+		vk::ImageMemoryBarrier memoryBarrier(vk::AccessFlagBits::eNone, vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+											 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, textureImage.get(), range);
+		transitionCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, memoryBarrier);
+	}
+
+	{
+		SingleUseCommandBuffer copyCommandBuffer(*this, graphicsQueue);
+
+		vk::ImageSubresourceLayers imageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
+		vk::BufferImageCopy imageCopy(0, 0, 0, imageSubresourceLayers, {}, {(uint32_t)tileImage.width, (uint32_t)tileImage.height, 1});
+		copyCommandBuffer->copyBufferToImage(stagingBufferResources.buffer.get(), textureImage.get(), vk::ImageLayout::eTransferDstOptimal, imageCopy);
+	}
+
+	{
+		SingleUseCommandBuffer transitionCommandBuffer(*this, graphicsQueue);
+
+		vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+		vk::ImageMemoryBarrier memoryBarrier(vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+											 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, textureImage.get(), range);
+		transitionCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, memoryBarrier);
+	}
+
 	//Create synchronization objects
 	vk::SemaphoreCreateInfo semaphoreCreateInfo;
 	vk::FenceCreateInfo fenceCreateInfo{vk::FenceCreateFlagBits::eSignaled};
@@ -736,6 +762,34 @@ RenderEngine::BufferResources<T>::BufferResources(RenderEngine const& engine, ui
 	}
 
 	if(engine.checkVulkanErrorOccured(data, engine.device->mapMemory(bufferMemory.get(), 0, bufferCreateInfo.size), "", "Failed to map buffer memory"))
+		return;
+}
+
+RenderEngine::SingleUseCommandBuffer::SingleUseCommandBuffer(RenderEngine const& engine, vk::Queue submitQueue):engine(engine), submitQueue(submitQueue)
+{
+	vk::CommandBufferAllocateInfo allocateInfo(engine.commandPool.get(), vk::CommandBufferLevel::ePrimary, 1);
+
+	std::vector<vk::UniqueCommandBuffer> allocatedBuffers;
+	if(engine.checkVulkanErrorOccured(allocatedBuffers, engine.device->allocateCommandBuffersUnique(allocateInfo), "", "Failed to allocate single use command buffer"))
+		return;
+
+	commandBuffer = std::move(allocatedBuffers[0]);
+
+	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
+	if(engine.checkVulkanErrorOccured(commandBuffer->begin(beginInfo), "", "Failed to begin command buffer"))
+		return;
+}
+
+RenderEngine::SingleUseCommandBuffer::~SingleUseCommandBuffer()
+{
+	if(engine.checkVulkanErrorOccured(commandBuffer->end(), "", "Failed to end command buffer"))
+		return;
+
+	vk::SubmitInfo submitInfo({}, {}, commandBuffer.get());
+	if(engine.checkVulkanErrorOccured(submitQueue.submit(submitInfo), "", "Failed to submit command buffer"))
+		return;
+
+	if(engine.checkVulkanErrorOccured(submitQueue.waitIdle(), "", "Failed to wait after submitting command buffer"))
 		return;
 }
 

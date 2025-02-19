@@ -25,8 +25,9 @@ export class RenderEngine
 		vk::PhysicalDeviceMemoryProperties memoryProperties;
 	};
 
-	struct SwapchainResources
+	class SwapchainResources
 	{
+	public:
 		SwapchainResources() = default;
 		SwapchainResources(RenderEngine const& engine);
 
@@ -40,8 +41,9 @@ export class RenderEngine
 	};
 
 	template<class T>
-	struct BufferResources
+	class BufferResources
 	{
+	public:
 		BufferResources() = default;
 		BufferResources(RenderEngine const& engine, uint32_t size, vk::BufferUsageFlags usage);
 
@@ -49,6 +51,22 @@ export class RenderEngine
 		vk::UniqueDeviceMemory bufferMemory;
 		vk::DeviceAddress bufferAddress;
 		void* data{};
+	};
+
+	class SingleUseCommandBuffer
+	{
+	public:
+		SingleUseCommandBuffer(RenderEngine const& engine, vk::Queue submitQueue);
+		~SingleUseCommandBuffer();
+
+		auto get() const { return commandBuffer.get(); }
+		auto operator->() const { return commandBuffer.operator->(); }
+
+	private:
+		vk::UniqueCommandBuffer commandBuffer;
+		
+		RenderEngine const& engine;
+		vk::Queue submitQueue;
 	};
 
 	struct PushConstantsBlock
@@ -114,3 +132,5 @@ private:
 	uint32_t oldRendersRemaining{};
 	SwapchainResources oldSwapchainResources;
 };
+
+
