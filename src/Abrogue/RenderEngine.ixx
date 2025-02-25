@@ -22,6 +22,7 @@ export class RenderEngine
 		std::vector<vk::PresentModeKHR> presentModes;
 		vk::SurfaceCapabilitiesKHR surfaceCapabilities;
 		uint32_t graphicsIndex{}, presentationIndex{};
+		vk::PhysicalDeviceProperties properties;
 		vk::PhysicalDeviceMemoryProperties memoryProperties;
 	};
 
@@ -51,6 +52,18 @@ export class RenderEngine
 		vk::UniqueDeviceMemory bufferMemory;
 		vk::DeviceAddress bufferAddress;
 		void* data{};
+	};
+
+	class TextureResources
+	{
+	public:
+		TextureResources() = default;
+		TextureResources(RenderEngine const& engine, std::string_view filePath);
+
+		vk::UniqueImage image;
+		vk::UniqueDeviceMemory imageMemory;
+		vk::UniqueImageView imageView;
+		vk::UniqueSampler sampler;
 	};
 
 	class SingleUseCommandBuffer
@@ -116,13 +129,15 @@ private:
 	vk::Queue graphicsQueue;
 	vk::Queue presentationQueue;
 	SwapchainResources swapchainResources;
+	vk::UniqueCommandPool commandPool;
+	TextureResources textureResources;
+	vk::UniqueDescriptorSetLayout descriptorSetLayout;
+	vk::UniqueDescriptorPool descriptorPool;
+	std::array<vk::DescriptorSet, maxFramesInFlight> descriptorSets;
 	vk::UniquePipelineLayout pipelineLayout;
 	vk::UniquePipeline graphicsPipeline;
 	std::array<BufferResources<QuadData>, maxFramesInFlight> quadDataBuffers;
-	vk::UniqueCommandPool commandPool;
-	std::vector<vk::CommandBuffer> commandBuffers;
-	vk::UniqueImage textureImage;
-	vk::UniqueDeviceMemory textureImageMemory;
+	std::array<vk::CommandBuffer, maxFramesInFlight> commandBuffers;
 
 	std::array<vk::UniqueSemaphore, maxFramesInFlight> imageAvailableSemaphores;
 	std::array<vk::UniqueSemaphore, maxFramesInFlight> renderFinishedSemaphores;

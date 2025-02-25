@@ -22,9 +22,13 @@ vec2 positions[4] = vec2[4](
 	vec2(1.0, 1.0)
 );
 
+layout(location = 0) out vec2 fragTexCoords;
+
 void main()
 {
 	QuadReference quadData = pushConstants.quadDataReference[gl_InstanceIndex];
 
 	gl_Position = vec4((positions[gl_VertexIndex].x * quadData.scale.x + quadData.position.x) / 16.0 * 9.0, positions[gl_VertexIndex].y * quadData.scale.y + quadData.position.y, 0.0, 1.0);
+	fragTexCoords = positions[gl_VertexIndex];
+	//fragTexCoords = vec2(1.0 / 16.0 * (quadData.glyphIndex % 16), 1.0 / 16.0 * (quadData.glyphIndex / 16));
 }

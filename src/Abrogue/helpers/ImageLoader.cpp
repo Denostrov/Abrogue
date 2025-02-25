@@ -7,7 +7,7 @@ module ImageLoader;
 
 ImageLoader::ImageLoader(std::string_view filePath)
 {
-	data = stbi_load(filePath.data(), &width, &height, &channels, STBI_rgb_alpha);
+	data = stbi_load(filePath.data(), &width, &height, &channels, STBI_grey);
 }
 
 ImageLoader::~ImageLoader()

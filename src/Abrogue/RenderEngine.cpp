@@ -274,6 +274,7 @@ RenderEngine::RenderEngine()
 	features11.pNext = &features12;
 	vk::PhysicalDeviceFeatures2 requiredPhysicalDeviceFeatures({}, &features11);
 	requiredPhysicalDeviceFeatures.features.shaderInt64 = VK_TRUE;
+	requiredPhysicalDeviceFeatures.features.samplerAnisotropy = VK_TRUE;
 	vk::DeviceCreateInfo deviceCreateInfo{{}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions, nullptr, &requiredPhysicalDeviceFeatures};
 	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo),
 							   "Created logical device", "Failed to create logical device"))
@@ -287,6 +288,38 @@ RenderEngine::RenderEngine()
 	presentationQueue = device->getQueue(physicalDeviceInfo.presentationIndex, 0);
 
 	swapchainResources = SwapchainResources(*this);
+
+	//Create command pool
+	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
+	if(checkVulkanErrorOccured(commandPool, device->createCommandPoolUnique(poolCreateInfo), "Created command pool", "Failed to create command pool"))
+		return;
+
+	textureResources = TextureResources(*this, "textures/tiles.png");
+
+	vk::DescriptorSetLayoutBinding layoutBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, {});
+	vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, layoutBinding);
+	if(checkVulkanErrorOccured(descriptorSetLayout, device->createDescriptorSetLayoutUnique(descriptorSetLayoutCreateInfo), "Created descriptor set layout", "Failed to create descriptor set layout"))
+		return;
+
+	vk::DescriptorPoolSize descriptorPoolSize(vk::DescriptorType::eSampler, maxFramesInFlight);
+	vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo({}, maxFramesInFlight, descriptorPoolSize);
+	if(checkVulkanErrorOccured(descriptorPool, device->createDescriptorPoolUnique(descriptorPoolCreateInfo), "Created descriptor pool", "Failed to create descriptor pool"))
+		return;
+
+	std::array<vk::DescriptorSetLayout, 2> setLayouts{descriptorSetLayout.get(), descriptorSetLayout.get()};
+	vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo(descriptorPool.get(), setLayouts);
+	std::vector<vk::DescriptorSet> allocatedSets;
+	if(checkVulkanErrorOccured(allocatedSets, device->allocateDescriptorSets(descriptorSetAllocateInfo), "Allocated descriptor sets", "Failed to allocate descriptor sets"))
+		return;
+	for(size_t i = 0; i < allocatedSets.size(); i++)
+		descriptorSets[i] = allocatedSets[i];
+
+	for(size_t i = 0; i < maxFramesInFlight; i++)
+	{
+		vk::DescriptorImageInfo imageInfo(textureResources.sampler.get(), textureResources.imageView.get(), vk::ImageLayout::eShaderReadOnlyOptimal);
+		vk::WriteDescriptorSet writeDescriptorSet(descriptorSets[i], 0, 0, vk::DescriptorType::eCombinedImageSampler, imageInfo);
+		device->updateDescriptorSets(writeDescriptorSet, {});
+	}
 
 	//Create shader modules
 	auto vertexShaderModule = createShaderModule("shaders/quadVert.spv");
@@ -335,7 +368,7 @@ RenderEngine::RenderEngine()
 
 	//Create pipeline layout
 	vk::PushConstantRange pushConstantRange(vk::ShaderStageFlagBits::eVertex, 0, sizeof(QuadData));
-	vk::PipelineLayoutCreateInfo layoutCreateInfo({}, {}, pushConstantRange);
+	vk::PipelineLayoutCreateInfo layoutCreateInfo({}, descriptorSetLayout.get(), pushConstantRange);
 	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo),
 							   "Created pipeline layout", "Failed to create pipeline layout"))
 		return;
@@ -355,61 +388,13 @@ RenderEngine::RenderEngine()
 		return;
 	Logger::logInfo("Created quad data buffers");
 
-	//Create command pool
-	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
-	if(checkVulkanErrorOccured(commandPool, device->createCommandPoolUnique(poolCreateInfo), "Created command pool", "Failed to create command pool"))
-		return;
-
 	//Allocate command buffers
 	vk::CommandBufferAllocateInfo bufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, maxFramesInFlight};
-	if(checkVulkanErrorOccured(commandBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
+	std::vector<vk::CommandBuffer> allocatedBuffers;
+	if(checkVulkanErrorOccured(allocatedBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
 		return;
-
-	auto tileImage = ImageLoader("textures/tiles.png");
-	vk::DeviceSize imageSize{(size_t)tileImage.width * tileImage.height * 4};
-	BufferResources<uint8_t> stagingBufferResources(*this, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
-	if(hasError)
-		return;
-	memcpy(stagingBufferResources.data, tileImage.data, (size_t)imageSize);
-	vk::ImageCreateInfo imageCreateInfo({}, vk::ImageType::e2D, vk::Format::eR8G8B8A8Srgb, vk::Extent3D{(uint32_t)tileImage.width, (uint32_t)tileImage.height, 1u},
-										1, 1, vk::SampleCountFlagBits::e1, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
-										vk::SharingMode::eExclusive, physicalDeviceInfo.graphicsIndex, vk::ImageLayout::eUndefined);
-	if(checkVulkanErrorOccured(textureImage, device->createImageUnique(imageCreateInfo), "Created tile texture image", "Failed to create tile texture image"))
-		return;
-
-	auto memoryRequirements = device->getImageMemoryRequirements(textureImage.get());
-	vk::MemoryAllocateInfo imageMemoryAllocateInfo(memoryRequirements.size, getMemoryType(memoryRequirements, vk::MemoryPropertyFlagBits::eDeviceLocal));
-	if(checkVulkanErrorOccured(textureImageMemory, device->allocateMemoryUnique(imageMemoryAllocateInfo), "Allocated tile texture memory", "Failed to allocate tile texture memory"))
-		return;
-
-	if(checkVulkanErrorOccured(device->bindImageMemory(textureImage.get(), textureImageMemory.get(), 0), "Bound tile texture memory", "Failed to bind tile texture memory"))
-		return;
-
-	{
-		SingleUseCommandBuffer transitionCommandBuffer(*this, graphicsQueue);
-
-		vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-		vk::ImageMemoryBarrier memoryBarrier(vk::AccessFlagBits::eNone, vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
-											 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, textureImage.get(), range);
-		transitionCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, memoryBarrier);
-	}
-
-	{
-		SingleUseCommandBuffer copyCommandBuffer(*this, graphicsQueue);
-
-		vk::ImageSubresourceLayers imageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
-		vk::BufferImageCopy imageCopy(0, 0, 0, imageSubresourceLayers, {}, {(uint32_t)tileImage.width, (uint32_t)tileImage.height, 1});
-		copyCommandBuffer->copyBufferToImage(stagingBufferResources.buffer.get(), textureImage.get(), vk::ImageLayout::eTransferDstOptimal, imageCopy);
-	}
-
-	{
-		SingleUseCommandBuffer transitionCommandBuffer(*this, graphicsQueue);
-
-		vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
-		vk::ImageMemoryBarrier memoryBarrier(vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
-											 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, textureImage.get(), range);
-		transitionCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, memoryBarrier);
-	}
+	for(size_t i = 0; i < allocatedBuffers.size(); i++)
+		commandBuffers[i] = allocatedBuffers[i];
 
 	//Create synchronization objects
 	vk::SemaphoreCreateInfo semaphoreCreateInfo;
@@ -520,6 +505,7 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 	PushConstantsBlock pushConstants{quadDataBuffers[currentFrameIndex].bufferAddress};
 	commandBuffer.pushConstants<PushConstantsBlock>(pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0u, pushConstants);
 
+	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout.get(), 0, descriptorSets[currentFrameIndex], {});
 	commandBuffer.draw(4, QuadPool::getSize(), 0, 0);
 
 	commandBuffer.endRenderPass();
@@ -566,9 +552,9 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 {
 	std::pair<int32_t, PhysicalDeviceInfo> result;
 	result.first = -1;
-	auto& [name, formats, presentModes, surfaceCapabilities, graphicsIndex, presentationIndex, memoryProperties] = result.second;
+	auto& [name, formats, presentModes, surfaceCapabilities, graphicsIndex, presentationIndex, deviceProperties, memoryProperties] = result.second;
 
-	auto deviceProperties = device.getProperties();
+	deviceProperties = device.getProperties();
 	name = deviceProperties.deviceName.data();
 	Logger::logInfo(std::format("Checking {} suitability:", name));
 
@@ -654,6 +640,11 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	if(!features.features.shaderInt64)
 	{
 		Logger::logInfo("\tPhysical device doesn't support 64 bit integers");
+		return result;
+	}
+	if(!features.features.samplerAnisotropy)
+	{
+		Logger::logInfo("\tPhysical device doesn't support anisotropic filtering");
 		return result;
 	}
 	if(!features12.scalarBlockLayout)
@@ -762,6 +753,67 @@ RenderEngine::BufferResources<T>::BufferResources(RenderEngine const& engine, ui
 	}
 
 	if(engine.checkVulkanErrorOccured(data, engine.device->mapMemory(bufferMemory.get(), 0, bufferCreateInfo.size), "", "Failed to map buffer memory"))
+		return;
+}
+
+RenderEngine::TextureResources::TextureResources(RenderEngine const& engine, std::string_view filePath)
+{
+	auto tileImage = ImageLoader(filePath);
+	vk::DeviceSize imageSize{(size_t)tileImage.width * tileImage.height * tileImage.channels};
+	BufferResources<uint8_t> stagingBufferResources(engine, imageSize, vk::BufferUsageFlagBits::eTransferSrc);
+	if(engine.hasError)
+		return;
+	memcpy(stagingBufferResources.data, tileImage.data, (size_t)imageSize);
+	vk::ImageCreateInfo imageCreateInfo({}, vk::ImageType::e2D, vk::Format::eR8Unorm, vk::Extent3D{(uint32_t)tileImage.width, (uint32_t)tileImage.height, 1u},
+										1, 1, vk::SampleCountFlagBits::e1, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
+										vk::SharingMode::eExclusive, engine.physicalDeviceInfo.graphicsIndex, vk::ImageLayout::eUndefined);
+	if(engine.checkVulkanErrorOccured(image, engine.device->createImageUnique(imageCreateInfo), "", "Failed to create texture image"))
+		return;
+
+	auto memoryRequirements = engine.device->getImageMemoryRequirements(image.get());
+	vk::MemoryAllocateInfo imageMemoryAllocateInfo(memoryRequirements.size, engine.getMemoryType(memoryRequirements, vk::MemoryPropertyFlagBits::eDeviceLocal));
+	if(engine.checkVulkanErrorOccured(imageMemory, engine.device->allocateMemoryUnique(imageMemoryAllocateInfo), "", "Failed to allocate texture memory"))
+		return;
+
+	if(engine.checkVulkanErrorOccured(engine.device->bindImageMemory(image.get(), imageMemory.get(), 0), "", "Failed to bind tile texture memory"))
+		return;
+
+	{
+		SingleUseCommandBuffer transitionCommandBuffer(engine, engine.graphicsQueue);
+
+		vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+		vk::ImageMemoryBarrier memoryBarrier(vk::AccessFlagBits::eNone, vk::AccessFlagBits::eTransferWrite, vk::ImageLayout::eUndefined, vk::ImageLayout::eTransferDstOptimal,
+											 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, image.get(), range);
+		transitionCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTopOfPipe, vk::PipelineStageFlagBits::eTransfer, {}, {}, {}, memoryBarrier);
+	}
+
+	{
+		SingleUseCommandBuffer copyCommandBuffer(engine, engine.graphicsQueue);
+
+		vk::ImageSubresourceLayers imageSubresourceLayers(vk::ImageAspectFlagBits::eColor, 0, 0, 1);
+		vk::BufferImageCopy imageCopy(0, 0, 0, imageSubresourceLayers, {}, {(uint32_t)tileImage.width, (uint32_t)tileImage.height, 1});
+		copyCommandBuffer->copyBufferToImage(stagingBufferResources.buffer.get(), image.get(), vk::ImageLayout::eTransferDstOptimal, imageCopy);
+	}
+
+	{
+		SingleUseCommandBuffer transitionCommandBuffer(engine, engine.graphicsQueue);
+
+		vk::ImageSubresourceRange range(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+		vk::ImageMemoryBarrier memoryBarrier(vk::AccessFlagBits::eTransferWrite, vk::AccessFlagBits::eShaderRead, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal,
+											 VK_QUEUE_FAMILY_IGNORED, VK_QUEUE_FAMILY_IGNORED, image.get(), range);
+		transitionCommandBuffer->pipelineBarrier(vk::PipelineStageFlagBits::eTransfer, vk::PipelineStageFlagBits::eFragmentShader, {}, {}, {}, memoryBarrier);
+	}
+
+	vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
+	vk::ImageViewCreateInfo viewCreateInfo({}, image.get(), vk::ImageViewType::e2D, vk::Format::eR8Unorm, {}, subresourceRange);
+	if(engine.checkVulkanErrorOccured(imageView, engine.device->createImageViewUnique(viewCreateInfo), "", "Failed to create texture image view"))
+		return;
+
+	vk::SamplerCreateInfo samplerCreateInfo({}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear,
+											vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eRepeat,
+											0.0f, VK_TRUE, engine.physicalDeviceInfo.properties.limits.maxSamplerAnisotropy, VK_FALSE, vk::CompareOp::eAlways,
+											0.0f, 0.0f, vk::BorderColor::eIntOpaqueBlack, VK_FALSE);
+	if(engine.checkVulkanErrorOccured(sampler, engine.device->createSamplerUnique(samplerCreateInfo), "", "Failed to create texture sampler"))
 		return;
 }
 
