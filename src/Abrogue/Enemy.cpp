@@ -4,6 +4,9 @@ import Game;
 
 Enemy::Enemy()
 {
+	type = 48 + (float)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 48.0f;
+	auto [x, y] = getPosition();
+	quadReference = QuadPool::insert(QuadData{{x, y}, {0.16f, 0.32f}, {1.0f, 1.0f, 1.0f}, (float)type});
 	setMass(10.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 10.0);
 	setFrictionCoefficient((double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
 	setMaxSpeed(0.5 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
@@ -18,4 +21,6 @@ void Enemy::update()
 	setMovementY(playerY > y ? 1 : -1);
 
 	PhysicsComponent::update();
+	std::tie(x, y) = getPosition();
+	quadReference.set(QuadData{{x, y}, {0.16f, 0.32f}, {1.0f, 1.0f, 1.0f}, (float)type});
 }

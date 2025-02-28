@@ -1,10 +1,5 @@
 module PhysicsComponent;
 
-PhysicsComponent::PhysicsComponent()
-{
-	quadReference = QuadPool::insert(QuadData{{x, y}, {0.08f, 0.16f}, {1.0f, 1.0f, 1.0f}, 64.0f});
-}
-
 void PhysicsComponent::update()
 {
 	double frictionCoefficient{1.0};
@@ -36,6 +31,4 @@ void PhysicsComponent::update()
 
 	velocityX += forceX / mass * frictionCoefficient * Constants::tickDuration;
 	velocityY += forceY / mass * frictionCoefficient * Constants::tickDuration;
-
-	quadReference.set(QuadData{{x, y}, {0.08f, 0.16f}, {1.0f, 1.0f, 1.0f}, 64.0f});
 }

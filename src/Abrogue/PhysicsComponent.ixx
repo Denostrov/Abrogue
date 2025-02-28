@@ -7,8 +7,6 @@ export import ObjectPools;
 export class PhysicsComponent
 {
 public:
-	PhysicsComponent();
-
 	std::pair<double, double> getPosition() const { return {x, y}; }
 
 	void setMass(double newMass) { mass = newMass; }
@@ -27,6 +25,4 @@ private:
 	double maxSpeed{1.0};
 
 	std::int32_t movementDirectionX{}, movementDirectionY{};
-
-	QuadPool::Reference quadReference;
 };
