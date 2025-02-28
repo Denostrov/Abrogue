@@ -10,6 +10,8 @@ export struct QuadData
 {
 	glm::vec2 pos;
 	glm::vec2 scale;
+	glm::vec3 color;
+	float glyphIndex;
 };
 
 export class QuadPool
