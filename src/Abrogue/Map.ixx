@@ -7,30 +7,35 @@ export class Map
 public:
 	Map()
 	{
-		tiles.resize((size_t)60 * 30, Tile{});
-		for(size_t i = 0; i < 60; i++)
+		tiles.resize(Constants::mapWidth * Constants::mapHeight, Tile{});
+		for(size_t i = 0; i < Constants::mapWidth; i++)
 		{
 			tiles[i].exists = true;
-			tiles[i + (size_t)60 * 29].exists = true;
-		}	
+			tiles[i + Constants::mapWidth * (Constants::mapHeight - 1)].exists = true;
+		}
 
-		for(size_t i = 0; i < 30; i++)
+		for(size_t i = 0; i < Constants::mapHeight; i++)
 		{
-			tiles[60 * i].exists = true;
-			tiles[59 + 60 * i].exists = true;
+			tiles[Constants::mapWidth * i].exists = true;
+			tiles[Constants::mapWidth - 1 + Constants::mapWidth * i].exists = true;
 		}
 
 		for(size_t i = 0; i < tiles.size(); i++)
 		{
 			if(tiles[i].exists)
 			{
-				size_t row = i / 60;
-				size_t column = i % 60;
-				QuadPool::insert(QuadData{{7.0f / 9.0f + column / 60.0f, row / 30.0f}, {0.01666f, 0.03333f},
-								 {QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 255), QuadData::packColor(64, 64, 64, 64)}, 35});
+				tiles[i].quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, QuadData::tileScale,
+														{QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 255), QuadData::packColor(64, 64, 64, 64)}, 35});
+			}
+			else
+			{
+				tiles[i].quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, QuadData::tileScale,
+														{QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 255), 0}, 46});
 			}
 		}
 	}
+
+	auto const& getTiles() const { return tiles; }
 
 private:
 	struct Tile

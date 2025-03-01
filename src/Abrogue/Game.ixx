@@ -21,6 +21,9 @@ public:
 
 		lastUpdateTime = SDL_GetTicksNS();
 		lastFPSLogTime = lastUpdateTime;
+
+		initDraw();
+
 		return true;
 	}
 	static void release()
@@ -75,6 +78,17 @@ public:
 	static std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
 
 private:
+	static void initDraw()
+	{
+		auto const& mapTiles = map.getTiles();
+		for(size_t i = 0; i < mapTiles.size(); i++)
+		{
+			size_t row = i / Constants::mapWidth;
+			size_t column = i % Constants::mapWidth;
+			float horizontalScale = (float)Constants::mapWidth / Constants::mapHeight / 2.0f;
+			mapTiles[i].quadReference.setPosition({0.61111f + (float)column / Constants::mapWidth * horizontalScale, (float)row / Constants::mapHeight});
+		}
+	}
 	static bool updateDraw(double deltaTime)
 	{
 

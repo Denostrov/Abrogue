@@ -4,7 +4,7 @@ module;
 
 export module ObjectPools;
 
-export import std;
+export import Constants;
 
 export struct QuadData
 {
@@ -12,6 +12,8 @@ export struct QuadData
 	{
 		return (uint32_t)red << 24 | (uint32_t)green << 16 | (uint32_t)blue << 8 | (uint32_t)alpha;
 	}
+
+	static constexpr glm::vec2 tileScale{0.5f / Constants::mapHeight, 1.0f / Constants::mapHeight};
 
 	glm::vec2 position;
 	glm::vec2 scale;
