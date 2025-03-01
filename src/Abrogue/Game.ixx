@@ -106,12 +106,14 @@ private:
 		float guiOffset = 0.61111f;
 
 		auto [x, y] = player.getPosition();
-		player.quadReference.setPosition({guiOffset + x * horizontalScale, y});
+		auto [vx, vy] = player.getVelocity();
+		player.quadReference.setPosition({guiOffset + (x + vx * deltaTime) * horizontalScale, y + vy * deltaTime});
 
 		for(auto const& enemy : enemies)
 		{
 			auto [x, y] = enemy.getPosition();
-			enemy.quadReference.setPosition({guiOffset + x * horizontalScale, y});
+			auto [vx, vy] = enemy.getVelocity();
+			enemy.quadReference.setPosition({guiOffset + (x + vx * deltaTime) * horizontalScale, y + vy * deltaTime});
 		}
 
 		return renderEngine->drawFrame();

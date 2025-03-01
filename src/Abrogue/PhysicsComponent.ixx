@@ -8,6 +8,7 @@ export class PhysicsComponent
 {
 public:
 	std::pair<double, double> getPosition() const { return {x, y}; }
+	std::pair<double, double> getVelocity() const { return {velocityX, velocityY}; }
 
 	void setMass(double newMass) { mass = newMass; }
 	void setFrictionCoefficient(double newFriction) { frictionCoefficient = newFriction; }
