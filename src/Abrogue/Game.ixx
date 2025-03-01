@@ -126,9 +126,9 @@ private:
 	inline static uint64_t framesDrawn{};
 	inline static uint64_t lastFPSLogTime{};
 
+	inline static Map map;
 	inline static Player player;
 	inline static std::vector<Enemy> enemies;
-	inline static Map map;
 
 	inline static std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };

@@ -24,6 +24,8 @@ private:
 	double mass{1.0};
 	double frictionCoefficient{1.0};
 	double maxSpeed{1.0};
+	double resistanceCoefficient{20.0};
+	double walkingForce{maxSpeed * resistanceCoefficient};
 
 	std::int32_t movementDirectionX{}, movementDirectionY{};
 };
