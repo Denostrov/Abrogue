@@ -32,7 +32,8 @@ void main()
 	QuadReference quadData = pushConstants.quadDataReference[gl_InstanceIndex];
 
 	vec2 position = positions[gl_VertexIndex];
-	gl_Position = vec4((position.x * quadData.scale.x + quadData.position.x) / 16.0 * 9.0, position.y * quadData.scale.y + quadData.position.y, 0.0, 1.0);
+	vec2 quadPosition = quadData.position * 2.0 - vec2(16.0 / 9.0, 1.0);
+	gl_Position = vec4((position.x * quadData.scale.x + quadPosition.x + quadData.scale.x) / 16.0 * 9.0, position.y * quadData.scale.y + quadPosition.y + quadData.scale.y, 0.0, 1.0);
 	
 	float yOffset = trunc(quadData.glyphIndex / 16.0);
 	position += vec2(1.0, 1.0);

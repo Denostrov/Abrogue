@@ -8,6 +8,7 @@ export module Game;
 export import RenderEngine;
 export import Player;
 export import Enemy;
+export import Map;
 
 export class Game
 {
@@ -53,7 +54,7 @@ public:
 			}
 		}
 
-		if(!renderEngine->drawFrame())
+		if(!updateDraw((currentTime - lastUpdateTime) / 1000000000.0))
 			return false;
 
 		framesDrawn++;
@@ -68,18 +69,18 @@ public:
 		return true;
 	}
 
-	static void onKeyPressed(SDL_Scancode scanCode)
-	{
-		pressedButtons[scanCode] = true;
-	}
-	static void onKeyReleased(SDL_Scancode scanCode)
-	{
-		pressedButtons[scanCode] = false;
-	}
+	static void onKeyPressed(SDL_Scancode scanCode) { pressedButtons[scanCode] = true; }
+	static void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
 
 	static std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
 
 private:
+	static bool updateDraw(double deltaTime)
+	{
+
+		return renderEngine->drawFrame();
+	}
+
 	inline static std::unique_ptr<RenderEngine> renderEngine;
 
 	inline static uint64_t lastUpdateTime{};
@@ -89,6 +90,7 @@ private:
 
 	inline static Player player;
 	inline static std::vector<Enemy> enemies;
+	inline static Map map;
 
 	inline static std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };

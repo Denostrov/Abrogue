@@ -9,8 +9,8 @@ public:
 	Player()
 	{
 		auto [x, y] = getPosition();
-		quadReference = QuadPool::insert(QuadData{{x, y}, {0.16f, 0.32f},
-										 {QuadData::packColor(255, 255, 255, 255), QuadData::packColor(0, 255, 0, 255), 0}, 64});
+		quadReference = QuadPool::insert(QuadData{{x, y}, {0.01666f, 0.03333f},
+										 {QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 255), 0}, 64});
 	}
 
 	void update()

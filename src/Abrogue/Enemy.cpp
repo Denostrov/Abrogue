@@ -6,8 +6,8 @@ Enemy::Enemy()
 {
 	type = 48 + (float)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 48.0f;
 	auto [x, y] = getPosition();
-	quadReference = QuadPool::insert(QuadData{{x, y}, {0.16f, 0.32f},
-									 {QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 0, 0, 255), 0}, type});
+	quadReference = QuadPool::insert(QuadData{{x, y}, {0.01666f, 0.03333f},
+									 {QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 255), 0}, type});
 
 	setMass(10.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 10.0);
 	setFrictionCoefficient((double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
