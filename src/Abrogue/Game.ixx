@@ -80,17 +80,39 @@ public:
 private:
 	static void initDraw()
 	{
+		float horizontalScale = (float)Constants::mapWidth / Constants::mapHeight / 2.0f;
+		float guiOffset = 0.61111f;
+
+		auto [x, y] = player.getPosition();
+		player.quadReference.setPosition({guiOffset + x * horizontalScale, y});
+
+		for(auto const& enemy : enemies)
+		{
+			auto [x, y] = enemy.getPosition();
+			enemy.quadReference.setPosition({guiOffset + x * horizontalScale, y});
+		}
+
 		auto const& mapTiles = map.getTiles();
 		for(size_t i = 0; i < mapTiles.size(); i++)
 		{
 			size_t row = i / Constants::mapWidth;
 			size_t column = i % Constants::mapWidth;
-			float horizontalScale = (float)Constants::mapWidth / Constants::mapHeight / 2.0f;
-			mapTiles[i].quadReference.setPosition({0.61111f + (float)column / Constants::mapWidth * horizontalScale, (float)row / Constants::mapHeight});
+			mapTiles[i].quadReference.setPosition({guiOffset + (float)column / Constants::mapWidth * horizontalScale, (float)row / Constants::mapHeight});
 		}
 	}
 	static bool updateDraw(double deltaTime)
 	{
+		float horizontalScale = (float)Constants::mapWidth / Constants::mapHeight / 2.0f;
+		float guiOffset = 0.61111f;
+
+		auto [x, y] = player.getPosition();
+		player.quadReference.setPosition({guiOffset + x * horizontalScale, y});
+
+		for(auto const& enemy : enemies)
+		{
+			auto [x, y] = enemy.getPosition();
+			enemy.quadReference.setPosition({guiOffset + x * horizontalScale, y});
+		}
 
 		return renderEngine->drawFrame();
 	}

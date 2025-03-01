@@ -18,7 +18,7 @@ public:
 	void update();
 
 private:
-	double x{}, y{};
+	double x{0.5}, y{0.5};
 	double velocityX{}, velocityY{};
 	double mass{1.0};
 	double frictionCoefficient{1.0};

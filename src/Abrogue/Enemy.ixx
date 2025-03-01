@@ -9,7 +9,7 @@ public:
 
 	void update();
 
+	QuadPool::Reference quadReference;
 private:
 	std::uint32_t type{};
-	QuadPool::Reference quadReference;
 };
