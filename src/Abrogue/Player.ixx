@@ -9,14 +9,15 @@ public:
 	Player()
 	{
 		auto [x, y] = getPosition();
-		quadReference = QuadPool::insert(QuadData{{x, y}, {0.16f, 0.32f}, {1.0f, 1.0f, 1.0f}, 64.0f});
+		quadReference = QuadPool::insert(QuadData{{x, y}, {0.16f, 0.32f},
+										 {QuadData::packColor(255, 255, 255, 255), QuadData::packColor(0, 255, 0, 255), 0}, 64});
 	}
 
 	void update()
 	{
 		PhysicsComponent::update();
 		auto [x, y] = getPosition();
-		quadReference.set(QuadData{{x, y}, {0.16f, 0.32f}, {1.0f, 1.0f, 1.0f}, 64.0f});
+		quadReference.setPosition({x, y});
 	}
 
 private:

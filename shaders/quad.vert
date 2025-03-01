@@ -8,8 +8,8 @@ layout (buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Qu
 {
 	vec2 position;
 	vec2 scale;
-	vec3 color;
-	float glyphIndex;
+	uvec3 colors;
+	uint glyphIndex;
 };
 
 layout (push_constant) uniform PushConstants
@@ -25,7 +25,7 @@ vec2 positions[4] = vec2[4](
 );
 
 layout(location = 0) out vec2 fragTexCoords;
-layout(location = 1) out vec3 fragColor;
+layout(location = 1) out uvec3 fragColors;
 
 void main()
 {
@@ -42,5 +42,5 @@ void main()
 	position = vec2(position.x + 1.0 / 16.0 * (quadData.glyphIndex - yOffset * 16.0), position.y + 1.0 / 16.0 * yOffset);
 	fragTexCoords = position;
 	
-	fragColor = quadData.color;
+	fragColors = quadData.colors;
 }

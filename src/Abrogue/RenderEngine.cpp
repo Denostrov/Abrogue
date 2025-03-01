@@ -360,7 +360,7 @@ RenderEngine::RenderEngine()
 	vk::PipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{{}, VK_FALSE, VK_FALSE, vk::CompareOp::eNever, VK_FALSE, VK_FALSE};
 
 	//Define color blending
-	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{VK_FALSE, vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusSrcAlpha,
+	vk::PipelineColorBlendAttachmentState colorBlendAttachmentState{VK_TRUE, vk::BlendFactor::eSrcAlpha, vk::BlendFactor::eOneMinusSrcAlpha,
 																	vk::BlendOp::eAdd, vk::BlendFactor::eOne, vk::BlendFactor::eZero, vk::BlendOp::eAdd,
 																	vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG |
 																	vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA};
@@ -383,7 +383,7 @@ RenderEngine::RenderEngine()
 		return;
 
 	for(uint64_t i{0}; i < quadDataBuffers.size(); i++)
-		quadDataBuffers[i] = BufferResources<QuadData>(*this, 2048, vk::BufferUsageFlagBits::eShaderDeviceAddress);
+		quadDataBuffers[i] = BufferResources<QuadData>(*this, QuadPool::getCapacity(), vk::BufferUsageFlagBits::eShaderDeviceAddress);
 	if(hasError)
 		return;
 	Logger::logInfo("Created quad data buffers");

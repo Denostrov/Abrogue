@@ -8,10 +8,15 @@ export import std;
 
 export struct QuadData
 {
-	glm::vec2 pos;
+	static uint32_t packColor(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha)
+	{
+		return (uint32_t)red << 24 | (uint32_t)green << 16 | (uint32_t)blue << 8 | (uint32_t)alpha;
+	}
+
+	glm::vec2 position;
 	glm::vec2 scale;
-	glm::vec3 color;
-	float glyphIndex;
+	glm::uvec3 colors;
+	uint32_t glyphIndex;
 };
 
 export class QuadPool
@@ -23,9 +28,9 @@ public:
 		Reference() = default;
 		Reference(size_t index): index(index) {}
 
-		void set(QuadData const& newData) const
+		void setPosition(glm::vec2 position) const
 		{
-			data[index] = newData;
+			data[index].position = position;
 		}
 
 	private:
@@ -40,8 +45,9 @@ public:
 
 	[[nodiscard]] static auto getData() { return data.data(); }
 	[[nodiscard]] static auto getSize() { return size; }
+	[[nodiscard]] static auto getCapacity() { return data.size(); }
 
 private:
-	inline static std::array<QuadData, 2048> data;
+	inline static std::array<QuadData, 4096> data;
 	inline static size_t size{};
 };
