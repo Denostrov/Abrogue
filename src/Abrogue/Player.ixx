@@ -6,7 +6,8 @@ export import PhysicsComponent;
 export class Player : public PhysicsComponent
 {
 public:
-	Player();
+	Player() = default;
+	Player(double speed);
 
 	void update()
 	{

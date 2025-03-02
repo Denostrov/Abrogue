@@ -10,7 +10,7 @@ export struct QuadData
 {
 	QuadData() = default;
 	QuadData(glm::vec2 position, float scale, glm::uvec2 colors, uint32_t glyphIndex)
-		:position(position), scale(tileScale * scale), colors(colors), glyphIndex(glyphIndex)
+		:position(position), scale(tileScale* scale), colors(colors), glyphIndex(glyphIndex)
 	{}
 
 	static uint32_t packColor(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha)
@@ -34,27 +34,35 @@ public:
 	public:
 		Reference() = default;
 		Reference(size_t index): index(index) {}
+		~Reference();
 
-		void setPosition(glm::vec2 position) const
-		{
-			data[index].position = position;
-		}
+		Reference(Reference&& rhs) { *this = std::move(rhs); }
+		Reference& operator=(Reference&& rhs);
+
+		void setPosition(glm::vec2 position) const;
 
 	private:
-		size_t index{};
+		int64_t index{-1};
+
+		friend class QuadPool;
 	};
 
-	[[nodiscard]] static Reference insert(QuadData const& newData)
-	{
-		data[size] = newData;
-		return Reference{size++};
-	}
+	[[nodiscard]] static Reference insert(QuadData const& newData);
 
-	[[nodiscard]] static auto getData() { return data.data(); }
-	[[nodiscard]] static auto getSize() { return size; }
-	[[nodiscard]] static auto getCapacity() { return data.size(); }
+	[[nodiscard]] static auto const getData() { return data.data(); }
+	[[nodiscard]] static auto getSize() { return data.size(); }
+	[[nodiscard]] static auto getCapacity() { return capacity; }
 
 private:
-	inline static std::array<QuadData, 4096> data;
-	inline static size_t size{};
+	static void init();
+	static void release();
+
+	static constexpr size_t capacity{8192};
+
+	inline static std::vector<QuadData> data;
+	inline static std::vector<Reference*> references;
+
+	friend class Game;
 };
+
+

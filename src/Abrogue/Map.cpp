@@ -1,18 +1,21 @@
 module Map;
 
-Map::Map()
+Map::Map(size_t width, size_t height)
 {
-	tiles.resize(Constants::mapWidth * Constants::mapHeight, Tile{});
-	for(size_t i = 0; i < Constants::mapWidth; i++)
+	tiles.reserve(width * height);
+	for(size_t i = 0; i < width * height; i++)
+		tiles.emplace_back();
+
+	for(size_t i = 0; i < width; i++)
 	{
 		tiles[i].exists = true;
-		tiles[i + Constants::mapWidth * (Constants::mapHeight - 1)].exists = true;
+		tiles[i + width * (height - 1)].exists = true;
 	}
 
-	for(size_t i = 0; i < Constants::mapHeight; i++)
+	for(size_t i = 0; i < height; i++)
 	{
-		tiles[Constants::mapWidth * i].exists = true;
-		tiles[Constants::mapWidth - 1 + Constants::mapWidth * i].exists = true;
+		tiles[width * i].exists = true;
+		tiles[width - 1 + width * i].exists = true;
 	}
 
 	for(size_t i = 0; i < tiles.size(); i++)

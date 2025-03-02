@@ -12,7 +12,7 @@ public:
 
 	void setMass(double newMass) { mass = newMass; }
 	void setFrictionCoefficient(double newFriction) { frictionCoefficient = newFriction; }
-	void setMaxSpeed(double newMaxSpeed) { maxSpeed = newMaxSpeed; }
+	void setMaxSpeed(double newMaxSpeed) { maxSpeed = newMaxSpeed; walkingForce = maxSpeed * resistanceCoefficient; }
 	void setMovementX(std::int32_t direction) { movementDirectionX = direction; }
 	void setMovementY(std::int32_t direction) { movementDirectionY = direction; }
 

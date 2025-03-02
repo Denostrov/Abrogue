@@ -6,12 +6,23 @@ module Game;
 
 bool Game::init()
 {
+	QuadPool::init();
+
+	if(!Logger::init())
+		return false;
+
+	if(!Configuration::init())
+		return false;
+
 	renderEngine = std::make_unique<RenderEngine>();
 	if(renderEngine->getHasError())
 		return false;
 
 	lastUpdateTime = SDL_GetTicksNS();
 	lastFPSLogTime = lastUpdateTime;
+
+	map = Map(Constants::mapWidth, Constants::mapHeight);
+	player = Player(0.25);
 
 	initDraw();
 
@@ -21,6 +32,8 @@ bool Game::init()
 void Game::release()
 {
 	renderEngine.reset();
+
+	QuadPool::release();
 }
 
 bool Game::update()
@@ -66,6 +79,8 @@ bool Game::update()
 
 void Game::initDraw()
 {
+	fpsLabel = Label("FPS: 69", 0, 0);
+
 	float guiOffset = QuadData::tileScale.x * 48.0f;
 
 	auto [x, y] = player.getPosition();

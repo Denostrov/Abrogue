@@ -6,15 +6,10 @@
 import Logger;
 import Configuration;
 import Game;
+import ObjectPools;
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {
-	if(!Logger::init())
-		return SDL_APP_FAILURE;
-
-	if(!Configuration::init())
-		return SDL_APP_FAILURE;
-
 	if(!Game::init())
 		return SDL_APP_FAILURE;
 

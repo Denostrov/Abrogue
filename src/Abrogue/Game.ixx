@@ -8,6 +8,7 @@ export import RenderEngine;
 export import Player;
 export import Enemy;
 export import Map;
+export import Label;
 
 export class Game
 {
@@ -35,6 +36,8 @@ private:
 	inline static Map map;
 	inline static Player player;
 	inline static std::vector<Enemy> enemies;
+
+	inline static Label fpsLabel;
 
 	inline static std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };

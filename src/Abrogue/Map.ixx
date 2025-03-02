@@ -5,7 +5,8 @@ export import ObjectPools;
 export class Map
 {
 public:
-	Map();
+	Map() = default;
+	Map(size_t width, size_t height);
 
 	auto const& getTiles() const { return tiles; }
 
