@@ -9,8 +9,8 @@ export import Constants;
 export struct QuadData
 {
 	QuadData() = default;
-	QuadData(glm::vec2 position, float scale, glm::uvec2 colors, uint32_t glyphIndex)
-		:position(position), scale(tileScale* scale), colors(colors), glyphIndex(glyphIndex)
+	QuadData(glm::vec2 position, float scale, glm::uvec2 colors, uint32_t glyph)
+		:position(position), scale(tileScale* scale), colors(colors), glyph(glyph)
 	{}
 
 	static uint32_t packColor(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha)
@@ -23,7 +23,7 @@ export struct QuadData
 	glm::vec2 position;
 	glm::vec2 scale;
 	glm::uvec2 colors;
-	uint32_t glyphIndex;
+	uint32_t glyph;
 };
 
 export class QuadPool
@@ -40,6 +40,7 @@ public:
 		Reference& operator=(Reference&& rhs);
 
 		void setPosition(glm::vec2 position) const;
+		void setGlyph(std::uint8_t glyph) const;
 
 	private:
 		int64_t index{-1};

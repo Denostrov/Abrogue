@@ -33,6 +33,13 @@ void QuadPool::Reference::setPosition(glm::vec2 position) const
 	data[index].position = position;
 }
 
+void QuadPool::Reference::setGlyph(std::uint8_t glyph) const
+{
+	assert(index != -1);
+
+	data[index].glyph = glyph;
+}
+
 QuadPool::Reference QuadPool::insert(QuadData const& newData)
 {
 	assert(data.size() < capacity);

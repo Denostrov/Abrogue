@@ -5,11 +5,12 @@ export import PhysicsComponent;
 export class Enemy : public PhysicsComponent
 {
 public:
-	Enemy();
+	Enemy() = default;
+	Enemy(std::uint8_t type);
 
 	void update();
 
 	QuadPool::Reference quadReference;
 private:
-	std::uint32_t type{};
+	std::uint8_t type{};
 };

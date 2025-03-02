@@ -2,9 +2,8 @@ module Enemy;
 
 import Game;
 
-Enemy::Enemy()
+Enemy::Enemy(std::uint8_t type)
 {
-	type = 48 + (float)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 48.0f;
 	auto [x, y] = getPosition();
 	quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, 1.0f,
 									 {QuadData::packColor(255, 0, 0, 255), QuadData::packColor(255, 0, 0, 0)}, type});

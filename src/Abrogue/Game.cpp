@@ -48,7 +48,7 @@ bool Game::update()
 		player.update();
 
 		if(lastUpdateTime / 5000000000 > enemies.size())
-			enemies.emplace_back();
+			enemies.emplace_back(48 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 80.0);
 		for(auto& enemy : enemies) enemy.update();
 
 		lastUpdateTime += Constants::tickDurationNS;
@@ -69,7 +69,11 @@ bool Game::update()
 	uint64_t timeSinceLastLog = currentTime - lastFPSLogTime;
 	if(timeSinceLastLog > 1000000000)
 	{
-		Logger::logInfo(std::format("FPS: {}", framesDrawn / (timeSinceLastLog / 1.e9)));
+		std::uint32_t fps = framesDrawn / (timeSinceLastLog / 1.e9);
+		std::array<char, 16> fpsString{"FPS:"};
+		std::to_chars(fpsString.data() + 4, fpsString.data() + 14, fps);
+		fpsLabel.setText(fpsString.data());
+
 		framesDrawn = 0;
 		lastFPSLogTime = currentTime;
 	}
@@ -79,7 +83,7 @@ bool Game::update()
 
 void Game::initDraw()
 {
-	fpsLabel = Label("FPS: 69", 0, 0);
+	fpsLabel = Label("FPS:", 0, 0);
 
 	float guiOffset = QuadData::tileScale.x * 48.0f;
 
