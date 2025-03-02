@@ -8,6 +8,11 @@ export import Constants;
 
 export struct QuadData
 {
+	QuadData() = default;
+	QuadData(glm::vec2 position, float scale, glm::uvec2 colors, uint32_t glyphIndex)
+		:position(position), scale(tileScale * scale), colors(colors), glyphIndex(glyphIndex)
+	{}
+
 	static uint32_t packColor(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha)
 	{
 		return (uint32_t)red << 24 | (uint32_t)green << 16 | (uint32_t)blue << 8 | (uint32_t)alpha;
@@ -17,7 +22,7 @@ export struct QuadData
 
 	glm::vec2 position;
 	glm::vec2 scale;
-	glm::uvec3 colors;
+	glm::uvec2 colors;
 	uint32_t glyphIndex;
 };
 

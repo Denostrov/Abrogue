@@ -8,7 +8,7 @@ layout (buffer_reference, scalar, buffer_reference_align = 4) readonly buffer Qu
 {
 	vec2 position;
 	vec2 scale;
-	uvec3 colors;
+	uvec2 colors;
 	uint glyphIndex;
 };
 
@@ -25,7 +25,7 @@ vec2 positions[4] = vec2[4](
 );
 
 layout(location = 0) out vec2 fragTexCoords;
-layout(location = 1) out uvec3 fragColors;
+layout(location = 1) out uvec2 fragColors;
 
 void main()
 {
@@ -33,7 +33,7 @@ void main()
 
 	vec2 position = positions[gl_VertexIndex];
 	vec2 quadPosition = quadData.position * 2.0 - vec2(16.0 / 9.0, 1.0);
-	gl_Position = vec4((position.x * quadData.scale.x + quadPosition.x + quadData.scale.x) / 16.0 * 9.0, position.y * quadData.scale.y + quadPosition.y + quadData.scale.y, 0.0, 1.0);
+	gl_Position = vec4((position.x * quadData.scale.x + quadPosition.x) / 16.0 * 9.0, position.y * quadData.scale.y + quadPosition.y, 0.0, 1.0);
 	
 	float yOffset = trunc(quadData.glyphIndex / 16.0);
 	position += vec2(1.0, 1.0);

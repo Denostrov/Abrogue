@@ -1,7 +1,7 @@
 #version 450
 
 layout(location = 0) in vec2 fragTexCoords;
-layout(location = 1) flat in uvec3 fragColors;
+layout(location = 1) flat in uvec2 fragColors;
 
 layout(location = 0) out vec4 outColor;
 
@@ -15,14 +15,8 @@ vec4 getColor(in uint color)
 void main()
 {
 	vec4 color = getColor(fragColors[0]);
-	vec4 borderColor = getColor(fragColors[1]);
-	vec4 backgroundColor = getColor(fragColors[2]);
+	vec4 backgroundColor = getColor(fragColors[1]);
 
 	float threshold = texture(texSampler, fragTexCoords).r;
-	if (threshold >= 0.75)
-		outColor = color;
-	else if (threshold >= 0.25)
-		outColor = mix(color, borderColor, min((0.75 - threshold) / 0.125, 1.0));
-	else
-		outColor = mix(borderColor, backgroundColor, min((0.25 - threshold) / 0.125, 1.0));
+	outColor = mix(backgroundColor, color, threshold);
 }

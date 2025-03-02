@@ -7,7 +7,7 @@ add_executable(${PROJECT_NAME}
 	"RenderEngine.cpp" 
 	"RenderWindow.cpp" 
 	"PhysicsComponent.cpp" 
-	"Enemy.cpp")
+	"Enemy.cpp" "Game.cpp")
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES 
 	${STANDARD_MODULE_PATH} 
 	"helpers/Configuration.ixx" 

@@ -29,10 +29,17 @@ std::array<std::uint64_t, 256> codepoints{
 struct CodepointData
 {
 	CodepointData() = default;
-	CodepointData(stbtt_fontinfo const& fontInfo, float scale, int codepoint, int padding)
+	CodepointData(stbtt_fontinfo const& fontInfo, float scale, int codepoint, int padding, bool noSDF)
 	{
-		auto pixelStep = padding == 0 ? 128.0f : 128.0f / padding;
-		sdfData = stbtt_GetCodepointSDF(&fontInfo, scale, codepoint, padding, 128, pixelStep, &width, &height, &xOffset, &yOffset);
+		if(noSDF)
+		{
+			sdfData = stbtt_GetCodepointBitmap(&fontInfo, scale, scale, codepoint, &width, &height, &xOffset, &yOffset);
+		}
+		else
+		{
+			auto pixelStep = padding == 0 ? 128.0f : (255.0f - 204.0f) / padding;
+			sdfData = stbtt_GetCodepointSDF(&fontInfo, scale, codepoint, padding, 51, pixelStep, &width, &height, &xOffset, &yOffset);
+		}
 	}
 	~CodepointData()
 	{
@@ -68,7 +75,7 @@ struct FontData
 };
 
 //Choose largest font size that fits within boundaries
-auto getLargestFontData(stbtt_fontinfo const& fontInfo, std::int32_t tileWidth, std::int32_t tileHeight, int padding)
+auto getLargestFontData(stbtt_fontinfo const& fontInfo, std::int32_t tileWidth, std::int32_t tileHeight, int padding, bool noSDF)
 {
 	FontData result{};
 
@@ -89,7 +96,7 @@ auto getLargestFontData(stbtt_fontinfo const& fontInfo, std::int32_t tileWidth, 
 		for(std::size_t i = 0; i < codepoints.size(); i++)
 		{
 			auto& data = currentFontData.codepointData[i];
-			data = CodepointData(fontInfo, currentScale, codepoints[i], padding);
+			data = CodepointData(fontInfo, currentScale, codepoints[i], padding, noSDF);
 
 			int horizontalExtent = data.xOffset + padding;
 			auto totalWidth = data.width + std::abs(horizontalExtent);
@@ -135,14 +142,15 @@ auto main(int argc, char** argv) -> int
 					 "\t\t--height <value>\tSpecify height of a single tile [2..1024]. Default: 64"
 					 "\t\t--output <value>\tSpecify output file. Default: tiles.png"
 					 "\t\t--padding <value>\tSpecify glyph padding [0..256]. Default: 4"
-					 "\t\t--debug\tRender debug boundaries on bitmap.");
+					 "\t\t--debug\tRender debug boundaries on bitmap."
+					 "\t\t--no-sdf\tRender regular bitmap");
 		return 1;
 	}
 
 	//Parse command line args
 	std::uint32_t tileWidth{32u}, tileHeight{64u}, padding{4u};
 	std::string outputFile{"tiles.png"};
-	bool debug{};
+	bool debug{}, noSDF{};
 	for(std::uint32_t i = 2; i < argc; i++)
 	{
 		if(argv[i] == "--width"sv)
@@ -184,6 +192,10 @@ auto main(int argc, char** argv) -> int
 		{
 			debug = true;
 		}
+		else if(argv[i] == "--no-sdf"sv)
+		{
+			noSDF = true;
+		}
 	}
 	std::string fileName = argv[1];
 
@@ -200,7 +212,7 @@ auto main(int argc, char** argv) -> int
 	stbtt_InitFont(&fontInfo, data.data(), stbtt_GetFontOffsetForIndex(data.data(), 0));
 
 	//Get sdf and size data
-	auto fontData = getLargestFontData(fontInfo, tileWidth, tileHeight, padding);
+	auto fontData = getLargestFontData(fontInfo, tileWidth, tileHeight, padding, noSDF);
 	if(fontData.size == 0)
 	{
 		std::println("Couldn't find suitable font size");

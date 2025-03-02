@@ -24,13 +24,13 @@ public:
 		{
 			if(tiles[i].exists)
 			{
-				tiles[i].quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, QuadData::tileScale,
-														{QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 255), QuadData::packColor(32, 32, 32, 255)}, 35});
+				tiles[i].quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, 1.0f,
+														{QuadData::packColor(255, 255, 255, 255), QuadData::packColor(32, 32, 32, 255)}, 35});
 			}
 			else
 			{
-				tiles[i].quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, QuadData::tileScale,
-														{QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 255), QuadData::packColor(8, 8, 8, 255)}, 46});
+				tiles[i].quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, 1.0f,
+														{QuadData::packColor(255, 255, 255, 255), QuadData::packColor(8, 8, 8, 255)}, 46});
 			}
 		}
 	}
