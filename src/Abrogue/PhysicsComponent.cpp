@@ -8,7 +8,7 @@ void PhysicsComponent::update()
 	{
 		std::pair<double, double> result{coordinate, velocity};
 
-		result.first += velocity * Constants::tickDuration;
+		result.first += velocity * Constants::tickDuration / 2.0;
 
 		double movementForce = movementDirection * walkingForce * frictionCoefficient * (otherMovementDirection != 0 ? 1.0 / std::sqrt(2.0) : 1.0);
 		double frictionForce{};
@@ -19,12 +19,15 @@ void PhysicsComponent::update()
 		}
 
 		auto velocitySign = std::signbit(velocity);
-		result.second += (movementForce + frictionForce) / mass * Constants::tickDuration;
+		result.second += (movementForce + frictionForce) / mass * Constants::tickDuration / 2.0;
 		if(std::signbit(result.second) != velocitySign && movementForce == 0.0)
 			result.second = 0.0;
 
 		return result;
 	};
+
+	std::tie(x, velocityX) = calculateNextStep(x, velocityX, movementDirectionX, movementDirectionY);
+	std::tie(y, velocityY) = calculateNextStep(y, velocityY, movementDirectionY, movementDirectionX);
 
 	std::tie(x, velocityX) = calculateNextStep(x, velocityX, movementDirectionX, movementDirectionY);
 	std::tie(y, velocityY) = calculateNextStep(y, velocityY, movementDirectionY, movementDirectionX);
