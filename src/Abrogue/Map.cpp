@@ -29,6 +29,16 @@ Map::Map(size_t width, size_t height)
 	tiles[width / 2 + 3 + (height / 2 + 1) * width].exists = true;
 	tiles[width / 2 + 4 + (height / 2 + 1) * width].exists = true;
 
+	tiles[width / 2 + 3 + (height / 2 + 3) * width].exists = true;
+	tiles[width / 2 + 4 + (height / 2 + 3) * width].exists = true;
+	tiles[width / 2 + 3 + (height / 2 + 4) * width].exists = true;
+	tiles[width / 2 + 4 + (height / 2 + 4) * width].exists = true;
+
+	tiles[width / 2 + (height / 2 + 3) * width].exists = true;
+	tiles[width / 2 + 1 + (height / 2 + 3) * width].exists = true;
+	tiles[width / 2 + (height / 2 + 4) * width].exists = true;
+	tiles[width / 2 + 1 + (height / 2 + 4) * width].exists = true;
+
 	for(size_t i = 0; i < tiles.size(); i++)
 	{
 		if(tiles[i].exists)
