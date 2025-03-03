@@ -27,5 +27,10 @@ private:
 	double resistanceCoefficient{20.0};
 	double walkingForce{maxSpeed * resistanceCoefficient};
 
+	bool previousTopRightCollision{};
+	bool previousBottomRightCollision{};
+	bool previousBottomLeftCollision{};
+	bool previousTopLeftCollision{};
+
 	std::int32_t movementDirectionX{}, movementDirectionY{};
 };
