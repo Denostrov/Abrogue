@@ -51,8 +51,8 @@ void PhysicsComponent::update()
 	bool topLeftCollision = Game::getTileSolid(topLeftTileX, topLeftTileY);
 	bool bottomLeftCollision = Game::getTileSolid(bottomLeftTileX, bottomLeftTileY);
 
-	bool isXOffsetBigger = std::abs(x - (centerTileX + 0.5f) * QuadData::tileScale.x) >= std::abs(y - (centerTileY + 0.5f) * QuadData::tileScale.y);
-	auto checkCollision = [this, isXOffsetBigger](bool collision, TileCoords tile, bool oppositeCollision, TileCoords oppositeTile, bool& xCollision, bool& yCollision)
+	auto checkCollision = [this, centerTileX, centerTileY](bool collision, TileCoords tile, bool oppositeCollision, TileCoords oppositeTile,
+												  bool& xCollision, bool& yCollision, bool movingAwayX, bool movingAwayY)
 	{
 		if(!collision || oppositeCollision)
 			return;
@@ -61,15 +61,28 @@ void PhysicsComponent::update()
 		{
 			if(tile.first != oppositeTile.first && tile.second != oppositeTile.second)
 			{
-				if(std::abs(x - (tile.first + 0.5f) * QuadData::tileScale.x) <= std::abs(y - (tile.second + 0.5f) * QuadData::tileScale.y) * 0.5f)
+				if(centerTileX != tile.first && movingAwayX)
+				{
+					velocityX = 0.0;
+					x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
+				}
+				else if(centerTileY != tile.second && movingAwayY)
 				{
 					velocityY = 0.0;
 					y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
 				}
 				else
 				{
-					velocityX = 0.0;
-					x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
+					if(std::abs(x - (tile.first + 0.5f) * QuadData::tileScale.x) <= std::abs(y - (tile.second + 0.5f) * QuadData::tileScale.y) * 0.5f)
+					{
+						velocityY = 0.0;
+						y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
+					}
+					else
+					{
+						velocityX = 0.0;
+						x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
+					}
 				}
 			}
 			else if(tile.first == oppositeTile.first)
@@ -99,8 +112,8 @@ void PhysicsComponent::update()
 			}
 		}
 	};
-	checkCollision(topRightCollision, {topRightTileX, topRightTileY}, bottomLeftCollision, {bottomLeftTileX, bottomLeftTileY}, bottomRightCollision, topLeftCollision);
-	checkCollision(bottomRightCollision, {bottomRightTileX, bottomRightTileY}, topLeftCollision, {topLeftTileX, topLeftTileY}, topRightCollision, bottomLeftCollision);
-	checkCollision(bottomLeftCollision, {bottomLeftTileX, bottomLeftTileY}, topRightCollision, {topRightTileX, topRightTileY}, topLeftCollision, bottomRightCollision);
-	checkCollision(topLeftCollision, {topLeftTileX, topLeftTileY}, bottomRightCollision, {bottomRightTileX, bottomRightTileY}, bottomLeftCollision, topRightCollision);
+	checkCollision(topRightCollision, {topRightTileX, topRightTileY}, bottomLeftCollision, {bottomLeftTileX, bottomLeftTileY}, bottomRightCollision, topLeftCollision, velocityX <= 0.0, velocityY >= 0.0);
+	checkCollision(bottomRightCollision, {bottomRightTileX, bottomRightTileY}, topLeftCollision, {topLeftTileX, topLeftTileY}, topRightCollision, bottomLeftCollision, velocityX <= 0.0, velocityY <= 0.0);
+	checkCollision(bottomLeftCollision, {bottomLeftTileX, bottomLeftTileY}, topRightCollision, {topRightTileX, topRightTileY}, topLeftCollision, bottomRightCollision, velocityX >= 0.0, velocityY <= 0.0);
+	checkCollision(topLeftCollision, {topLeftTileX, topLeftTileY}, bottomRightCollision, {bottomRightTileX, bottomRightTileY}, bottomLeftCollision, topRightCollision, velocityX >= 0.0, velocityY >= 0.0);
 }
