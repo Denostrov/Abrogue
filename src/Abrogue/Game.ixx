@@ -21,6 +21,7 @@ public:
 	static void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
 
 	static std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
+	static bool getTileSolid(std::uint32_t x, std::uint32_t y) { return map.getTileExists(x, y); }
 
 private:
 	static void initDraw();

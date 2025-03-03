@@ -1,6 +1,7 @@
 module Map;
 
 Map::Map(size_t width, size_t height)
+	:width(width), height(height)
 {
 	tiles.reserve(width * height);
 	for(size_t i = 0; i < width * height; i++)
@@ -18,6 +19,16 @@ Map::Map(size_t width, size_t height)
 		tiles[width - 1 + width * i].exists = true;
 	}
 
+	tiles[width / 2 + height / 2 * width].exists = true;
+	tiles[width / 2 + 1 + height / 2 * width].exists = true;
+	tiles[width / 2 + (height / 2 + 1) * width].exists = true;
+	tiles[width / 2 + 1 + (height / 2 + 1) * width].exists = true;
+
+	tiles[width / 2 + 3 + height / 2 * width].exists = true;
+	tiles[width / 2 + 4 + height / 2 * width].exists = true;
+	tiles[width / 2 + 3 + (height / 2 + 1) * width].exists = true;
+	tiles[width / 2 + 4 + (height / 2 + 1) * width].exists = true;
+
 	for(size_t i = 0; i < tiles.size(); i++)
 	{
 		if(tiles[i].exists)
@@ -31,4 +42,12 @@ Map::Map(size_t width, size_t height)
 													{QuadData::packColor(255, 255, 255, 255), QuadData::packColor(8, 8, 8, 255)}, 46});
 		}
 	}
+}
+
+bool Map::getTileExists(std::uint32_t x, std::uint32_t y) const
+{
+	if(x >= width || y >= height)
+		return false;
+
+	return tiles[x + y * width].exists;
 }
