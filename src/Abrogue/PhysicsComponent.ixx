@@ -27,10 +27,10 @@ private:
 	double resistanceCoefficient{20.0};
 	double walkingForce{maxSpeed * resistanceCoefficient};
 
-	bool previousTopRightCollision{};
-	bool previousBottomRightCollision{};
-	bool previousBottomLeftCollision{};
-	bool previousTopLeftCollision{};
+	bool isEnteringCorridor{};
+	float corridorX{}, corridorY{};
+	bool isInHorizontalCorridor{};
+	bool isInVerticalCorridor{};
 
 	std::int32_t movementDirectionX{}, movementDirectionY{};
 };

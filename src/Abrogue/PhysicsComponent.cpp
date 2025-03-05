@@ -51,14 +51,8 @@ void PhysicsComponent::update()
 	bool topLeftCollision = Game::getTileSolid(topLeftTile.first, topLeftTile.second);
 	bool bottomLeftCollision = Game::getTileSolid(bottomLeftTile.first, bottomLeftTile.second);
 
-	//Remember values to update previous later
-	bool copyTopRightCollision = topRightCollision;
-	bool copyBottomRightCollision = bottomRightCollision;
-	bool copyTopLeftCollision = topLeftCollision;
-	bool copyBottomLeftCollision = bottomLeftCollision;
-
-	auto checkCollision = [this, centerTile](bool collision, bool previousCollision, TileCoords tile, bool oppositeCollision, TileCoords oppositeTile,
-											 bool& xCollision, bool& yCollision, bool previousXCollision, bool previousYCollision)
+	auto checkCollision = [this, centerTile](bool collision, TileCoords tile, bool oppositeCollision, TileCoords oppositeTile,
+											 bool& xCollision, bool& yCollision, bool movingTowards)
 	{
 		//No collision or wedged between two corners
 		if(!collision || oppositeCollision)
@@ -67,17 +61,43 @@ void PhysicsComponent::update()
 		//No collisions with neighboring corners
 		if(!xCollision && !yCollision)
 		{
-			//Detect horizontal hallway if collisions flip-flopped
-			if(!previousCollision && previousXCollision)
+			auto horizontalTileSolid = Game::getTileSolid(tile.first - 2 * (tile.first - oppositeTile.first), tile.second);
+			auto verticalTileSolid = Game::getTileSolid(tile.first, tile.second - 2 * (tile.second - oppositeTile.second));
+			if(movingTowards && (horizontalTileSolid || verticalTileSolid) && !isEnteringCorridor)
 			{
-				velocityY = 0.0;
-				y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
-			}
-			//Detect vertical hallway
-			else if(!previousCollision && previousYCollision)
-			{
-				velocityX = 0.0;
-				x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
+				if(horizontalTileSolid && verticalTileSolid)
+				{
+					if(std::abs(velocityX) < std::abs(velocityY) || isInVerticalCorridor)
+					{
+						velocityY = 0.0;
+						y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
+					}
+					else
+					{
+						velocityX = 0.0;
+						x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
+					}
+					isEnteringCorridor = true;
+					corridorX = x;
+					corridorY = y;
+				}
+				else if(verticalTileSolid)
+				{
+					velocityY = 0.0;
+					y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
+					isEnteringCorridor = true;
+					corridorX = x;
+					corridorY = y;
+				}
+				//Detect vertical hallway
+				else if(horizontalTileSolid)
+				{
+					velocityX = 0.0;
+					x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
+					isEnteringCorridor = true;
+					corridorX = x;
+					corridorY = y;
+				}
 			}
 			else
 			{
@@ -111,14 +131,20 @@ void PhysicsComponent::update()
 			}
 		}
 	};
-	checkCollision(topRightCollision, previousTopRightCollision, topRightTile, bottomLeftCollision, bottomLeftTile, bottomRightCollision, topLeftCollision, previousBottomRightCollision, previousTopLeftCollision);
-	checkCollision(bottomRightCollision, previousBottomRightCollision, bottomRightTile, topLeftCollision, topLeftTile, topRightCollision, bottomLeftCollision, previousTopRightCollision, previousBottomLeftCollision);
-	checkCollision(bottomLeftCollision, previousBottomLeftCollision, bottomLeftTile, topRightCollision, topRightTile, topLeftCollision, bottomRightCollision, previousTopLeftCollision, previousBottomRightCollision);
-	checkCollision(topLeftCollision, previousTopLeftCollision, topLeftTile, bottomRightCollision, bottomRightTile, bottomLeftCollision, topRightCollision, previousBottomLeftCollision, previousTopRightCollision);
+	checkCollision(topRightCollision, topRightTile, bottomLeftCollision, bottomLeftTile, bottomRightCollision, topLeftCollision, velocityX > 0.0 && velocityY < 0.0);
+	checkCollision(bottomRightCollision, bottomRightTile, topLeftCollision, topLeftTile, topRightCollision, bottomLeftCollision, velocityX > 0.0 && velocityY > 0.0);
+	checkCollision(bottomLeftCollision, bottomLeftTile, topRightCollision, topRightTile, topLeftCollision, bottomRightCollision, velocityX < 0.0 && velocityY > 0.0);
+	checkCollision(topLeftCollision, topLeftTile, bottomRightCollision, bottomRightTile, bottomLeftCollision, topRightCollision, velocityX < 0.0 && velocityY < 0.0);
 
-	//Update previous values for door detection
-	previousTopRightCollision = copyTopRightCollision;
-	previousBottomRightCollision = copyBottomRightCollision;
-	previousBottomLeftCollision = copyBottomLeftCollision;
-	previousTopLeftCollision = copyTopLeftCollision;
+	if(isEnteringCorridor && (std::abs(x - corridorX) > QuadData::tileScale.x || std::abs(y - corridorY) > QuadData::tileScale.y))
+		isEnteringCorridor = false;
+
+	isInVerticalCorridor = (Game::getTileSolid((x + QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y) &&
+			Game::getTileSolid((x - QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y)) 
+		|| (Game::getTileSolid((x + QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y) &&
+			Game::getTileSolid((x - QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y));
+	isInHorizontalCorridor = (Game::getTileSolid((x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y) &&
+							Game::getTileSolid((x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y))
+		|| (Game::getTileSolid((x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y) &&
+			Game::getTileSolid((x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y));
 }

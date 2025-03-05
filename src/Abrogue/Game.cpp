@@ -22,7 +22,7 @@ bool Game::init()
 	lastFPSLogTime = lastUpdateTime;
 
 	map = Map(Constants::mapWidth, Constants::mapHeight);
-	player = Player(0.4);
+	player = Player(0.5);
 
 	initDraw();
 
