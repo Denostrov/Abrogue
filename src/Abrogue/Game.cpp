@@ -22,7 +22,7 @@ bool Game::init()
 	lastFPSLogTime = lastUpdateTime;
 
 	map = Map(Constants::mapWidth, Constants::mapHeight);
-	player = Player(0.5);
+	player = Player(0.2);
 
 	initDraw();
 
@@ -47,8 +47,8 @@ bool Game::update()
 	{
 		player.update();
 
-		//if(lastUpdateTime / 5000000000 > enemies.size())
-		//	enemies.emplace_back(48 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 80.0);
+		if(lastUpdateTime / 5000000000 > enemies.size())
+			enemies.emplace_back(48 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 80.0);
 		for(auto& enemy : enemies) enemy.update();
 
 		lastUpdateTime += Constants::tickDurationNS;

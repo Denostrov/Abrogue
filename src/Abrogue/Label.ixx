@@ -35,6 +35,9 @@ public:
 		{
 			quadReferences[i].setGlyph(text[i]);
 		}
+
+		for(size_t i = text.size(); i < quadReferences.size(); i++)
+			quadReferences[i].setGlyph(' ');
 	}
 
 private:

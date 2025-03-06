@@ -36,19 +36,16 @@ void PhysicsComponent::update()
 	std::tie(x, velocityX) = calculateNextStep(x, velocityX, movementDirectionX, movementDirectionY);
 	std::tie(y, velocityY) = calculateNextStep(y, velocityY, movementDirectionY, movementDirectionX);
 
+	if(x == previousX && y == previousY)
+		return;
+
 	auto dx2 = (x - previousX) * (x - previousX);
 	auto dy2 = (y - previousY) * (y - previousY);
-	if(dx2 < 0.000001 && dy2 < 0.000001)
-	{
-		previousX = x;
-		previousY = y;
-		return;
-	}
 
-	auto distanceCoefficientX = dx2 < 0.0000001 ? 100000.0 : std::sqrt(1 + dy2 / dx2);
-	auto distanceCoefficientY = dy2 < 0.0000001 ? 100000.0 : std::sqrt(4 + dx2 / dy2);
+	auto distanceCoefficientX = dx2 < 1.e-10 ? 100000.0 : std::sqrt(1 + dy2 / dx2);
+	auto distanceCoefficientY = dy2 < 1.e-10 ? 100000.0 : std::sqrt(4 + 4 * dx2 / dy2);
 
-	using TileCoords = std::pair<std::uint32_t, std::uint32_t>;
+	using TileCoords = std::pair<std::int32_t, std::int32_t>;
 	struct Collision
 	{
 		enum Type
@@ -61,117 +58,130 @@ void PhysicsComponent::update()
 		double distance{std::numeric_limits<double>::max()};
 	};
 
-	if(x >= previousX)
+	std::int32_t directionX = x >= previousX ? 1 : -1;
+	std::int32_t directionY = y >= previousY ? 1 : -1;
+
+	double previousPositiveX = (previousX + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
+	double positiveX = (x + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
+
+	double previousNegativeX = (previousX - QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
+	double negativeX = (x - QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
+
+	double previousPositiveY = (previousY + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
+	double positiveY = (y + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
+
+	double previousNegativeY = (previousY - QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
+	double negativeY = (y - QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
+
+	auto calculateMinCollision = [&distanceCoefficientX, &distanceCoefficientY, directionX, directionY](double startX, double startY, double endX, double endY,
+																										Collision& minCollision)
 	{
-		if(y >= previousY)
+		TileCoords startTile{startX, startY};
+		TileCoords endTile{endX, endY};
+		if(startTile == endTile)
+			return;
+
+		auto totalStepsX = std::abs(startTile.first - endTile.first);
+		auto totalStepsY = std::abs(startTile.second - endTile.second);
+
+		std::uint32_t stepsX{}, stepsY{};
+		double initialX{std::abs((directionX == 1) - (startX - startTile.first)) * distanceCoefficientX};
+		double initialY{std::abs((directionY == 1) - (startY - startTile.second)) * distanceCoefficientY};
+		while(totalStepsX > 0 || totalStepsY > 0)
 		{
-			auto calculateMinCollision = [&distanceCoefficientX, &distanceCoefficientY](double startX, double startY, double endX, double endY,
-																						double offsetX, double offsetY, Collision& minCollision)
+			double distanceX{initialX + distanceCoefficientX * stepsX}, distanceY{initialY + distanceCoefficientY * stepsY};
+			if(totalStepsY == 0 || (distanceX <= distanceY && totalStepsX > 0))
 			{
-				TileCoords startTile{startX, startY};
-				TileCoords endTile{endX, endY};
-				if(startTile == endTile)
+				startTile.first += directionX;
+				stepsX++;
+				totalStepsX--;
+				if(distanceX >= minCollision.distance)
 					return;
 
-				std::uint32_t stepsX{}, stepsY{};
-				double initialX{(startTile.first + 1 - startX) * distanceCoefficientX};
-				double initialY{(startTile.second + 1 - startY) * distanceCoefficientY};
-				while(startTile.first < endTile.first || startTile.second < endTile.second)
+				else if(Game::getTileSolid(startTile.first, startTile.second))
 				{
-					double distanceX{initialX + distanceCoefficientX * stepsX}, distanceY{initialY + distanceCoefficientY * stepsY};
-					if(distanceX <= distanceY)
-					{
-						startTile.first++;
-						stepsX++;
-						if(distanceX >= minCollision.distance)
-							return;
-						else if(Game::getTileSolid(startTile.first, startTile.second))
-						{
-							minCollision.type = Collision::eVertical;
-							minCollision.positionX = startTile.first - offsetX;
-							minCollision.positionY = startTile.second - offsetY;
-							minCollision.distance = distanceX;
-							return;
-						}
-					}
-					else
-					{
-						startTile.second++;
-						stepsY++;
-						if(distanceY >= minCollision.distance)
-							return;
-						else if(Game::getTileSolid(startTile.first, startTile.second))
-						{
-							minCollision.type = Collision::eHorizontal;
-							minCollision.positionX = startTile.first - offsetX;
-							minCollision.positionY = startTile.second - offsetY;
-							minCollision.distance = distanceY;
-							return;
-						}
-					}
-				}
-			};
-
-			Collision minCollision;
-			calculateMinCollision((previousX + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-								  (previousY - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-								  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-								  (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-								  0.5f, -0.5f,
-								  minCollision);
-			calculateMinCollision((previousX - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-								  (previousY + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-								  (x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-								  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-								  -0.5f, 0.5f,
-								  minCollision);
-			calculateMinCollision((previousX + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-								  (previousY + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-								  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-								  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-								  0.5f, 0.5f,
-								  minCollision);
-
-			if(minCollision.type == Collision::eVertical)
-			{
-				minCollision.type = Collision::eNone;
-				minCollision.distance = std::numeric_limits<double>::max();
-				velocityX = 0.0;
-				x = minCollision.positionX * QuadData::tileScale.x;
-
-				distanceCoefficientX = 100000.0;
-				distanceCoefficientY = 1.0;
-				calculateMinCollision((x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-									  minCollision.positionY + 0.49f,
-									  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-									  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-									  0.5f, 0.5f, minCollision);
-				if(minCollision.type == Collision::eHorizontal)
-				{
-					velocityY = 0.0;
-					y = minCollision.positionY * QuadData::tileScale.y;
+					minCollision.type = Collision::eVertical;
+					minCollision.positionX = startTile.first - directionX + 0.5f;
+					minCollision.positionY = startTile.second + 0.5f;
+					minCollision.distance = distanceX;
+					return;
 				}
 			}
-			else if(minCollision.type == Collision::eHorizontal)
+			else
 			{
-				minCollision.type = Collision::eNone;
-				minCollision.distance = std::numeric_limits<double>::max();
+				startTile.second += directionY;
+				stepsY++;
+				totalStepsY--;
+				if(distanceY >= minCollision.distance)
+					return;
 
-				velocityY = 0.0;
-				y = minCollision.positionY * QuadData::tileScale.y;
-				distanceCoefficientX = 1.0;
-				distanceCoefficientY = 100000.0;
-				calculateMinCollision(minCollision.positionX + 0.49f,
-									  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-									  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
-									  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
-									  0.5f, 0.5f, minCollision);
-				if(minCollision.type == Collision::eVertical)
+				else if(Game::getTileSolid(startTile.first, startTile.second))
 				{
-					velocityX = 0.0;
-					x = minCollision.positionX * QuadData::tileScale.x;
+					minCollision.type = Collision::eHorizontal;
+					minCollision.positionX = startTile.first + 0.5f;
+					minCollision.positionY = startTile.second - directionY + 0.5f;
+					minCollision.distance = distanceY;
+					return;
 				}
 			}
+		}
+	};
+
+	Collision minCollision;
+	calculateMinCollision(previousPositiveX,
+						  previousNegativeY,
+						  positiveX,
+						  negativeY,
+						  minCollision);
+	calculateMinCollision(previousNegativeX,
+						  previousPositiveY,
+						  negativeX,
+						  positiveY,
+						  minCollision);
+	calculateMinCollision(previousPositiveX,
+						  previousPositiveY,
+						  positiveX,
+						  positiveY,
+						  minCollision);
+
+	if(minCollision.type == Collision::eVertical)
+	{
+		minCollision.type = Collision::eNone;
+		minCollision.distance = std::numeric_limits<double>::max();
+		velocityX = 0.0;
+		x = minCollision.positionX * QuadData::tileScale.x;
+
+		distanceCoefficientX = 100000.0;
+		distanceCoefficientY = 1.0;
+		calculateMinCollision((x + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x,
+							  minCollision.positionY + 0.49f * directionY,
+							  (x + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x,
+							  positiveY,
+							  minCollision);
+		if(minCollision.type == Collision::eHorizontal)
+		{
+			velocityY = 0.0;
+			y = minCollision.positionY * QuadData::tileScale.y;
+		}
+	}
+	else if(minCollision.type == Collision::eHorizontal)
+	{
+		minCollision.type = Collision::eNone;
+		minCollision.distance = std::numeric_limits<double>::max();
+
+		velocityY = 0.0;
+		y = minCollision.positionY * QuadData::tileScale.y;
+		distanceCoefficientX = 1.0;
+		distanceCoefficientY = 100000.0;
+		calculateMinCollision(minCollision.positionX + 0.49f * directionX,
+							  (y + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y,
+							  positiveX,
+							  (y + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y,
+							  minCollision);
+		if(minCollision.type == Collision::eVertical)
+		{
+			velocityX = 0.0;
+			x = minCollision.positionX * QuadData::tileScale.x;
 		}
 	}
 
