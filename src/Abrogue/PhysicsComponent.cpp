@@ -36,115 +36,145 @@ void PhysicsComponent::update()
 	std::tie(x, velocityX) = calculateNextStep(x, velocityX, movementDirectionX, movementDirectionY);
 	std::tie(y, velocityY) = calculateNextStep(y, velocityY, movementDirectionY, movementDirectionX);
 
-	using TileCoords = std::pair<std::uint32_t, std::uint32_t>;
-
-	//Get tile indices of center and all four corners
-	TileCoords centerTile{x / QuadData::tileScale.x, y / QuadData::tileScale.y};
-	TileCoords topRightTile{(x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y};
-	TileCoords bottomRightTile{(x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y};
-	TileCoords topLeftTile{(x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y};
-	TileCoords bottomLeftTile{(x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y};
-
-	//Check if corners overlap solid tiles
-	bool topRightCollision = Game::getTileSolid(topRightTile.first, topRightTile.second);
-	bool bottomRightCollision = Game::getTileSolid(bottomRightTile.first, bottomRightTile.second);
-	bool topLeftCollision = Game::getTileSolid(topLeftTile.first, topLeftTile.second);
-	bool bottomLeftCollision = Game::getTileSolid(bottomLeftTile.first, bottomLeftTile.second);
-
-	auto checkCollision = [this, centerTile](bool collision, TileCoords tile, bool oppositeCollision, TileCoords oppositeTile,
-											 bool& xCollision, bool& yCollision, bool movingTowards)
+	auto dx2 = (x - previousX) * (x - previousX);
+	auto dy2 = (y - previousY) * (y - previousY);
+	if(dx2 < 0.000001 && dy2 < 0.000001)
 	{
-		//No collision or wedged between two corners
-		if(!collision || oppositeCollision)
-			return;
+		previousX = x;
+		previousY = y;
+		return;
+	}
 
-		//No collisions with neighboring corners
-		if(!xCollision && !yCollision)
+	auto distanceCoefficientX = dx2 < 0.0000001 ? 100000.0 : std::sqrt(1 + dy2 / dx2);
+	auto distanceCoefficientY = dy2 < 0.0000001 ? 100000.0 : std::sqrt(4 + dx2 / dy2);
+
+	using TileCoords = std::pair<std::uint32_t, std::uint32_t>;
+	struct Collision
+	{
+		enum Type
 		{
-			auto horizontalTileSolid = Game::getTileSolid(tile.first - 2 * (tile.first - oppositeTile.first), tile.second);
-			auto verticalTileSolid = Game::getTileSolid(tile.first, tile.second - 2 * (tile.second - oppositeTile.second));
-			if(movingTowards && (horizontalTileSolid || verticalTileSolid) && !isEnteringCorridor)
+			eNone,
+			eHorizontal,
+			eVertical
+		} type{};
+		double positionX{}, positionY{};	//Position of tile center during collision
+		double distance{std::numeric_limits<double>::max()};
+	};
+
+	if(x >= previousX)
+	{
+		if(y >= previousY)
+		{
+			auto calculateMinCollision = [&distanceCoefficientX, &distanceCoefficientY](double startX, double startY, double endX, double endY,
+																						double offsetX, double offsetY, Collision& minCollision)
 			{
-				if(horizontalTileSolid && verticalTileSolid)
+				TileCoords startTile{startX, startY};
+				TileCoords endTile{endX, endY};
+				if(startTile == endTile)
+					return;
+
+				std::uint32_t stepsX{}, stepsY{};
+				double initialX{(startTile.first + 1 - startX) * distanceCoefficientX};
+				double initialY{(startTile.second + 1 - startY) * distanceCoefficientY};
+				while(startTile.first < endTile.first || startTile.second < endTile.second)
 				{
-					if(std::abs(velocityX) < std::abs(velocityY) || isInVerticalCorridor)
+					double distanceX{initialX + distanceCoefficientX * stepsX}, distanceY{initialY + distanceCoefficientY * stepsY};
+					if(distanceX <= distanceY)
 					{
-						velocityY = 0.0;
-						y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
+						startTile.first++;
+						stepsX++;
+						if(distanceX >= minCollision.distance)
+							return;
+						else if(Game::getTileSolid(startTile.first, startTile.second))
+						{
+							minCollision.type = Collision::eVertical;
+							minCollision.positionX = startTile.first - offsetX;
+							minCollision.positionY = startTile.second - offsetY;
+							minCollision.distance = distanceX;
+							return;
+						}
 					}
 					else
 					{
-						velocityX = 0.0;
-						x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
+						startTile.second++;
+						stepsY++;
+						if(distanceY >= minCollision.distance)
+							return;
+						else if(Game::getTileSolid(startTile.first, startTile.second))
+						{
+							minCollision.type = Collision::eHorizontal;
+							minCollision.positionX = startTile.first - offsetX;
+							minCollision.positionY = startTile.second - offsetY;
+							minCollision.distance = distanceY;
+							return;
+						}
 					}
-					isEnteringCorridor = true;
-					corridorX = x;
-					corridorY = y;
 				}
-				else if(verticalTileSolid)
-				{
-					velocityY = 0.0;
-					y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
-					isEnteringCorridor = true;
-					corridorX = x;
-					corridorY = y;
-				}
-				//Detect vertical hallway
-				else if(horizontalTileSolid)
-				{
-					velocityX = 0.0;
-					x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
-					isEnteringCorridor = true;
-					corridorX = x;
-					corridorY = y;
-				}
-			}
-			else
+			};
+
+			Collision minCollision;
+			calculateMinCollision((previousX + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+								  (previousY - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+								  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+								  (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+								  0.5f, -0.5f,
+								  minCollision);
+			calculateMinCollision((previousX - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+								  (previousY + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+								  (x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+								  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+								  -0.5f, 0.5f,
+								  minCollision);
+			calculateMinCollision((previousX + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+								  (previousY + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+								  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+								  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+								  0.5f, 0.5f,
+								  minCollision);
+
+			if(minCollision.type == Collision::eVertical)
 			{
-				//Resolve corner collision towards direction of greater offset
-				if(std::abs(x - (tile.first + 0.5f) * QuadData::tileScale.x) <= std::abs(y - (tile.second + 0.5f) * QuadData::tileScale.y) * 0.5f)
-				{
-					velocityY = 0.0;
-					y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
-				}
-				else
-				{
-					velocityX = 0.0;
-					x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
-				}
-			}
-		}
-		//Collision with neighboring corners means a wall
-		else
-		{
-			if(xCollision)
-			{
+				minCollision.type = Collision::eNone;
+				minCollision.distance = std::numeric_limits<double>::max();
 				velocityX = 0.0;
-				x = (oppositeTile.first + 0.5f) * QuadData::tileScale.x;
-				xCollision = false;
+				x = minCollision.positionX * QuadData::tileScale.x;
+
+				distanceCoefficientX = 100000.0;
+				distanceCoefficientY = 1.0;
+				calculateMinCollision((x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+									  minCollision.positionY + 0.49f,
+									  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+									  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+									  0.5f, 0.5f, minCollision);
+				if(minCollision.type == Collision::eHorizontal)
+				{
+					velocityY = 0.0;
+					y = minCollision.positionY * QuadData::tileScale.y;
+				}
 			}
-			if(yCollision)
+			else if(minCollision.type == Collision::eHorizontal)
 			{
+				minCollision.type = Collision::eNone;
+				minCollision.distance = std::numeric_limits<double>::max();
+
 				velocityY = 0.0;
-				y = (oppositeTile.second + 0.5f) * QuadData::tileScale.y;
-				yCollision = false;
+				y = minCollision.positionY * QuadData::tileScale.y;
+				distanceCoefficientX = 1.0;
+				distanceCoefficientY = 100000.0;
+				calculateMinCollision(minCollision.positionX + 0.49f,
+									  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+									  (x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x,
+									  (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y,
+									  0.5f, 0.5f, minCollision);
+				if(minCollision.type == Collision::eVertical)
+				{
+					velocityX = 0.0;
+					x = minCollision.positionX * QuadData::tileScale.x;
+				}
 			}
 		}
-	};
-	checkCollision(topRightCollision, topRightTile, bottomLeftCollision, bottomLeftTile, bottomRightCollision, topLeftCollision, velocityX > 0.0 && velocityY < 0.0);
-	checkCollision(bottomRightCollision, bottomRightTile, topLeftCollision, topLeftTile, topRightCollision, bottomLeftCollision, velocityX > 0.0 && velocityY > 0.0);
-	checkCollision(bottomLeftCollision, bottomLeftTile, topRightCollision, topRightTile, topLeftCollision, bottomRightCollision, velocityX < 0.0 && velocityY > 0.0);
-	checkCollision(topLeftCollision, topLeftTile, bottomRightCollision, bottomRightTile, bottomLeftCollision, topRightCollision, velocityX < 0.0 && velocityY < 0.0);
+	}
 
-	if(isEnteringCorridor && (std::abs(x - corridorX) > QuadData::tileScale.x || std::abs(y - corridorY) > QuadData::tileScale.y))
-		isEnteringCorridor = false;
-
-	isInVerticalCorridor = (Game::getTileSolid((x + QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y) &&
-			Game::getTileSolid((x - QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y)) 
-		|| (Game::getTileSolid((x + QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y) &&
-			Game::getTileSolid((x - QuadData::tileScale.x * 0.55f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.49f) / QuadData::tileScale.y));
-	isInHorizontalCorridor = (Game::getTileSolid((x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y) &&
-							Game::getTileSolid((x + QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y))
-		|| (Game::getTileSolid((x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y - QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y) &&
-			Game::getTileSolid((x - QuadData::tileScale.x * 0.49f) / QuadData::tileScale.x, (y + QuadData::tileScale.y * 0.55f) / QuadData::tileScale.y));
+	previousX = x;
+	previousY = y;
 }
