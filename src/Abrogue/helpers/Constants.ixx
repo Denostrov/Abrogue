@@ -14,4 +14,6 @@ public:
 
 	static constexpr size_t mapWidth{80};
 	static constexpr size_t mapHeight{36};
+
+	static constexpr double tileAspectRatio{0.5};
 };

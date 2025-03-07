@@ -2,7 +2,7 @@ module Enemy;
 
 import Game;
 
-Enemy::Enemy(std::uint8_t type)
+Enemy::Enemy(std::uint8_t type):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0.48)
 {
 	auto [x, y] = getPosition();
 	quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, 1.0f,
@@ -10,7 +10,7 @@ Enemy::Enemy(std::uint8_t type)
 
 	setMass(10.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 10.0);
 	setFrictionCoefficient((double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
-	setMaxSpeed(0.25 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 0.5);
+	setMaxSpeed(1.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 9.0);
 }
 
 void Enemy::update()

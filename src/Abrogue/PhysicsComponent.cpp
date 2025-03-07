@@ -2,9 +2,13 @@ module PhysicsComponent;
 
 import Game;
 
+PhysicsComponent::PhysicsComponent(double x, double y, double leftScaleX, double rightScaleX, double topScaleY, double bottomScaleY)
+	:x(x), y(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)
+{}
+
 void PhysicsComponent::update()
 {
-	auto calculateNextStep = [this](double coordinate, double velocity, int32_t movementDirection, int32_t otherMovementDirection)
+	auto calculateNextStep = [this](double coordinate, double velocity, double tileScale, int32_t movementDirection, int32_t otherMovementDirection)
 	{
 		std::pair<double, double> result{coordinate, velocity};
 
@@ -22,7 +26,7 @@ void PhysicsComponent::update()
 
 		//Apply forces and check if speed inverted due to friction
 		auto velocitySign = std::signbit(velocity);
-		result.second += (movementForce + frictionForce) / mass * Constants::tickDuration / 2.0;
+		result.second += (movementForce * tileScale + frictionForce) / mass * Constants::tickDuration / 2.0;
 		if(std::signbit(result.second) != velocitySign && movementForce == 0.0)
 			result.second = 0.0;
 
@@ -30,11 +34,11 @@ void PhysicsComponent::update()
 	};
 
 	//Do forward euler integration in two steps to reflect coordinate change on same tick
-	std::tie(x, velocityX) = calculateNextStep(x, velocityX, movementDirectionX, movementDirectionY);
-	std::tie(y, velocityY) = calculateNextStep(y, velocityY, movementDirectionY, movementDirectionX);
+	std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementDirectionX, movementDirectionY);
+	std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementDirectionY, movementDirectionX);
 
-	std::tie(x, velocityX) = calculateNextStep(x, velocityX, movementDirectionX, movementDirectionY);
-	std::tie(y, velocityY) = calculateNextStep(y, velocityY, movementDirectionY, movementDirectionX);
+	std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementDirectionX, movementDirectionY);
+	std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementDirectionY, movementDirectionX);
 
 	if(x == previousX && y == previousY)
 		return;
@@ -53,28 +57,35 @@ void PhysicsComponent::update()
 			eNone,
 			eHorizontal,
 			eVertical
-		} type{};
+		} type{};	//Type of wall that was hit
 		double positionX{}, positionY{};	//Position of tile center during collision
-		double distance{std::numeric_limits<double>::max()};
+		double distance{std::numeric_limits<double>::max()}; //Distance to collision point
 	};
 
 	std::int32_t directionX = x >= previousX ? 1 : -1;
 	std::int32_t directionY = y >= previousY ? 1 : -1;
 
-	double previousPositiveX = (previousX + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
-	double positiveX = (x + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
+	double positiveOffsetX = directionX == 1 ? rightScaleX : -leftScaleX;
+	double negativeOffsetX = directionX == 1 ? -leftScaleX : rightScaleX;
+	double positiveOffsetY = directionY == 1 ? bottomScaleY : -topScaleY;
+	double negativeOffsetY = directionY == 1 ? -topScaleY : bottomScaleY;
 
-	double previousNegativeX = (previousX - QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
-	double negativeX = (x - QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x;
+	double previousPositiveX = previousX + positiveOffsetX;
+	double positiveX = x + positiveOffsetX;
 
-	double previousPositiveY = (previousY + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
-	double positiveY = (y + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
+	double previousNegativeX = previousX + negativeOffsetX;
+	double negativeX = x + negativeOffsetX;
 
-	double previousNegativeY = (previousY - QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
-	double negativeY = (y - QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y;
+	double previousPositiveY = previousY + positiveOffsetY;
+	double positiveY = y + positiveOffsetY;
 
-	auto calculateMinCollision = [&distanceCoefficientX, &distanceCoefficientY, directionX, directionY](double startX, double startY, double endX, double endY,
-																										Collision& minCollision)
+	double previousNegativeY = previousY + negativeOffsetY;
+	double negativeY = y + negativeOffsetY;
+
+	auto calculateMinCollision = [this, directionX, directionY](double startX, double startY, double endX, double endY,
+																double distanceCoefficientX, double distanceCoefficientY,
+																double offsetX, double offsetY,
+																Collision& minCollision)
 	{
 		TileCoords startTile{startX, startY};
 		TileCoords endTile{endX, endY};
@@ -101,8 +112,8 @@ void PhysicsComponent::update()
 				else if(Game::getTileSolid(startTile.first, startTile.second))
 				{
 					minCollision.type = Collision::eVertical;
-					minCollision.positionX = startTile.first - directionX + 0.5f;
-					minCollision.positionY = startTile.second + 0.5f;
+					minCollision.positionX = startTile.first + (directionX == -1) - offsetX * 1.001;
+					minCollision.positionY = startTile.second + 0.5;
 					minCollision.distance = distanceX;
 					return;
 				}
@@ -118,8 +129,8 @@ void PhysicsComponent::update()
 				else if(Game::getTileSolid(startTile.first, startTile.second))
 				{
 					minCollision.type = Collision::eHorizontal;
-					minCollision.positionX = startTile.first + 0.5f;
-					minCollision.positionY = startTile.second - directionY + 0.5f;
+					minCollision.positionX = startTile.first + 0.5;
+					minCollision.positionY = startTile.second + (directionY == -1) - offsetY * 1.001;
 					minCollision.distance = distanceY;
 					return;
 				}
@@ -128,40 +139,39 @@ void PhysicsComponent::update()
 	};
 
 	Collision minCollision;
-	calculateMinCollision(previousPositiveX,
-						  previousNegativeY,
-						  positiveX,
-						  negativeY,
+	calculateMinCollision(previousPositiveX, previousNegativeY,
+						  positiveX, negativeY,
+						  distanceCoefficientX, distanceCoefficientY,
+						  positiveOffsetX, negativeOffsetY,
 						  minCollision);
-	calculateMinCollision(previousNegativeX,
-						  previousPositiveY,
-						  negativeX,
-						  positiveY,
+	calculateMinCollision(previousNegativeX, previousPositiveY,
+						  negativeX, positiveY,
+						  distanceCoefficientX, distanceCoefficientY,
+						  negativeOffsetX, positiveOffsetY,
 						  minCollision);
-	calculateMinCollision(previousPositiveX,
-						  previousPositiveY,
-						  positiveX,
-						  positiveY,
+	calculateMinCollision(previousPositiveX, previousPositiveY,
+						  positiveX, positiveY,
+						  distanceCoefficientX, distanceCoefficientY,
+						  positiveOffsetX, positiveOffsetY,
 						  minCollision);
 
 	if(minCollision.type == Collision::eVertical)
 	{
 		minCollision.type = Collision::eNone;
 		minCollision.distance = std::numeric_limits<double>::max();
-		velocityX = 0.0;
-		x = minCollision.positionX * QuadData::tileScale.x;
 
-		distanceCoefficientX = 100000.0;
-		distanceCoefficientY = 1.0;
-		calculateMinCollision((x + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x,
-							  minCollision.positionY + 0.49f * directionY,
-							  (x + QuadData::tileScale.x * 0.49f * directionX) / QuadData::tileScale.x,
-							  positiveY,
+		velocityX = 0.0;
+		x = minCollision.positionX;
+
+		calculateMinCollision(x + positiveOffsetX, minCollision.positionY + positiveOffsetY,
+							  x + positiveOffsetX, positiveY,
+							  100000.0, 1.0,
+							  positiveOffsetX, positiveOffsetY,
 							  minCollision);
 		if(minCollision.type == Collision::eHorizontal)
 		{
 			velocityY = 0.0;
-			y = minCollision.positionY * QuadData::tileScale.y;
+			y = minCollision.positionY;
 		}
 	}
 	else if(minCollision.type == Collision::eHorizontal)
@@ -170,18 +180,17 @@ void PhysicsComponent::update()
 		minCollision.distance = std::numeric_limits<double>::max();
 
 		velocityY = 0.0;
-		y = minCollision.positionY * QuadData::tileScale.y;
-		distanceCoefficientX = 1.0;
-		distanceCoefficientY = 100000.0;
-		calculateMinCollision(minCollision.positionX + 0.49f * directionX,
-							  (y + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y,
-							  positiveX,
-							  (y + QuadData::tileScale.y * 0.49f * directionY) / QuadData::tileScale.y,
+		y = minCollision.positionY;
+
+		calculateMinCollision(minCollision.positionX + positiveOffsetX, y + positiveOffsetY,
+							  positiveX, y + positiveOffsetY,
+							  1.0, 100000.0,
+							  positiveOffsetX, positiveOffsetY,
 							  minCollision);
 		if(minCollision.type == Collision::eVertical)
 		{
 			velocityX = 0.0;
-			x = minCollision.positionX * QuadData::tileScale.x;
+			x = minCollision.positionX;
 		}
 	}
 

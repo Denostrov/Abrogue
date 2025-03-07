@@ -22,7 +22,7 @@ bool Game::init()
 	lastFPSLogTime = lastUpdateTime;
 
 	map = Map(Constants::mapWidth, Constants::mapHeight);
-	player = Player(0.2);
+	player = Player(10.0);
 
 	initDraw();
 
@@ -87,15 +87,15 @@ void Game::initDraw()
 	healthLabel = Label("Health", 0, 1);
 	hungerLabel = Label("Nutrition", 7, 1);
 
-	float guiOffset = QuadData::tileScale.x * 48.0f;
+	float guiOffset = 48.0f;
 
 	auto [x, y] = player.getPosition();
-	player.quadReference.setPosition({guiOffset + x, y});
+	player.quadReference.setPosition({(guiOffset + x) * QuadData::tileScale.x, y * QuadData::tileScale.y});
 
 	for(auto const& enemy : enemies)
 	{
 		auto [x, y] = enemy.getPosition();
-		enemy.quadReference.setPosition({guiOffset + x, y});
+		enemy.quadReference.setPosition({(guiOffset + x) * QuadData::tileScale.x, y * QuadData::tileScale.y});
 	}
 
 	auto const& mapTiles = map.getTiles();
@@ -103,24 +103,24 @@ void Game::initDraw()
 	{
 		size_t row = i / Constants::mapWidth;
 		size_t column = i % Constants::mapWidth;
-		mapTiles[i].quadReference.setPosition({guiOffset + column * QuadData::tileScale.x + QuadData::tileScale.x / 2.0f,
-											  row * QuadData::tileScale.y + QuadData::tileScale.y / 2.0f});
+		mapTiles[i].quadReference.setPosition({(guiOffset + column + 0.5f) * QuadData::tileScale.x,
+											  (row + 0.5f) * QuadData::tileScale.y});
 	}
 }
 
 bool Game::updateDraw(double deltaTime)
 {
-	float guiOffset = QuadData::tileScale.x * 48.0f;
+	float guiOffset = 48.0f;
 
 	auto [x, y] = player.getPosition();
 	auto [vx, vy] = player.getVelocity();
-	player.quadReference.setPosition({guiOffset + x + vx * deltaTime, y + vy * deltaTime});
+	player.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
 
 	for(auto const& enemy : enemies)
 	{
 		auto [x, y] = enemy.getPosition();
 		auto [vx, vy] = enemy.getVelocity();
-		enemy.quadReference.setPosition({guiOffset + x + vx * deltaTime, y + vy * deltaTime});
+		enemy.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
 	}
 
 	return renderEngine->drawFrame();

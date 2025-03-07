@@ -7,6 +7,9 @@ export import ObjectPools;
 export class PhysicsComponent
 {
 public:
+	PhysicsComponent() = default;
+	PhysicsComponent(double x, double y, double leftScaleX, double rightScaleX, double topScaleY, double bottomScaleY);
+
 	std::pair<double, double> getPosition() const { return {x, y}; }
 	std::pair<double, double> getVelocity() const { return {velocityX, velocityY}; }
 
@@ -19,13 +22,16 @@ public:
 	void update();
 
 private:
-	double x{0.5}, y{0.5};
+	double x{}, y{};
 	double velocityX{}, velocityY{};
 	double mass{1.0};
 	double frictionCoefficient{1.0};
 	double maxSpeed{1.0};
 	double resistanceCoefficient{20.0};
 	double walkingForce{maxSpeed * resistanceCoefficient};
+
+	double leftScaleX{0.48}, rightScaleX{0.48};
+	double topScaleY{0.48}, bottomScaleY{0.48};
 
 	double previousX{x}, previousY{y};
 
