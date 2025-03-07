@@ -84,6 +84,8 @@ bool Game::update()
 void Game::initDraw()
 {
 	fpsLabel = Label("FPS:", 0, 0);
+	healthLabel = Label("Health", 0, 1);
+	hungerLabel = Label("Nutrition", 7, 1);
 
 	float guiOffset = QuadData::tileScale.x * 48.0f;
 

@@ -39,6 +39,8 @@ private:
 	inline static std::vector<Enemy> enemies;
 
 	inline static Label fpsLabel;
+	inline static Label healthLabel;
+	inline static Label hungerLabel;
 
 	inline static std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };
