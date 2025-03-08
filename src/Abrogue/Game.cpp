@@ -21,10 +21,12 @@ bool Game::init()
 	lastUpdateTime = SDL_GetTicksNS();
 	lastFPSLogTime = lastUpdateTime;
 
-	map = Map(Constants::mapWidth, Constants::mapHeight);
-	player = Player(10.0);
+	gui.init();
 
-	initDraw();
+	//map = Map(Constants::mapWidth, Constants::mapHeight);
+	//player = Player(10.0);
+
+	//initDraw();
 
 	return true;
 }
@@ -70,9 +72,7 @@ bool Game::update()
 	if(timeSinceLastLog > 1000000000)
 	{
 		std::uint32_t fps = framesDrawn / (timeSinceLastLog / 1.e9);
-		std::array<char, 16> fpsString{"FPS:"};
-		std::to_chars(fpsString.data() + 4, fpsString.data() + 14, fps);
-		fpsLabel.setText(fpsString.data());
+		gui.setFPS(fps);
 
 		framesDrawn = 0;
 		lastFPSLogTime = currentTime;
@@ -83,9 +83,7 @@ bool Game::update()
 
 void Game::initDraw()
 {
-	fpsLabel = Label("FPS:", 0, 0);
-	healthLabel = Label("Health", 0, 1);
-	hungerLabel = Label("Nutrition", 7, 1);
+	gui.startGame();
 
 	float guiOffset = 48.0f;
 
@@ -110,17 +108,20 @@ void Game::initDraw()
 
 bool Game::updateDraw(double deltaTime)
 {
-	float guiOffset = 48.0f;
-
-	auto [x, y] = player.getPosition();
-	auto [vx, vy] = player.getVelocity();
-	player.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
-
-	for(auto const& enemy : enemies)
+	if(state == eRunning)
 	{
-		auto [x, y] = enemy.getPosition();
-		auto [vx, vy] = enemy.getVelocity();
-		enemy.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
+		float guiOffset = 48.0f;
+
+		auto [x, y] = player.getPosition();
+		auto [vx, vy] = player.getVelocity();
+		player.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
+
+		for(auto const& enemy : enemies)
+		{
+			auto [x, y] = enemy.getPosition();
+			auto [vx, vy] = enemy.getVelocity();
+			enemy.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
+		}
 	}
 
 	return renderEngine->drawFrame();

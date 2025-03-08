@@ -40,6 +40,12 @@ public:
 			quadReferences[i].setGlyph(' ');
 	}
 
+	void clear()
+	{
+		for(size_t i = 0; i < quadReferences.size(); i++)
+			quadReferences[i].setGlyph(' ');
+	}
+
 private:
 	std::uint32_t x{}, y{};
 	std::vector<QuadPool::Reference> quadReferences;

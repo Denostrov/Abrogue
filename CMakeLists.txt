@@ -20,6 +20,8 @@ set(ABROGUE_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}/bin)
 set(ABROGUE_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(STANDARD_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/std.ixx)
 
+option(EXTRA_ASSERTS ON)
+
 add_subdirectory(src/BitmapGenerator)
 add_subdirectory(src/Abrogue)
 

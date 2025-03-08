@@ -10,7 +10,7 @@ Enemy::Enemy(std::uint8_t type):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0
 
 	setMass(10.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 10.0);
 	setFrictionCoefficient((double)std::random_device()() / std::numeric_limits<std::uint32_t>::max());
-	setMaxSpeed(1.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 9.0);
+	setMaxVelocity(1.0 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 9.0);
 }
 
 void Enemy::update()

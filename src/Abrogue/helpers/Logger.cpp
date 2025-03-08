@@ -40,6 +40,18 @@ void Logger::logInfo(std::string_view message)
 		std::println(std::cout, "{}", message);
 }
 
+void Logger::assert(bool condition, std::string_view message)
+{
+	if constexpr(useExtraAsserts)
+	{
+		if(condition)
+			return;
+
+		logError(message);
+		std::exit(1);
+	}
+}
+
 void Logger::displayErrorMessage(std::string_view message)
 {
 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Application Error", message.data(), nullptr);

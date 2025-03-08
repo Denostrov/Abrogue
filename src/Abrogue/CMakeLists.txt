@@ -7,7 +7,7 @@ add_executable(${PROJECT_NAME}
 	"RenderEngine.cpp" 
 	"RenderWindow.cpp" 
 	"PhysicsComponent.cpp" 
-	"Enemy.cpp" "Game.cpp" "Map.cpp" "Player.cpp" "ObjectPools.cpp")
+	"Enemy.cpp" "Game.cpp" "Map.cpp" "Player.cpp" "ObjectPools.cpp" "gui/GUI.cpp")
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES 
 	${STANDARD_MODULE_PATH} 
 	"helpers/Configuration.ixx" 
@@ -22,11 +22,15 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 
 	"Game.ixx" 
 	"ObjectPools.ixx" 
-	"Player.ixx" "Map.ixx" "Label.ixx")
+	"Player.ixx" "Map.ixx" "gui/Label.ixx" "gui/GUI.ixx" "gui/Button.ixx" "helpers/Event.ixx")
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})
 target_link_libraries(${PROJECT_NAME} SDL3 vulkan-1)
+
+if(EXTRA_ASSERTS)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE EXTRA_ASSERTS)
+endif()
 
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ABROGUE_BIN_DIR})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 26)

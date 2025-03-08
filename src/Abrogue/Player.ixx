@@ -7,7 +7,7 @@ export class Player : public PhysicsComponent
 {
 public:
 	Player() = default;
-	Player(double speed);
+	Player(double velocity);
 
 	void update()
 	{

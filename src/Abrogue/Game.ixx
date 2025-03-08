@@ -8,11 +8,18 @@ export import RenderEngine;
 export import Player;
 export import Enemy;
 export import Map;
-export import Label;
+export import GUI;
 
 export class Game
 {
 public:
+	enum State
+	{
+		eNotStarted,
+		eRunning,
+		ePaused
+	};
+
 	static bool init();
 	static void release();
 	static bool update();
@@ -34,13 +41,13 @@ private:
 	inline static uint64_t framesDrawn{};
 	inline static uint64_t lastFPSLogTime{};
 
+	inline static State state{};
+
 	inline static Map map;
 	inline static Player player;
 	inline static std::vector<Enemy> enemies;
 
-	inline static Label fpsLabel;
-	inline static Label healthLabel;
-	inline static Label hungerLabel;
+	inline static GUI gui;
 
 	inline static std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };

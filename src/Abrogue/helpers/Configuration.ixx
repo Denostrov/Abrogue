@@ -8,6 +8,12 @@ export inline constexpr bool isDebugBuild{false};
 export inline constexpr bool isDebugBuild{true};
 #endif
 
+#ifdef EXTRA_ASSERTS
+export inline constexpr bool useExtraAsserts{true};
+#else
+export inline constexpr bool useExtraAsserts{false};
+#endif
+
 export class Configuration
 {
 public:
