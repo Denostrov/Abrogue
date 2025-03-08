@@ -2,14 +2,27 @@ import GUI;
 
 void GUI::init()
 {
-	startGameButton = Button("New game", ButtonPressedEvent::eStartGame, 120, 30);
+	buttons[eStartGame].setPosition(120, 30);
+
+	fpsLabel.setPosition(0, 0);
+	healthLabel.setPosition(0, 1);
+	hungerLabel.setPosition(7, 1);
+}
+
+void GUI::showStartMenu()
+{
+	buttons[eStartGame].setText("New game");
+
+	healthLabel.clear();
+	hungerLabel.clear();
 }
 
 void GUI::startGame()
 {
-	fpsLabel = Label("FPS:", 0, 0);
-	healthLabel = Label("Health", 0, 1);
-	hungerLabel = Label("Nutrition", 7, 1);
+	buttons[eStartGame].clear();
+
+	healthLabel.setText("Health");
+	hungerLabel.setText("Nutrition");
 }
 
 void GUI::setFPS(std::uint32_t fps)

@@ -22,6 +22,7 @@ bool Game::init()
 	lastFPSLogTime = lastUpdateTime;
 
 	gui.init();
+	gui.showStartMenu();
 
 	//map = Map(Constants::mapWidth, Constants::mapHeight);
 	//player = Player(10.0);
