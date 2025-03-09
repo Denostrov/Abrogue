@@ -6,7 +6,7 @@ module;
 
 module RenderWindow;
 
-import Logger;
+import GameSystems;
 
 using namespace std::literals;
 
@@ -37,7 +37,7 @@ bool RenderWindow::initSDL()
 	if(checkSDLErrorOccured(!SDL_Init(SDL_INIT_VIDEO)))
 		return false;
 
-	window = SDL_CreateWindow(fullAppName.c_str(), Configuration::getWindowWidth(), Configuration::getWindowHeight(), SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+	window = SDL_CreateWindow(fullAppName.c_str(), configuration.getWindowWidth(), configuration.getWindowHeight(), SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 	if(checkSDLErrorOccured(!window))
 		return false;
 
@@ -60,6 +60,9 @@ RenderWindow::~RenderWindow()
 
 	if(SDL_WasInit(SDL_INIT_VIDEO))
 		SDL_QuitSubSystem(SDL_INIT_VIDEO);
+
+	if(!SDL_WasInit(SDL_INIT_VIDEO))
+		SDL_Quit();
 }
 
 VkSurfaceKHR RenderWindow::createSurface(VkInstance instance)
@@ -88,6 +91,6 @@ bool RenderWindow::checkSDLErrorOccured(bool checkValue)
 	if(errorString.empty())
 		return true;
 
-	Logger::logError(errorString);
+	logger.logError(errorString);
 	return true;
 }

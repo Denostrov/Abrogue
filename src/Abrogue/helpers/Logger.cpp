@@ -6,7 +6,7 @@ module Logger;
 
 using namespace std::literals;
 
-bool Logger::init()
+bool Logger::openFiles()
 {
 	infoLog.open(Configuration::infoLogFileName.data() + ".txt"s, std::ios::binary | std::ios::out | std::ios::trunc);
 	errorLog.open(Configuration::errorLogFileName.data() + ".txt"s, std::ios::binary | std::ios::out | std::ios::trunc);
@@ -40,7 +40,7 @@ void Logger::logInfo(std::string_view message)
 		std::println(std::cout, "{}", message);
 }
 
-void Logger::assert(bool condition, std::string_view message)
+void Logger::extraAssert(bool condition, std::string_view message)
 {
 	if constexpr(useExtraAsserts)
 	{

@@ -17,10 +17,8 @@ export inline constexpr bool useExtraAsserts{false};
 export class Configuration
 {
 public:
-	static bool init();
-
-	static auto getWindowWidth() { return windowWidth; }
-	static auto getWindowHeight() { return windowHeight; }
+	auto getWindowWidth() { return windowWidth; }
+	auto getWindowHeight() { return windowHeight; }
 
 	static constexpr std::string_view configFileName{"config"};
 	static constexpr std::string_view infoLogFileName{"infoLog"};
@@ -39,8 +37,11 @@ public:
 	static constexpr std::uint32_t vkAppPatchVersion{0};
 
 private:
-	static bool saveToFile();
+	bool load();
+	bool saveToFile();
 
-	inline static std::uint32_t windowWidth{800};
-	inline static std::uint32_t windowHeight{450};
+	std::uint32_t windowWidth{800};
+	std::uint32_t windowHeight{450};
+
+	friend class Game;
 };

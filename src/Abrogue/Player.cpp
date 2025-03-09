@@ -1,5 +1,7 @@
 module Player;
 
+import GameSystems;
+
 Player::Player(double velocity) :PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.32, 0.4)
 {
 	quadReference = QuadPool::insert(QuadData{{0.0f, 0.0f}, 1.0f,

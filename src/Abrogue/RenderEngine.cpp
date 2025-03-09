@@ -8,6 +8,7 @@ module;
 module RenderEngine;
 
 import ImageLoader;
+import GameSystems;
 
 VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
@@ -25,7 +26,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 			selectedFormat = format;
 	}
 	imageFormat = selectedFormat.format;
-	Logger::logInfo(std::format("Chose format {} with color space {}",
+	logger.logInfo(std::format("Chose format {} with color space {}",
 								vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
 
 	//Choose present mode
@@ -35,7 +36,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 		if(presentMode == vk::PresentModeKHR::eMailbox)
 			selectedPresentMode = presentMode;
 	}
-	Logger::logInfo(std::format("Chose present mode {}", vk::to_string(selectedPresentMode)));
+	logger.logInfo(std::format("Chose present mode {}", vk::to_string(selectedPresentMode)));
 
 	//Choose swapchain extent
 	auto const& surfaceCapabilities = info.surfaceCapabilities;
@@ -46,13 +47,13 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 		imageExtent.width = std::clamp(framebufferSize.first, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
 		imageExtent.height = std::clamp(framebufferSize.second, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 	}
-	Logger::logInfo(std::format("Swap extent is [{},{}]", imageExtent.width, imageExtent.height));
+	logger.logInfo(std::format("Swap extent is [{},{}]", imageExtent.width, imageExtent.height));
 
 	//Choose swapchain image count
 	uint32_t imageCount{surfaceCapabilities.minImageCount + 1};
 	if(surfaceCapabilities.maxImageCount > 0 && imageCount > surfaceCapabilities.maxImageCount)
 		imageCount = surfaceCapabilities.maxImageCount;
-	Logger::logInfo(std::format("Image count is {}", imageCount));
+	logger.logInfo(std::format("Image count is {}", imageCount));
 
 	//Create swapchain
 	vk::SharingMode sharingMode{info.graphicsIndex != info.presentationIndex ? vk::SharingMode::eConcurrent : vk::SharingMode::eExclusive};
@@ -104,7 +105,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 		if(engine.checkVulkanErrorOccured(framebuffers[i], engine.device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
 			return false;
 	}
-	Logger::logInfo("Created swapchain framebuffers");
+	logger.logInfo("Created swapchain framebuffers");
 
 	return true;
 }
@@ -122,18 +123,18 @@ bool RenderEngine::initVulkan()
 	if(checkVulkanErrorOccured(availableExtensionProperties, vk::enumerateInstanceExtensionProperties(),
 							   "", "Failed to enumerate available instance extensions"))
 		return false;
-	Logger::logInfo(std::format("{} instance extensions available:", availableExtensionProperties.size()));
+	logger.logInfo(std::format("{} instance extensions available:", availableExtensionProperties.size()));
 	for(auto const& property : availableExtensionProperties)
-		Logger::logInfo(std::format("\t{}", property.extensionName.data()));
+		logger.logInfo(std::format("\t{}", property.extensionName.data()));
 
 	//Get available instance layers
 	std::vector<vk::LayerProperties> availableLayerProperties;
 	if(checkVulkanErrorOccured(availableLayerProperties, vk::enumerateInstanceLayerProperties(),
 							   "", "Failed to enumerate available validation layers"))
 		return false;
-	Logger::logInfo(std::format("{} validation layers available:", availableLayerProperties.size()));
+	logger.logInfo(std::format("{} validation layers available:", availableLayerProperties.size()));
 	for(auto const& property : availableLayerProperties)
-		Logger::logInfo(std::format("\t{}", property.layerName.data()));
+		logger.logInfo(std::format("\t{}", property.layerName.data()));
 
 	//Define application info
 	auto applicationVersion{VK_MAKE_VERSION(Configuration::vkAppMajorVersion, Configuration::vkAppMinorVersion, Configuration::vkAppPatchVersion)};
@@ -144,9 +145,9 @@ bool RenderEngine::initVulkan()
 	std::vector<char const*> requiredLayers;
 	if constexpr(isDebugBuild)
 		requiredLayers.emplace_back("VK_LAYER_KHRONOS_validation");
-	Logger::logInfo(std::format("{} Vulkan validation layers required:", requiredLayers.size()));
+	logger.logInfo(std::format("{} Vulkan validation layers required:", requiredLayers.size()));
 	for(auto layer : requiredLayers)
-		Logger::logInfo(std::format("\t{}", layer));
+		logger.logInfo(std::format("\t{}", layer));
 
 	//Check support for required instance layers
 	std::unordered_set<std::string> layerSet;
@@ -156,7 +157,7 @@ bool RenderEngine::initVulkan()
 		layerSet.erase(property.layerName);
 	if(!layerSet.empty())
 	{
-		Logger::logError(std::format("Required layer {} not supported", *layerSet.begin()));
+		logger.logError(std::format("Required layer {} not supported", *layerSet.begin()));
 		return false;
 	}
 
@@ -164,9 +165,9 @@ bool RenderEngine::initVulkan()
 	auto requiredInstanceExtensions{window.getRequiredExtensions()};
 	if constexpr(isDebugBuild)
 		requiredInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-	Logger::logInfo(std::format("{} Vulkan instance extensions required:", requiredInstanceExtensions.size()));
+	logger.logInfo(std::format("{} Vulkan instance extensions required:", requiredInstanceExtensions.size()));
 	for(auto extension : requiredInstanceExtensions)
-		Logger::logInfo(std::format("\t{}", extension));
+		logger.logInfo(std::format("\t{}", extension));
 
 	//Check support for required instance extensions
 	std::unordered_set<std::string> extensionSet;
@@ -176,7 +177,7 @@ bool RenderEngine::initVulkan()
 		extensionSet.erase(extension.extensionName);
 	if(!extensionSet.empty())
 	{
-		Logger::logError(std::format("Required extension {} not supported", *extensionSet.begin()));
+		logger.logError(std::format("Required extension {} not supported", *extensionSet.begin()));
 		return false;
 	}
 
@@ -209,7 +210,7 @@ bool RenderEngine::initVulkan()
 	surface = vk::UniqueSurfaceKHR(window.createSurface(instance.get()), instance.get());
 	if(!surface)
 		return false;
-	Logger::logInfo("Created surface");
+	logger.logInfo("Created surface");
 
 	//Get available physical devices
 	std::vector<vk::PhysicalDevice> availablePhysicalDevices;
@@ -217,18 +218,18 @@ bool RenderEngine::initVulkan()
 		return false;
 	if(availablePhysicalDevices.empty())
 	{
-		Logger::logError("No physical device with Vulkan support found. Try updating drivers");
+		logger.logError("No physical device with Vulkan support found. Try updating drivers");
 		return false;
 	}
-	Logger::logInfo(std::format("{} physical devices available:", availablePhysicalDevices.size()));
+	logger.logInfo(std::format("{} physical devices available:", availablePhysicalDevices.size()));
 	for(auto availableDevice : availablePhysicalDevices)
-		Logger::logInfo(std::format("\t{}", availableDevice.getProperties().deviceName.data()));
+		logger.logInfo(std::format("\t{}", availableDevice.getProperties().deviceName.data()));
 
 	//Define physical device extensions
 	std::vector<char const*> requiredPhysicalDeviceExtensions{VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-	Logger::logInfo(std::format("{} physical device extensions required:", requiredPhysicalDeviceExtensions.size()));
+	logger.logInfo(std::format("{} physical device extensions required:", requiredPhysicalDeviceExtensions.size()));
 	for(auto const& extension : requiredPhysicalDeviceExtensions)
-		Logger::logInfo(std::format("\t{}", extension));
+		logger.logInfo(std::format("\t{}", extension));
 
 	//Choose best physical device
 	int32_t maxDeviceScore{0};
@@ -245,10 +246,10 @@ bool RenderEngine::initVulkan()
 	}
 	if(!physicalDevice)
 	{
-		Logger::logError("No suitable physical devices found. Try updating drivers");
+		logger.logError("No suitable physical devices found. Try updating drivers");
 		return false;
 	}
-	Logger::logInfo(std::format("Picked {} as a suitable physical device", physicalDeviceInfo.name));
+	logger.logInfo(std::format("Picked {} as a suitable physical device", physicalDeviceInfo.name));
 
 	//Define device queues
 	std::unordered_set uniqueQueueFamilyIndices{physicalDeviceInfo.graphicsIndex, physicalDeviceInfo.presentationIndex};
@@ -271,7 +272,7 @@ bool RenderEngine::initVulkan()
 	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo),
 							   "Created logical device", "Failed to create logical device"))
 		return false;
-	Logger::logInfo("Created logical device");
+	logger.logInfo("Created logical device");
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(device.get());
 
@@ -381,7 +382,7 @@ bool RenderEngine::initVulkan()
 		if(!quadDataBuffers[i].createBuffer(*this, QuadPool::getCapacity(), vk::BufferUsageFlagBits::eShaderDeviceAddress))
 			return false;
 	}
-	Logger::logInfo("Created quad data buffers");
+	logger.logInfo("Created quad data buffers");
 
 	//Allocate command buffers
 	vk::CommandBufferAllocateInfo bufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, maxFramesInFlight};
@@ -401,7 +402,7 @@ bool RenderEngine::initVulkan()
 		   checkVulkanErrorOccured(inFlightFences[i], device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
 			return false;
 	}
-	Logger::logInfo("Created synchronization objects");
+	logger.logInfo("Created synchronization objects");
 
 	return true;
 }
@@ -519,11 +520,11 @@ bool RenderEngine::checkVulkanErrorOccured(Value& value, Result result, std::str
 	if(result.result != vk::Result::eSuccess)
 	{
 		auto errorString = errorMessage.data() + ": "s + vk::to_string(result.result);
-		Logger::logError(errorString);
+		logger.logError(errorString);
 		return true;
 	}
 	else if(!successMessage.empty())
-		Logger::logInfo(successMessage);
+		logger.logInfo(successMessage);
 
 	value = std::move(result.value);
 	return false;
@@ -534,11 +535,11 @@ bool RenderEngine::checkVulkanErrorOccured(vk::Result result, std::string_view s
 	if(result != vk::Result::eSuccess)
 	{
 		auto errorString = errorMessage.data() + ": "s + vk::to_string(result);
-		Logger::logError(errorString);
+		logger.logError(errorString);
 		return true;
 	}
 	else if(!successMessage.empty())
-		Logger::logInfo(successMessage);
+		logger.logInfo(successMessage);
 
 	return false;
 }
@@ -551,10 +552,10 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 
 	deviceProperties = device.getProperties();
 	name = deviceProperties.deviceName.data();
-	Logger::logInfo(std::format("Checking {} suitability:", name));
+	logger.logInfo(std::format("Checking {} suitability:", name));
 
 	auto queueFamilyProperties = device.getQueueFamilyProperties();
-	Logger::logInfo(std::format("\t{} queue families available", queueFamilyProperties.size()));
+	logger.logInfo(std::format("\t{} queue families available", queueFamilyProperties.size()));
 
 	bool hasGraphicsQueueFamily{};
 	bool hasPresentationQueueFamily{};
@@ -564,7 +565,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 		{
 			hasGraphicsQueueFamily = true;
 			graphicsIndex = i;
-			Logger::logInfo(std::format("\tQueue family with index {} supports graphics", i));
+			logger.logInfo(std::format("\tQueue family with index {} supports graphics", i));
 		}
 
 		vk::Bool32 surfaceSupport;
@@ -574,7 +575,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 		{
 			hasPresentationQueueFamily = true;
 			presentationIndex = i;
-			Logger::logInfo(std::format("\tQueue family with index {} supports presentation", i));
+			logger.logInfo(std::format("\tQueue family with index {} supports presentation", i));
 		}
 
 		if(hasGraphicsQueueFamily && hasPresentationQueueFamily)
@@ -582,31 +583,31 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	}
 	if(!hasGraphicsQueueFamily)
 	{
-		Logger::logInfo("\tNo queue family with graphics support found");
+		logger.logInfo("\tNo queue family with graphics support found");
 		return result;
 	}
 	if(!hasPresentationQueueFamily)
 	{
-		Logger::logInfo("\tNo queue family with presentation support found");
+		logger.logInfo("\tNo queue family with presentation support found");
 		return result;
 	}
 
 	std::vector<vk::ExtensionProperties> deviceExtensions;
 	if(checkVulkanErrorOccured(deviceExtensions, device.enumerateDeviceExtensionProperties(), "", "Failed to enumerate physical device extension properties"))
 		return result;
-	Logger::logInfo(std::format("\t{} physical device extensions available:", deviceExtensions.size()));
+	logger.logInfo(std::format("\t{} physical device extensions available:", deviceExtensions.size()));
 	std::unordered_set<std::string> extensionSet;
 	for(auto extension : requiredExtensions)
 		extensionSet.insert(extension);
 	for(auto const& extension : deviceExtensions)
 	{
 		extensionSet.erase(extension.extensionName);
-		Logger::logInfo(std::format("\t\t{}", extension.extensionName.data()));
+		logger.logInfo(std::format("\t\t{}", extension.extensionName.data()));
 	}
 
 	if(!extensionSet.empty())
 	{
-		Logger::logInfo(std::format("\tRequired physical device extension {} not supported", *extensionSet.begin()));
+		logger.logInfo(std::format("\tRequired physical device extension {} not supported", *extensionSet.begin()));
 		return result;
 	}
 
@@ -623,7 +624,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 
 	if(formats.empty() || presentModes.empty())
 	{
-		Logger::logInfo("\tPhysical device doesn't support swapchain");
+		logger.logInfo("\tPhysical device doesn't support swapchain");
 		return result;
 	}
 
@@ -634,29 +635,29 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	device.getFeatures2(&features);
 	if(!features.features.shaderInt64)
 	{
-		Logger::logInfo("\tPhysical device doesn't support 64 bit integers");
+		logger.logInfo("\tPhysical device doesn't support 64 bit integers");
 		return result;
 	}
 	if(!features.features.samplerAnisotropy)
 	{
-		Logger::logInfo("\tPhysical device doesn't support anisotropic filtering");
+		logger.logInfo("\tPhysical device doesn't support anisotropic filtering");
 		return result;
 	}
 	if(!features12.scalarBlockLayout)
 	{
-		Logger::logInfo("\tPhysical device doesn't support scalar block layout");
+		logger.logInfo("\tPhysical device doesn't support scalar block layout");
 		return result;
 	}
 	if(!features12.bufferDeviceAddress)
 	{
-		Logger::logInfo("\tPhysical device doesn't support buffer device address");
+		logger.logInfo("\tPhysical device doesn't support buffer device address");
 		return result;
 	}
 
 	result.first = 0;
 	if(deviceProperties.deviceType == vk::PhysicalDeviceType::eDiscreteGpu)
 		result.first++;
-	Logger::logInfo(std::format("\tPhysical device is a {}", vk::to_string(deviceProperties.deviceType)));
+	logger.logInfo(std::format("\tPhysical device is a {}", vk::to_string(deviceProperties.deviceType)));
 
 	return result;
 }
@@ -673,7 +674,7 @@ int32_t RenderEngine::getMemoryType(vk::MemoryRequirements const& requirements, 
 		}
 	}
 	if(selectedMemoryType == -1)
-		Logger::logError("Failed to find suitable memory type for buffer");
+		logger.logError("Failed to find suitable memory type for buffer");
 
 	return selectedMemoryType;
 }
@@ -685,7 +686,7 @@ vk::UniqueShaderModule RenderEngine::createShaderModule(std::string_view shaderF
 
 	if(!shaderFile)
 	{
-		Logger::logError(std::format("Failed to open shader file {}", shaderFileName.data()));
+		logger.logError(std::format("Failed to open shader file {}", shaderFileName.data()));
 		return result;
 	}
 
@@ -738,7 +739,7 @@ bool RenderEngine::BufferResources<T>::createBuffer(RenderEngine const& engine, 
 		bufferAddress = engine.device->getBufferAddress(deviceAddressInfo);
 		if(!bufferAddress)
 		{
-			Logger::logError("Failed to get buffer address");
+			logger.logError("Failed to get buffer address");
 			return false;
 		}
 	}
@@ -847,9 +848,9 @@ VKAPI_ATTR VkBool32 VKAPI_CALL RenderEngine::debugCallback(VkDebugUtilsMessageSe
 														   void* pUserData)
 {
 	if(messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
-		Logger::logInfo(std::format("{}", pCallbackData->pMessage));
+		logger.logInfo(std::format("{}", pCallbackData->pMessage));
 	else if(messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
-		Logger::logError(std::format("{}", pCallbackData->pMessage));
+		logger.logError(std::format("{}", pCallbackData->pMessage));
 
 	return VK_FALSE;
 }

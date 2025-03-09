@@ -1,7 +1,7 @@
 export module Player;
 
-export import Constants;
 export import PhysicsComponent;
+export import QuadPool;
 
 export class Player : public PhysicsComponent
 {

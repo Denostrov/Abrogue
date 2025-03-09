@@ -1,6 +1,6 @@
 import GUI;
 
-import Game;
+import GameSystems;
 
 void GUI::init()
 {
@@ -46,5 +46,5 @@ void GUI::setFPS(std::uint32_t fps)
 void GUI::onButtonPressed(ButtonType type)
 {
 	if(type == eStartGame)
-		Game::startGame();
+		game.startGame();
 }

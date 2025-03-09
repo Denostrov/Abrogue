@@ -20,38 +20,37 @@ public:
 		ePaused
 	};
 
-	static bool init();
-	static void release();
-	static bool update();
+	bool init();
+	bool update();
 
-	static void startGame();
+	void startGame();
 
-	static void onKeyPressed(SDL_Scancode scanCode) { pressedButtons[scanCode] = true; }
-	static void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
+	void onKeyPressed(SDL_Scancode scanCode) { pressedButtons[scanCode] = true; }
+	void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
 
-	static void onMousePressed(float x, float y);
+	void onMousePressed(float x, float y);
 
-	static std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
-	static bool getTileSolid(std::uint32_t x, std::uint32_t y) { return map.getTileExists(x, y); }
+	std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
+	bool getTileSolid(std::uint32_t x, std::uint32_t y) { return map.getTileExists(x, y); }
 
 private:
-	static void initDraw();
-	static bool updateDraw(double deltaTime);
+	void initDraw();
+	bool updateDraw(double deltaTime);
 
-	inline static RenderEngine renderEngine;
+	RenderEngine renderEngine;
 
-	inline static uint64_t lastUpdateTime{};
+	uint64_t lastUpdateTime{};
 
-	inline static uint64_t framesDrawn{};
-	inline static uint64_t lastFPSLogTime{};
+	uint64_t framesDrawn{};
+	uint64_t lastFPSLogTime{};
 
-	inline static State state{};
+	State state{};
 
-	inline static Map map;
-	inline static Player player;
-	inline static std::vector<Enemy> enemies;
+	Map map;
+	Player player;
+	std::vector<Enemy> enemies;
 
-	inline static GUI gui;
+	GUI gui;
 
-	inline static std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
+	std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };

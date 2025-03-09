@@ -2,7 +2,6 @@ export module PhysicsComponent;
 
 export import std;
 export import Constants;
-export import ObjectPools;
 
 export class PhysicsComponent
 {

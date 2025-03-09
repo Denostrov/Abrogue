@@ -2,7 +2,9 @@ module;
 
 #include <glm/glm.hpp>
 
-module ObjectPools;
+module QuadPool;
+
+import GameSystems;
 
 QuadPool::Reference::~Reference()
 {
@@ -11,6 +13,8 @@ QuadPool::Reference::~Reference()
 	std::swap(data[index], data[data.size() - 1]);
 	data.pop_back();
 
+	references[references.size() - 1]->index = index;
+
 	std::swap(references[index], references[references.size() - 1]);
 	references.pop_back();
 }
@@ -18,9 +22,9 @@ QuadPool::Reference::~Reference()
 QuadPool::Reference& QuadPool::Reference::operator=(QuadPool::Reference&& rhs)
 {
 	if(index != -1 && rhs.index != -1)
-		std::swap(QuadPool::references[index], QuadPool::references[rhs.index]);
+		std::swap(references[index], references[rhs.index]);
 	else if(rhs.index != -1)
-		QuadPool::references[rhs.index] = this;
+		references[rhs.index] = this;
 
 	std::swap(index, rhs.index);
 	return *this;
@@ -28,21 +32,21 @@ QuadPool::Reference& QuadPool::Reference::operator=(QuadPool::Reference&& rhs)
 
 void QuadPool::Reference::setPosition(glm::vec2 position) const
 {
-	assert(index != -1);
+	logger.extraAssert(index != -1, "Set position of invalid quad reference");
 
 	data[index].position = position;
 }
 
 void QuadPool::Reference::setGlyph(std::uint8_t glyph) const
 {
-	assert(index != -1);
+	logger.extraAssert(index != -1, "Set glyph of invalid quad reference");
 
 	data[index].glyph = glyph;
 }
 
 QuadPool::Reference QuadPool::insert(QuadData const& newData)
 {
-	assert(data.size() < capacity);
+	logger.extraAssert(data.size() < capacity, "Inserted quad into full quad pool");
 
 	Reference result{data.size()};
 	data.emplace_back(newData);
@@ -51,13 +55,13 @@ QuadPool::Reference QuadPool::insert(QuadData const& newData)
 	return result;
 }
 
-void QuadPool::init()
+void QuadPool::prepare()
 {
 	data.reserve(8192);
 	references.reserve(8192);
 }
 
-void QuadPool::release()
+void QuadPool::clear()
 {
 	for(auto reference : references) reference->index = -1;
 

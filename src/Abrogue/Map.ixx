@@ -1,6 +1,6 @@
 export module Map;
 
-export import ObjectPools;
+export import QuadPool;
 
 export class Map
 {

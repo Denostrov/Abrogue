@@ -4,12 +4,11 @@ module;
 
 module Configuration;
 
-import Logger;
-import std;
+import GameSystems;
 
 using namespace std::literals;
 
-bool Configuration::init()
+bool Configuration::load()
 {
 	auto configFile = std::ifstream(configFileName.data() + ".json"s, std::ios::in | std::ios::binary);
 	if(!configFile)
@@ -50,7 +49,7 @@ bool Configuration::saveToFile()
 	std::ofstream configFile(configFileName.data() + ".json"s, std::ios::out | std::ios::binary);
 	if(!configFile)
 	{
-		Logger::logError("Couldn't create config file, check if game folder needs admin permissions");
+		logger.logError("Couldn't create config file, check if game folder needs admin permissions");
 		return false;
 	}
 

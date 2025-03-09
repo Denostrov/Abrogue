@@ -1,6 +1,6 @@
 module Enemy;
 
-import Game;
+import GameSystems;
 
 Enemy::Enemy(std::uint8_t type):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0.48)
 {
@@ -15,7 +15,7 @@ Enemy::Enemy(std::uint8_t type):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0
 
 void Enemy::update()
 {
-	auto [playerX, playerY] = Game::getPlayerPosition();
+	auto [playerX, playerY] = game.getPlayerPosition();
 	auto [x, y] = getPosition();
 
 	setMovementX(playerX > x ? 1 : -1);

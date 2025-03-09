@@ -9,7 +9,7 @@ module;
 export module RenderEngine;
 
 export import RenderWindow;
-export import ObjectPools;
+export import QuadPool;
 export import Configuration;
 export import Logger;
 

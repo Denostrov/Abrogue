@@ -1,6 +1,7 @@
 export module Enemy;
 
 export import PhysicsComponent;
+export import QuadPool;
 
 export class Enemy : public PhysicsComponent
 {

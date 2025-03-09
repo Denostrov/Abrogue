@@ -2,7 +2,7 @@ module;
 
 #include <glm/glm.hpp>
 
-export module ObjectPools;
+export module QuadPool;
 
 export import Constants;
 
@@ -55,8 +55,8 @@ public:
 	[[nodiscard]] static auto getCapacity() { return capacity; }
 
 private:
-	static void init();
-	static void release();
+	static void prepare();
+	static void clear();
 
 	static constexpr size_t capacity{8192};
 

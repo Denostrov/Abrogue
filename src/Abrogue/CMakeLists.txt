@@ -7,7 +7,7 @@ add_executable(${PROJECT_NAME}
 	"RenderEngine.cpp" 
 	"RenderWindow.cpp" 
 	"PhysicsComponent.cpp" 
-	"Enemy.cpp" "Game.cpp" "Map.cpp" "Player.cpp" "ObjectPools.cpp" "gui/GUI.cpp")
+	"Enemy.cpp" "Game.cpp" "Map.cpp" "Player.cpp" "QuadPool.cpp" "gui/GUI.cpp" "gui/Label.cpp")
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES 
 	${STANDARD_MODULE_PATH} 
 	"helpers/Configuration.ixx" 
@@ -21,8 +21,8 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 	"Enemy.ixx" 
 
 	"Game.ixx" 
-	"ObjectPools.ixx" 
-	"Player.ixx" "Map.ixx" "gui/Label.ixx" "gui/GUI.ixx" "gui/Button.ixx" "helpers/Event.ixx")
+	"QuadPool.ixx" 
+	"Player.ixx" "Map.ixx" "gui/Label.ixx" "gui/GUI.ixx" "gui/Button.ixx" "helpers/Event.ixx" "GameSystems.ixx")
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})

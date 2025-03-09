@@ -4,14 +4,16 @@ module;
 
 module Game;
 
+import GameSystems;
+
 bool Game::init()
 {
-	QuadPool::init();
+	QuadPool::prepare();
 
-	if(!Logger::init())
+	if(!logger.openFiles())
 		return false;
 
-	if(!Configuration::init())
+	if(!configuration.load())
 		return false;
 
 	if(!renderEngine.initVulkan())
@@ -24,11 +26,6 @@ bool Game::init()
 	gui.showStartMenu();
 
 	return true;
-}
-
-void Game::release()
-{
-	QuadPool::release();
 }
 
 bool Game::update()
@@ -52,7 +49,7 @@ bool Game::update()
 		if(updateCount > 4)
 		{
 			lastUpdateTime = currentTime;
-			Logger::logInfo("Can't keep up, skipping ticks");
+			logger.logInfo("Can't keep up, skipping ticks");
 			break;
 		}
 	}

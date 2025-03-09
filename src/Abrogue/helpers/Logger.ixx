@@ -5,16 +5,18 @@ export import Configuration;
 export class Logger
 {
 public:
-	static bool init();
+	void logError(std::string_view message);
+	void logInfo(std::string_view message);
 
-	static void logError(std::string_view message);
-	static void logInfo(std::string_view message);
-
-	static void assert(bool condition, std::string_view message);
+	void extraAssert(bool condition, std::string_view message);
 
 private:
-	static void displayErrorMessage(std::string_view message);
+	bool openFiles();
 
-	inline static std::ofstream infoLog;
-	inline static std::ofstream errorLog;
+	void displayErrorMessage(std::string_view message);
+
+	std::ofstream infoLog;
+	std::ofstream errorLog;
+
+	friend class Game;
 };
