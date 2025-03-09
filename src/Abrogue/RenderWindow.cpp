@@ -10,55 +10,47 @@ import Logger;
 
 using namespace std::literals;
 
-RenderWindow::RenderWindow()
+bool RenderWindow::initSDL()
 {
-	auto checkErrorOccured = [this](bool checkValue, std::string_view errorStr)
-	{
-		if(!checkValue)
-			return false;
-
-		hasError = true;
-		Logger::logError(errorStr);
-		return true;
-	};
-
 	auto fullAppName = Configuration::appName.data() + " "s + Configuration::appVersion.data();
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_NAME_STRING, fullAppName.c_str())))
-		return;
+		return false;
 
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_VERSION_STRING, Configuration::appVersion.data())))
-		return;
+		return false;
 
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_IDENTIFIER_STRING, Configuration::appIdentifier.data())))
-		return;
+		return false;
 
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_CREATOR_STRING, Configuration::appCreator.data())))
-		return;
+		return false;
 
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_COPYRIGHT_STRING, Configuration::appCopyright.data())))
-		return;
+		return false;
 
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_URL_STRING, Configuration::appURL.data())))
-		return;
+		return false;
 
 	if(checkSDLErrorOccured(!SDL_SetAppMetadataProperty(SDL_PROP_APP_METADATA_TYPE_STRING, Configuration::appType.data())))
-		return;
+		return false;
 
 	if(checkSDLErrorOccured(!SDL_Init(SDL_INIT_VIDEO)))
-		return;
+		return false;
 
 	window = SDL_CreateWindow(fullAppName.c_str(), Configuration::getWindowWidth(), Configuration::getWindowHeight(), SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
 	if(checkSDLErrorOccured(!window))
-		return;
+		return false;
 
 	uint32_t extensionCount{};
 	auto extensionsArray = SDL_Vulkan_GetInstanceExtensions(&extensionCount);
 	if(checkSDLErrorOccured(!extensionsArray))
-		return;
+		return false;
 
 	requiredExtensions.reserve(extensionCount);
 	for(uint32_t i{}; i < extensionCount; i++)
 		requiredExtensions.emplace_back(extensionsArray[i]);
+
+	return true;
 }
 
 RenderWindow::~RenderWindow()
@@ -66,7 +58,8 @@ RenderWindow::~RenderWindow()
 	if(window)
 		SDL_DestroyWindow(window);
 
-	SDL_Quit();
+	if(SDL_WasInit(SDL_INIT_VIDEO))
+		SDL_QuitSubSystem(SDL_INIT_VIDEO);
 }
 
 VkSurfaceKHR RenderWindow::createSurface(VkInstance instance)
@@ -81,7 +74,7 @@ VkSurfaceKHR RenderWindow::createSurface(VkInstance instance)
 std::pair<uint32_t, uint32_t> RenderWindow::getFramebufferSize() const
 {
 	int width{}, height{};
-	SDL_GetWindowSizeInPixels(window, &width, &height); 
+	SDL_GetWindowSizeInPixels(window, &width, &height);
 	return {width, height};
 }
 
@@ -89,8 +82,6 @@ bool RenderWindow::checkSDLErrorOccured(bool checkValue)
 {
 	if(!checkValue)
 		return false;
-
-	hasError = true;
 
 	std::string errorString = SDL_GetError();
 	SDL_ClearError();

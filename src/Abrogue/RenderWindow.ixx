@@ -10,12 +10,12 @@ export import std;
 export class RenderWindow
 {
 public:
-	RenderWindow();
+	RenderWindow() = default;
 	~RenderWindow();
 
-	[[nodiscard]] VkSurfaceKHR createSurface(VkInstance instance);
+	bool initSDL();
 
-	[[nodiscard]] auto getHasError() const { return hasError; }
+	[[nodiscard]] VkSurfaceKHR createSurface(VkInstance instance);
 
 	[[nodiscard]] auto const& getRequiredExtensions() const { return requiredExtensions; }
 	[[nodiscard]] std::pair<uint32_t, uint32_t> getFramebufferSize() const;
@@ -23,9 +23,6 @@ public:
 private:
 	bool checkSDLErrorOccured(bool checkValue);
 
-	bool hasError{};
-	SDL_Window* window{};
+	SDL_Window* window;
 	std::vector<char const*> requiredExtensions{};
 };
-
-

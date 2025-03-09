@@ -30,7 +30,8 @@ export class RenderEngine
 	{
 	public:
 		SwapchainResources() = default;
-		SwapchainResources(RenderEngine const& engine);
+
+		bool createSwapchain(RenderEngine const& engine);
 
 		vk::UniqueSwapchainKHR swapchain;
 		std::vector<vk::Image> images;
@@ -46,7 +47,8 @@ export class RenderEngine
 	{
 	public:
 		BufferResources() = default;
-		BufferResources(RenderEngine const& engine, uint32_t size, vk::BufferUsageFlags usage);
+
+		bool createBuffer(RenderEngine const& engine, uint32_t size, vk::BufferUsageFlags usage);
 
 		vk::UniqueBuffer buffer;
 		vk::UniqueDeviceMemory bufferMemory;
@@ -58,7 +60,8 @@ export class RenderEngine
 	{
 	public:
 		TextureResources() = default;
-		TextureResources(RenderEngine const& engine, std::string_view filePath);
+
+		bool createTexture(RenderEngine const& engine, std::string_view filePath);
 
 		vk::UniqueImage image;
 		vk::UniqueDeviceMemory imageMemory;
@@ -88,14 +91,14 @@ export class RenderEngine
 	};
 
 public:
-	RenderEngine();
+	RenderEngine() = default;
 	~RenderEngine();
+
+	bool initVulkan();
 
 	bool drawFrame();
 
 	std::pair<uint32_t, uint32_t> getFramebufferSize() const { return window.getFramebufferSize(); };
-
-	auto getHasError() const { return hasError; }
 
 private:
 	bool recreateSwapchain();
@@ -117,11 +120,10 @@ private:
 														const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
 														void* pUserData);
 
-	mutable bool hasError{};
-
 	static constexpr uint32_t maxFramesInFlight{2};
 
 	RenderWindow window;
+	vk::detail::DynamicLoader dynamicLoader;
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugMessenger;
 	vk::UniqueSurfaceKHR surface;

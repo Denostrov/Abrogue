@@ -38,7 +38,7 @@ private:
 	static void initDraw();
 	static bool updateDraw(double deltaTime);
 
-	inline static std::unique_ptr<RenderEngine> renderEngine;
+	inline static RenderEngine renderEngine;
 
 	inline static uint64_t lastUpdateTime{};
 

@@ -14,8 +14,7 @@ bool Game::init()
 	if(!Configuration::init())
 		return false;
 
-	renderEngine = std::make_unique<RenderEngine>();
-	if(renderEngine->getHasError())
+	if(!renderEngine.initVulkan())
 		return false;
 
 	lastUpdateTime = SDL_GetTicksNS();
@@ -29,8 +28,6 @@ bool Game::init()
 
 void Game::release()
 {
-	renderEngine.reset();
-
 	QuadPool::release();
 }
 
@@ -89,7 +86,7 @@ void Game::startGame()
 
 void Game::onMousePressed(float x, float y)
 {
-	auto [width, height] = renderEngine->getFramebufferSize();
+	auto [width, height] = renderEngine.getFramebufferSize();
 	gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
 }
 
@@ -136,5 +133,5 @@ bool Game::updateDraw(double deltaTime)
 		}
 	}
 
-	return renderEngine->drawFrame();
+	return renderEngine.drawFrame();
 }
