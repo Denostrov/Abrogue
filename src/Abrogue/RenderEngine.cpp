@@ -137,8 +137,8 @@ bool RenderEngine::initVulkan()
 		logger.logInfo(std::format("\t{}", property.layerName.data()));
 
 	//Define application info
-	auto applicationVersion{VK_MAKE_VERSION(Configuration::vkAppMajorVersion, Configuration::vkAppMinorVersion, Configuration::vkAppPatchVersion)};
-	vk::ApplicationInfo applicationInfo{Configuration::appName.data(), applicationVersion, Configuration::appName.data(),
+	auto applicationVersion{VK_MAKE_VERSION(Constants::vkAppMajorVersion, Constants::vkAppMinorVersion, Constants::vkAppPatchVersion)};
+	vk::ApplicationInfo applicationInfo{Constants::appName.data(), applicationVersion, Constants::appName.data(),
 		applicationVersion, VK_API_VERSION_1_4};
 
 	//Define required instance layers
@@ -379,7 +379,7 @@ bool RenderEngine::initVulkan()
 
 	for(uint64_t i{0}; i < quadDataBuffers.size(); i++)
 	{
-		if(!quadDataBuffers[i].createBuffer(*this, QuadPool::getCapacity(), vk::BufferUsageFlagBits::eShaderDeviceAddress))
+		if(!quadDataBuffers[i].createBuffer(*this, quadPool.getCapacity(), vk::BufferUsageFlagBits::eShaderDeviceAddress))
 			return false;
 	}
 	logger.logInfo("Created quad data buffers");
@@ -435,7 +435,7 @@ bool RenderEngine::drawFrame()
 	if(!recordCommandBuffer(commandBuffers[currentFrameIndex], imageIndex))
 		return false;
 
-	memcpy(quadDataBuffers[currentFrameIndex].data, QuadPool::getData(), sizeof(QuadData) * QuadPool::getSize());
+	memcpy(quadDataBuffers[currentFrameIndex].data, quadPool.getData(), sizeof(QuadData) * quadPool.getSize());
 
 	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrameIndex].get(), waitStage, commandBuffers[currentFrameIndex], renderFinishedSemaphores[currentFrameIndex].get());
@@ -504,7 +504,7 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 	commandBuffer.pushConstants<PushConstantsBlock>(pipelineLayout.get(), vk::ShaderStageFlagBits::eVertex, 0u, pushConstants);
 
 	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout.get(), 0, descriptorSets[currentFrameIndex], {});
-	commandBuffer.draw(4, QuadPool::getSize(), 0, 0);
+	commandBuffer.draw(4, quadPool.getSize(), 0, 0);
 
 	commandBuffer.endRenderPass();
 

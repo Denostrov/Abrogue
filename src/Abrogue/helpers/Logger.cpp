@@ -4,12 +4,14 @@ module;
 
 module Logger;
 
+import Constants;
+
 using namespace std::literals;
 
 bool Logger::openFiles()
 {
-	infoLog.open(Configuration::infoLogFileName.data() + ".txt"s, std::ios::binary | std::ios::out | std::ios::trunc);
-	errorLog.open(Configuration::errorLogFileName.data() + ".txt"s, std::ios::binary | std::ios::out | std::ios::trunc);
+	infoLog.open(Constants::infoLogFileName.data() + ".txt"s, std::ios::binary | std::ios::out | std::ios::trunc);
+	errorLog.open(Constants::errorLogFileName.data() + ".txt"s, std::ios::binary | std::ios::out | std::ios::trunc);
 	if(!infoLog || !errorLog)
 	{
 		displayErrorMessage("Couldn't create log file, check if game folder needs admin permissions");

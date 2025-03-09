@@ -1,6 +1,6 @@
 export module Logger;
 
-export import Configuration;
+export import std;
 
 export class Logger
 {

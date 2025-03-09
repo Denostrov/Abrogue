@@ -10,21 +10,21 @@ QuadPool::Reference::~Reference()
 {
 	if(index == -1) return;
 
-	std::swap(data[index], data[data.size() - 1]);
-	data.pop_back();
+	std::swap(quadPool.data[index], quadPool.data[quadPool.data.size() - 1]);
+	quadPool.data.pop_back();
 
-	references[references.size() - 1]->index = index;
+	quadPool.references[quadPool.references.size() - 1]->index = index;
 
-	std::swap(references[index], references[references.size() - 1]);
-	references.pop_back();
+	std::swap(quadPool.references[index], quadPool.references[quadPool.references.size() - 1]);
+	quadPool.references.pop_back();
 }
 
 QuadPool::Reference& QuadPool::Reference::operator=(QuadPool::Reference&& rhs)
 {
 	if(index != -1 && rhs.index != -1)
-		std::swap(references[index], references[rhs.index]);
+		std::swap(quadPool.references[index], quadPool.references[rhs.index]);
 	else if(rhs.index != -1)
-		references[rhs.index] = this;
+		quadPool.references[rhs.index] = this;
 
 	std::swap(index, rhs.index);
 	return *this;
@@ -34,14 +34,14 @@ void QuadPool::Reference::setPosition(glm::vec2 position) const
 {
 	logger.extraAssert(index != -1, "Set position of invalid quad reference");
 
-	data[index].position = position;
+	quadPool.data[index].position = position;
 }
 
 void QuadPool::Reference::setGlyph(std::uint8_t glyph) const
 {
 	logger.extraAssert(index != -1, "Set glyph of invalid quad reference");
 
-	data[index].glyph = glyph;
+	quadPool.data[index].glyph = glyph;
 }
 
 QuadPool::Reference QuadPool::insert(QuadData const& newData)
@@ -59,12 +59,4 @@ void QuadPool::prepare()
 {
 	data.reserve(8192);
 	references.reserve(8192);
-}
-
-void QuadPool::clear()
-{
-	for(auto reference : references) reference->index = -1;
-
-	data.clear();
-	references.clear();
 }

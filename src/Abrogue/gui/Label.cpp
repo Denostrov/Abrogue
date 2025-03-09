@@ -1,6 +1,6 @@
 module Label;
 
-import Game;
+import GameSystems;
 
 void Label::setText(std::string_view text)
 {
@@ -9,7 +9,7 @@ void Label::setText(std::string_view text)
 	quadReferences.reserve(size);
 	for(size_t i = quadReferences.size(); i < size; i++)
 	{
-		quadReferences.emplace_back(QuadPool::insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y}, 1.0f,
+		quadReferences.emplace_back(quadPool.insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y}, 1.0f,
 													 {QuadData::packColor(255, 255, 255, 255), QuadData::packColor(255, 255, 255, 0)}, (uint32_t)text[i]}));
 	}
 

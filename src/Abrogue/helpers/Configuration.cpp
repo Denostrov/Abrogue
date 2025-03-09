@@ -10,7 +10,7 @@ using namespace std::literals;
 
 bool Configuration::load()
 {
-	auto configFile = std::ifstream(configFileName.data() + ".json"s, std::ios::in | std::ios::binary);
+	auto configFile = std::ifstream(Constants::configFileName.data() + ".json"s, std::ios::in | std::ios::binary);
 	if(!configFile)
 		return saveToFile();
 
@@ -46,7 +46,7 @@ bool Configuration::saveToFile()
 	configJSON["windowWidth"] = windowWidth;
 	configJSON["windowHeight"] = windowHeight;
 
-	std::ofstream configFile(configFileName.data() + ".json"s, std::ios::out | std::ios::binary);
+	std::ofstream configFile(Constants::configFileName.data() + ".json"s, std::ios::out | std::ios::binary);
 	if(!configFile)
 	{
 		logger.logError("Couldn't create config file, check if game folder needs admin permissions");

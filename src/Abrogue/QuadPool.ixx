@@ -48,20 +48,19 @@ public:
 		friend class QuadPool;
 	};
 
-	[[nodiscard]] static Reference insert(QuadData const& newData);
+	[[nodiscard]] Reference insert(QuadData const& newData);
 
-	[[nodiscard]] static auto const getData() { return data.data(); }
-	[[nodiscard]] static auto getSize() { return data.size(); }
-	[[nodiscard]] static auto getCapacity() { return capacity; }
+	[[nodiscard]] auto const getData() { return data.data(); }
+	[[nodiscard]] auto getSize() { return data.size(); }
+	[[nodiscard]] auto getCapacity() { return capacity; }
 
 private:
-	static void prepare();
-	static void clear();
+	void prepare();
 
 	static constexpr size_t capacity{8192};
 
-	inline static std::vector<QuadData> data;
-	inline static std::vector<Reference*> references;
+	std::vector<QuadData> data;
+	std::vector<Reference*> references;
 
 	friend class Game;
 };

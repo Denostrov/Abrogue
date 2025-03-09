@@ -8,7 +8,7 @@ import GameSystems;
 
 bool Game::init()
 {
-	QuadPool::prepare();
+	quadPool.prepare();
 
 	if(!logger.openFiles())
 		return false;
