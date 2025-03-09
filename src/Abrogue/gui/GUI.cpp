@@ -1,5 +1,7 @@
 import GUI;
 
+import Game;
+
 void GUI::init()
 {
 	buttons[eStartGame].setPosition(120, 30);
@@ -25,9 +27,24 @@ void GUI::startGame()
 	hungerLabel.setText("Nutrition");
 }
 
+void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
+{
+	for(size_t i = 0; i < buttons.size(); i++)
+	{
+		if(buttons[i].checkCollision(x, y))
+			onButtonPressed((ButtonType)i);
+	}
+}
+
 void GUI::setFPS(std::uint32_t fps)
 {
 	std::array<char, 16> fpsString{"FPS:"};
 	std::to_chars(fpsString.data() + 4, fpsString.data() + 14, fps);
 	fpsLabel.setText(fpsString.data());
+}
+
+void GUI::onButtonPressed(ButtonType type)
+{
+	if(type == eStartGame)
+		Game::startGame();
 }

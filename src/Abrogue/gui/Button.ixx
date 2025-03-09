@@ -27,7 +27,12 @@ public:
 
 	bool checkCollision(std::uint32_t x, std::uint32_t y)
 	{
+		auto [labelX, labelY] = label.getPosition();
+		auto size = label.getSize();
+		if(labelX <= x && x < labelX + size && labelY <= y && y < labelY + 1)
+			return true;
 
+		return false;
 	}
 
 private:

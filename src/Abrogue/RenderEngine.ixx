@@ -93,6 +93,8 @@ public:
 
 	bool drawFrame();
 
+	std::pair<uint32_t, uint32_t> getFramebufferSize() const { return window.getFramebufferSize(); };
+
 	auto getHasError() const { return hasError; }
 
 private:

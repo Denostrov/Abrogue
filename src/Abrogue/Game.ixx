@@ -24,10 +24,12 @@ public:
 	static void release();
 	static bool update();
 
+	static void startGame();
+
 	static void onKeyPressed(SDL_Scancode scanCode) { pressedButtons[scanCode] = true; }
 	static void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
 
-	static void onMousePressed(float x, float y) {}
+	static void onMousePressed(float x, float y);
 
 	static std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
 	static bool getTileSolid(std::uint32_t x, std::uint32_t y) { return map.getTileExists(x, y); }

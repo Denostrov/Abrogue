@@ -49,6 +49,9 @@ public:
 		}
 	}
 
+	auto getPosition() const { return std::pair{x, y}; }
+	auto getSize() const { return size; }
+
 private:
 	std::uint32_t x{}, y{};
 	std::size_t size{};

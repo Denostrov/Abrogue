@@ -24,11 +24,6 @@ bool Game::init()
 	gui.init();
 	gui.showStartMenu();
 
-	//map = Map(Constants::mapWidth, Constants::mapHeight);
-	//player = Player(10.0);
-
-	//initDraw();
-
 	return true;
 }
 
@@ -80,6 +75,22 @@ bool Game::update()
 	}
 
 	return true;
+}
+
+void Game::startGame()
+{
+	map = Map(Constants::mapWidth, Constants::mapHeight);
+	player = Player(10.0);
+
+	initDraw();
+
+	state = eRunning;
+}
+
+void Game::onMousePressed(float x, float y)
+{
+	auto [width, height] = renderEngine->getFramebufferSize();
+	gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
 }
 
 void Game::initDraw()

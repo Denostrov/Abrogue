@@ -25,6 +25,8 @@ public:
 	void setFPS(std::uint32_t fps);
 
 private:
+	void onButtonPressed(ButtonType type);
+
 	std::array<Button, COUNT> buttons;
 
 	Label fpsLabel;
