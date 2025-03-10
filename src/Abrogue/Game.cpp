@@ -25,6 +25,8 @@ bool Game::init()
 	gui.init();
 	gui.showStartMenu();
 
+	resetTickTimer();
+
 	return true;
 }
 
@@ -37,11 +39,16 @@ bool Game::update()
 	uint64_t updateCount{};
 	while(currentTime - lastUpdateTime > Constants::tickDurationNS)
 	{
-		player.update();
+		if(state == eRunning)
+		{
+			currentTick++;
 
-		if(lastUpdateTime / 5000000000 > enemies.size())
-			enemies.emplace_back(48 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 80.0);
-		for(auto& enemy : enemies) enemy.update();
+			player.update();
+
+			if(currentTick / (Constants::ticksPerSecond * 5) > enemies.size())
+				enemies.emplace_back(48 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 80.0);
+			for(auto& enemy : enemies) enemy.update();
+		}
 
 		lastUpdateTime += Constants::tickDurationNS;
 
@@ -79,12 +86,53 @@ void Game::startGame()
 	initDraw();
 
 	state = eRunning;
+
+	resetTickTimer();
+}
+
+void Game::pauseGame()
+{
+	state = ePaused;
+	gui.pauseGame();
+}
+
+void Game::resumeGame()
+{
+	state = eRunning;
+	gui.resumeGame();
+}
+
+void Game::quitToMenu()
+{
+	state = eNotStarted;
+	map = Map();
+	player = Player();
+	enemies.clear();
+}
+
+void Game::onKeyPressed(SDL_Scancode scanCode)
+{
+	if(scanCode == SDL_SCANCODE_ESCAPE)
+	{
+		if(state == eRunning)
+			pauseGame();
+		else if(state == ePaused)
+			resumeGame();
+	}
+
+	pressedButtons[scanCode] = true;
 }
 
 void Game::onMousePressed(float x, float y)
 {
 	auto [width, height] = renderEngine.getFramebufferSize();
 	gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
+}
+
+void Game::resetTickTimer()
+{
+	lastUpdateTime = SDL_GetTicksNS();
+	currentTick = 0;
 }
 
 void Game::initDraw()

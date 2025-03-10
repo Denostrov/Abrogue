@@ -5,6 +5,8 @@ import GameSystems;
 void GUI::init()
 {
 	buttons[eStartGame].setPosition(120, 30);
+	buttons[eResume].setPosition(0, 2);
+	buttons[eQuitToMenu].setPosition(0, 3);
 
 	fpsLabel.setPosition(0, 0);
 	healthLabel.setPosition(0, 1);
@@ -27,6 +29,18 @@ void GUI::startGame()
 	hungerLabel.setText("Nutrition");
 }
 
+void GUI::pauseGame()
+{
+	buttons[eResume].setText("Resume");
+	buttons[eQuitToMenu].setText("Quit to menu");
+}
+
+void GUI::resumeGame()
+{
+	buttons[eResume].clear();
+	buttons[eQuitToMenu].clear();
+}
+
 void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 {
 	for(size_t i = 0; i < buttons.size(); i++)
@@ -47,4 +61,8 @@ void GUI::onButtonPressed(ButtonType type)
 {
 	if(type == eStartGame)
 		game.startGame();
+	else if(type == eResume)
+		game.resumeGame();
+	else if(type == eQuitToMenu)
+		game.quitToMenu();
 }

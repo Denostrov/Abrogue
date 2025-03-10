@@ -25,7 +25,11 @@ public:
 
 	void startGame();
 
-	void onKeyPressed(SDL_Scancode scanCode) { pressedButtons[scanCode] = true; }
+	void pauseGame();
+	void resumeGame();
+	void quitToMenu();
+
+	void onKeyPressed(SDL_Scancode scanCode);
 	void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
 
 	void onMousePressed(float x, float y);
@@ -34,11 +38,14 @@ public:
 	bool getTileSolid(std::uint32_t x, std::uint32_t y) { return map.getTileExists(x, y); }
 
 private:
+	void resetTickTimer();
+
 	void initDraw();
 	bool updateDraw(double deltaTime);
 
 	RenderEngine renderEngine;
 
+	uint64_t currentTick{};
 	uint64_t lastUpdateTime{};
 
 	uint64_t framesDrawn{};

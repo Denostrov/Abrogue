@@ -8,8 +8,8 @@ public:
 	enum ButtonType
 	{
 		eStartGame,
-		eContinue,
-		eExit,
+		eResume,
+		eQuitToMenu,
 		COUNT
 	};
 
@@ -19,6 +19,9 @@ public:
 
 	void showStartMenu();
 	void startGame();
+
+	void pauseGame();
+	void resumeGame();
 
 	void onMousePressed(std::uint32_t x, std::uint32_t y);
 

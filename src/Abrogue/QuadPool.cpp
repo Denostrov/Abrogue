@@ -13,7 +13,8 @@ QuadPool::Reference::~Reference()
 	std::swap(quadPool.data[index], quadPool.data[quadPool.data.size() - 1]);
 	quadPool.data.pop_back();
 
-	quadPool.references[quadPool.references.size() - 1]->index = index;
+	if(index != quadPool.references.size() - 1)
+		quadPool.references[quadPool.references.size() - 1]->index = index;
 
 	std::swap(quadPool.references[index], quadPool.references[quadPool.references.size() - 1]);
 	quadPool.references.pop_back();
@@ -22,7 +23,10 @@ QuadPool::Reference::~Reference()
 QuadPool::Reference& QuadPool::Reference::operator=(QuadPool::Reference&& rhs)
 {
 	if(index != -1 && rhs.index != -1)
+	{
+		std::swap(quadPool.data[index], quadPool.data[rhs.index]);
 		std::swap(quadPool.references[index], quadPool.references[rhs.index]);
+	}
 	else if(rhs.index != -1)
 		quadPool.references[rhs.index] = this;
 
