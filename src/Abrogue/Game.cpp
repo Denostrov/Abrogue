@@ -108,6 +108,7 @@ void Game::quitToMenu()
 	map = Map();
 	player = Player();
 	enemies.clear();
+	gui.quitToMenu();
 }
 
 void Game::onKeyPressed(SDL_Scancode scanCode)

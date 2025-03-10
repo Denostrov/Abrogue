@@ -19,6 +19,7 @@ public:
 
 	void showStartMenu();
 	void startGame();
+	void quitToMenu();
 
 	void pauseGame();
 	void resumeGame();

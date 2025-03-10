@@ -16,9 +16,6 @@ void GUI::init()
 void GUI::showStartMenu()
 {
 	buttons[eStartGame].setText("New game");
-
-	healthLabel.clear();
-	hungerLabel.clear();
 }
 
 void GUI::startGame()
@@ -27,6 +24,16 @@ void GUI::startGame()
 
 	healthLabel.setText("Health");
 	hungerLabel.setText("Nutrition");
+}
+
+void GUI::quitToMenu()
+{
+	buttons[eResume].clear();
+	buttons[eQuitToMenu].clear();
+	healthLabel.clear();
+	hungerLabel.clear();
+
+	buttons[eStartGame].setText("New game");
 }
 
 void GUI::pauseGame()
