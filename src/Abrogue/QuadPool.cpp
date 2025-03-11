@@ -48,6 +48,13 @@ void QuadPool::Reference::setGlyph(std::uint8_t glyph) const
 	quadPool.data[index].glyph = glyph;
 }
 
+void QuadPool::Reference::setBackgroundColor(uint32_t packedColor) const
+{
+	logger.extraAssert(index != -1, "Set background color of invalid quad reference");
+
+	quadPool.data[index].colors[1] = packedColor;
+}
+
 QuadPool::Reference QuadPool::insert(QuadData const& newData)
 {
 	logger.extraAssert(data.size() < capacity, "Inserted quad into full quad pool");

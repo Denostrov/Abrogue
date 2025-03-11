@@ -1,6 +1,7 @@
 module;
 
 #include <SDL3/SDL_messagebox.h>
+#include "vulkan/vulkan.hpp"
 
 module Logger;
 
@@ -42,6 +43,34 @@ void Logger::logInfo(std::string_view message)
 		std::println(std::cout, "{}", message);
 }
 
+bool Logger::checkSDLError(bool checkValue)
+{
+	if(checkValue)
+		return false;
+
+	std::string errorString = SDL_GetError();
+	SDL_ClearError();
+	if(errorString.empty())
+		return true;
+
+	logError(errorString);
+	return true;
+}
+
+bool Logger::checkVulkanError(vk::Result result, std::string_view successMessage, std::string_view errorMessage)
+{
+	if(result != vk::Result::eSuccess)
+	{
+		auto errorString = errorMessage.data() + ": "s + vk::to_string(result);
+		logError(errorString);
+		return true;
+	}
+	else if(!successMessage.empty())
+		logInfo(successMessage);
+
+	return false;
+}
+
 void Logger::extraAssert(bool condition, std::string_view message)
 {
 	if constexpr(useExtraAsserts)
@@ -54,7 +83,7 @@ void Logger::extraAssert(bool condition, std::string_view message)
 	}
 }
 
-void Logger::displayErrorMessage(std::string_view message)
+void Logger::displayErrorMessage(std::string_view message) const
 {
 	SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "Application Error", message.data(), nullptr);
 }

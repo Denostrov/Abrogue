@@ -17,13 +17,15 @@ public:
 	{
 		eNotStarted,
 		eRunning,
-		ePaused
+		ePaused,
+		eFinished
 	};
 
 	bool init();
 	bool update();
 
 	void startGame();
+	void quitToDesktop();
 
 	void pauseGame();
 	void resumeGame();
@@ -32,8 +34,10 @@ public:
 	void onKeyPressed(SDL_Scancode scanCode);
 	void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
 
+	void onMouseMoved(float x, float y);
 	void onMousePressed(float x, float y);
 
+	auto getState() const { return state; }
 	std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
 	bool getTileSolid(std::uint32_t x, std::uint32_t y) { return map.getTileExists(x, y); }
 

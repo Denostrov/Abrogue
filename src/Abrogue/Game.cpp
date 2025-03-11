@@ -90,6 +90,11 @@ void Game::startGame()
 	resetTickTimer();
 }
 
+void Game::quitToDesktop()
+{
+	state = eFinished;
+}
+
 void Game::pauseGame()
 {
 	state = ePaused;
@@ -122,6 +127,12 @@ void Game::onKeyPressed(SDL_Scancode scanCode)
 	}
 
 	pressedButtons[scanCode] = true;
+}
+
+void Game::onMouseMoved(float x, float y)
+{
+	auto [width, height] = renderEngine.getFramebufferSize();
+	gui.onMouseMoved(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
 }
 
 void Game::onMousePressed(float x, float y)

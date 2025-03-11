@@ -14,6 +14,18 @@ VULKAN_HPP_DEFAULT_DISPATCH_LOADER_DYNAMIC_STORAGE
 
 using namespace std::literals;
 
+RenderEngine::SwapchainResources& RenderEngine::SwapchainResources::operator=(RenderEngine::SwapchainResources&& rhs)
+{
+	framebuffers = std::move(rhs.framebuffers);
+	renderPass = std::move(rhs.renderPass);
+	imageViews = std::move(rhs.imageViews);
+	imageExtent = std::move(rhs.imageExtent);
+	imageFormat = std::move(rhs.imageFormat);
+	images = std::move(rhs.images);
+	swapchain = std::move(rhs.swapchain);
+	return *this;
+}
+
 bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engine)
 {
 	auto const& info = engine.physicalDeviceInfo;
@@ -27,7 +39,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 	}
 	imageFormat = selectedFormat.format;
 	logger.logInfo(std::format("Chose format {} with color space {}",
-								vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
+							   vk::to_string(selectedFormat.format), vk::to_string(selectedFormat.colorSpace)));
 
 	//Choose present mode
 	vk::PresentModeKHR selectedPresentMode{vk::PresentModeKHR::eFifo};
@@ -43,7 +55,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 	imageExtent = surfaceCapabilities.currentExtent;
 	if(imageExtent.width == std::numeric_limits<uint32_t>::max())
 	{
-		auto framebufferSize = engine.window.getFramebufferSize();
+		auto framebufferSize = engine.window.getWindowSize();
 		imageExtent.width = std::clamp(framebufferSize.first, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
 		imageExtent.height = std::clamp(framebufferSize.second, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 	}
@@ -61,11 +73,11 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 	vk::SwapchainCreateInfoKHR swapchainCreateInfo{{}, engine.surface.get(), imageCount, selectedFormat.format, selectedFormat.colorSpace,
 		imageExtent, 1, vk::ImageUsageFlagBits::eColorAttachment, sharingMode, queueFamilyIndices,
 		surfaceCapabilities.currentTransform, vk::CompositeAlphaFlagBitsKHR::eOpaque, selectedPresentMode, VK_TRUE, engine.oldSwapchainResources.swapchain.get()};
-	if(engine.checkVulkanErrorOccured(swapchain, engine.device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
+	if(logger.checkVulkanError(swapchain, engine.device->createSwapchainKHRUnique(swapchainCreateInfo), "Created swapchain", "Failed to create swapchain"))
 		return false;
 
 	//Get swapchain images
-	if(engine.checkVulkanErrorOccured(images, engine.device->getSwapchainImagesKHR(swapchain.get()), "", "Failed to get swapchain images"))
+	if(logger.checkVulkanError(images, engine.device->getSwapchainImagesKHR(swapchain.get()), "", "Failed to get swapchain images"))
 		return false;
 
 	//Create swapchain image views
@@ -76,7 +88,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 		vk::ImageViewCreateInfo viewCreateInfo{{}, images[i], vk::ImageViewType::e2D, imageFormat,
 											   {vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity, vk::ComponentSwizzle::eIdentity},
 											   subresourceRange};
-		if(engine.checkVulkanErrorOccured(imageViews[i], engine.device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
+		if(logger.checkVulkanError(imageViews[i], engine.device->createImageViewUnique(viewCreateInfo), "", "Failed to create image view"))
 			return false;
 	}
 
@@ -92,8 +104,8 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 	vk::SubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL, 0, vk::PipelineStageFlagBits::eColorAttachmentOutput,
 											vk::PipelineStageFlagBits::eColorAttachmentOutput, {}, vk::AccessFlagBits::eColorAttachmentWrite};
 	vk::RenderPassCreateInfo renderPassCreateInfo{{}, colorAttachment, subpassDescription, subpassDependency};
-	if(engine.checkVulkanErrorOccured(renderPass, engine.device->createRenderPassUnique(renderPassCreateInfo),
-									  "Created render pass", "Failed to create render pass"))
+	if(logger.checkVulkanError(renderPass, engine.device->createRenderPassUnique(renderPassCreateInfo),
+							   "Created render pass", "Failed to create render pass"))
 		return false;
 
 	//Create swapchain framebuffers
@@ -102,7 +114,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 	{
 		vk::FramebufferCreateInfo framebufferCreateInfo{{}, renderPass.get(), imageViews[i].get(),
 			imageExtent.width, imageExtent.height, 1};
-		if(engine.checkVulkanErrorOccured(framebuffers[i], engine.device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
+		if(logger.checkVulkanError(framebuffers[i], engine.device->createFramebufferUnique(framebufferCreateInfo), "", "Failed to create swapchain buffer"))
 			return false;
 	}
 	logger.logInfo("Created swapchain framebuffers");
@@ -120,7 +132,7 @@ bool RenderEngine::initVulkan()
 
 	//Get available instance extensions
 	std::vector<vk::ExtensionProperties> availableExtensionProperties;
-	if(checkVulkanErrorOccured(availableExtensionProperties, vk::enumerateInstanceExtensionProperties(),
+	if(logger.checkVulkanError(availableExtensionProperties, vk::enumerateInstanceExtensionProperties(),
 							   "", "Failed to enumerate available instance extensions"))
 		return false;
 	logger.logInfo(std::format("{} instance extensions available:", availableExtensionProperties.size()));
@@ -129,7 +141,7 @@ bool RenderEngine::initVulkan()
 
 	//Get available instance layers
 	std::vector<vk::LayerProperties> availableLayerProperties;
-	if(checkVulkanErrorOccured(availableLayerProperties, vk::enumerateInstanceLayerProperties(),
+	if(logger.checkVulkanError(availableLayerProperties, vk::enumerateInstanceLayerProperties(),
 							   "", "Failed to enumerate available validation layers"))
 		return false;
 	logger.logInfo(std::format("{} validation layers available:", availableLayerProperties.size()));
@@ -192,7 +204,7 @@ bool RenderEngine::initVulkan()
 		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredInstanceExtensions, &messengerCreateInfo);
 	else
 		instanceCreateInfo = vk::InstanceCreateInfo({}, &applicationInfo, requiredLayers, requiredInstanceExtensions);
-	if(checkVulkanErrorOccured(instance, vk::createInstanceUnique(instanceCreateInfo),
+	if(logger.checkVulkanError(instance, vk::createInstanceUnique(instanceCreateInfo),
 							   "Created Vulkan instance", "Failed to create Vulkan instance"))
 		return false;
 
@@ -201,7 +213,7 @@ bool RenderEngine::initVulkan()
 	//Create debug messenger
 	if constexpr(isDebugBuild)
 	{
-		if(checkVulkanErrorOccured(debugMessenger, instance->createDebugUtilsMessengerEXTUnique(messengerCreateInfo),
+		if(logger.checkVulkanError(debugMessenger, instance->createDebugUtilsMessengerEXTUnique(messengerCreateInfo),
 								   "Created debug messenger", "Failed to create debug messenger"))
 			return false;
 	}
@@ -214,7 +226,7 @@ bool RenderEngine::initVulkan()
 
 	//Get available physical devices
 	std::vector<vk::PhysicalDevice> availablePhysicalDevices;
-	if(checkVulkanErrorOccured(availablePhysicalDevices, instance->enumeratePhysicalDevices(), "", "Failed to enumerate physical devices"))
+	if(logger.checkVulkanError(availablePhysicalDevices, instance->enumeratePhysicalDevices(), "", "Failed to enumerate physical devices"))
 		return false;
 	if(availablePhysicalDevices.empty())
 	{
@@ -269,7 +281,7 @@ bool RenderEngine::initVulkan()
 	requiredPhysicalDeviceFeatures.features.shaderInt64 = VK_TRUE;
 	requiredPhysicalDeviceFeatures.features.samplerAnisotropy = VK_TRUE;
 	vk::DeviceCreateInfo deviceCreateInfo{{}, queueCreateInfos, requiredLayers, requiredPhysicalDeviceExtensions, nullptr, &requiredPhysicalDeviceFeatures};
-	if(checkVulkanErrorOccured(device, physicalDevice.createDeviceUnique(deviceCreateInfo),
+	if(logger.checkVulkanError(device, physicalDevice.createDeviceUnique(deviceCreateInfo),
 							   "Created logical device", "Failed to create logical device"))
 		return false;
 	logger.logInfo("Created logical device");
@@ -285,26 +297,27 @@ bool RenderEngine::initVulkan()
 
 	//Create command pool
 	vk::CommandPoolCreateInfo poolCreateInfo{vk::CommandPoolCreateFlagBits::eResetCommandBuffer, physicalDeviceInfo.graphicsIndex};
-	if(checkVulkanErrorOccured(commandPool, device->createCommandPoolUnique(poolCreateInfo), "Created command pool", "Failed to create command pool"))
+	if(logger.checkVulkanError(commandPool, device->createCommandPoolUnique(poolCreateInfo), "Created command pool", "Failed to create command pool"))
 		return false;
 
+	//Create texture resources
 	if(!textureResources.createTexture(*this, "textures/tiles.png"))
 		return false;
 
 	vk::DescriptorSetLayoutBinding layoutBinding(0, vk::DescriptorType::eCombinedImageSampler, 1, vk::ShaderStageFlagBits::eFragment, {});
 	vk::DescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo({}, layoutBinding);
-	if(checkVulkanErrorOccured(descriptorSetLayout, device->createDescriptorSetLayoutUnique(descriptorSetLayoutCreateInfo), "Created descriptor set layout", "Failed to create descriptor set layout"))
+	if(logger.checkVulkanError(descriptorSetLayout, device->createDescriptorSetLayoutUnique(descriptorSetLayoutCreateInfo), "Created descriptor set layout", "Failed to create descriptor set layout"))
 		return false;
 
 	vk::DescriptorPoolSize descriptorPoolSize(vk::DescriptorType::eSampler, maxFramesInFlight);
 	vk::DescriptorPoolCreateInfo descriptorPoolCreateInfo({}, maxFramesInFlight, descriptorPoolSize);
-	if(checkVulkanErrorOccured(descriptorPool, device->createDescriptorPoolUnique(descriptorPoolCreateInfo), "Created descriptor pool", "Failed to create descriptor pool"))
+	if(logger.checkVulkanError(descriptorPool, device->createDescriptorPoolUnique(descriptorPoolCreateInfo), "Created descriptor pool", "Failed to create descriptor pool"))
 		return false;
 
 	std::array<vk::DescriptorSetLayout, 2> setLayouts{descriptorSetLayout.get(), descriptorSetLayout.get()};
 	vk::DescriptorSetAllocateInfo descriptorSetAllocateInfo(descriptorPool.get(), setLayouts);
 	std::vector<vk::DescriptorSet> allocatedSets;
-	if(checkVulkanErrorOccured(allocatedSets, device->allocateDescriptorSets(descriptorSetAllocateInfo), "Allocated descriptor sets", "Failed to allocate descriptor sets"))
+	if(logger.checkVulkanError(allocatedSets, device->allocateDescriptorSets(descriptorSetAllocateInfo), "Allocated descriptor sets", "Failed to allocate descriptor sets"))
 		return false;
 	for(size_t i = 0; i < allocatedSets.size(); i++)
 		descriptorSets[i] = allocatedSets[i];
@@ -364,7 +377,7 @@ bool RenderEngine::initVulkan()
 	//Create pipeline layout
 	vk::PushConstantRange pushConstantRange(vk::ShaderStageFlagBits::eVertex, 0, sizeof(QuadData));
 	vk::PipelineLayoutCreateInfo layoutCreateInfo({}, descriptorSetLayout.get(), pushConstantRange);
-	if(checkVulkanErrorOccured(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo),
+	if(logger.checkVulkanError(pipelineLayout, device->createPipelineLayoutUnique(layoutCreateInfo),
 							   "Created pipeline layout", "Failed to create pipeline layout"))
 		return false;
 
@@ -373,7 +386,7 @@ bool RenderEngine::initVulkan()
 													  nullptr, &viewportStateCreateInfo, &rasterizationStateCreateInfo,
 													  &multisampleStateCreateInfo, &depthStencilStateCreateInfo, &colorBlendStateCreateInfo,
 													  &dynamicStateCreateInfo, pipelineLayout.get(), swapchainResources.renderPass.get(), 0);
-	if(checkVulkanErrorOccured(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo),
+	if(logger.checkVulkanError(graphicsPipeline, device->createGraphicsPipelineUnique({}, pipelineCreateInfo),
 							   "Created graphics pipeline", "Failed to create graphics pipeline"))
 		return false;
 
@@ -387,7 +400,7 @@ bool RenderEngine::initVulkan()
 	//Allocate command buffers
 	vk::CommandBufferAllocateInfo bufferAllocateInfo{commandPool.get(), vk::CommandBufferLevel::ePrimary, maxFramesInFlight};
 	std::vector<vk::CommandBuffer> allocatedBuffers;
-	if(checkVulkanErrorOccured(allocatedBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
+	if(logger.checkVulkanError(allocatedBuffers, device->allocateCommandBuffers(bufferAllocateInfo), "Allocated command buffer", "Failed to allocate command buffer"))
 		return false;
 	for(size_t i = 0; i < allocatedBuffers.size(); i++)
 		commandBuffers[i] = allocatedBuffers[i];
@@ -397,9 +410,9 @@ bool RenderEngine::initVulkan()
 	vk::FenceCreateInfo fenceCreateInfo{vk::FenceCreateFlagBits::eSignaled};
 	for(uint64_t i{0}; i < maxFramesInFlight; i++)
 	{
-		if(checkVulkanErrorOccured(imageAvailableSemaphores[i], device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
-		   checkVulkanErrorOccured(renderFinishedSemaphores[i], device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
-		   checkVulkanErrorOccured(inFlightFences[i], device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
+		if(logger.checkVulkanError(imageAvailableSemaphores[i], device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
+		   logger.checkVulkanError(renderFinishedSemaphores[i], device->createSemaphoreUnique(semaphoreCreateInfo), "", "Failed to create semaphore") ||
+		   logger.checkVulkanError(inFlightFences[i], device->createFenceUnique(fenceCreateInfo), "", "Failed to create fence"))
 			return false;
 	}
 	logger.logInfo("Created synchronization objects");
@@ -409,7 +422,6 @@ bool RenderEngine::initVulkan()
 
 RenderEngine::~RenderEngine()
 {
-	//Wait until rendering is finished before cleanup
 	if(device)
 		auto result = device->waitIdle();
 }
@@ -417,19 +429,19 @@ RenderEngine::~RenderEngine()
 bool RenderEngine::drawFrame()
 {
 	auto timeout = std::numeric_limits<uint64_t>::max();
-	if(checkVulkanErrorOccured(device->waitForFences(inFlightFences[currentFrameIndex].get(), VK_TRUE, timeout), "", "Failed to wait for fence"))
+	if(logger.checkVulkanError(device->waitForFences(inFlightFences[currentFrameIndex].get(), VK_TRUE, timeout), "", "Failed to wait for fence"))
 		return false;
 
 	auto [result, imageIndex] = device->acquireNextImageKHR(swapchainResources.swapchain.get(), timeout, imageAvailableSemaphores[currentFrameIndex].get(), {});
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		return recreateSwapchain();
-	else if(checkVulkanErrorOccured(result, "", "Failed to acquire next image"))
+	else if(logger.checkVulkanError(result, "", "Failed to acquire next image"))
 		return false;
 
-	if(checkVulkanErrorOccured(device->resetFences(inFlightFences[currentFrameIndex].get()), "", "Failed to reset fence"))
+	if(logger.checkVulkanError(device->resetFences(inFlightFences[currentFrameIndex].get()), "", "Failed to reset fence"))
 		return false;
 
-	if(checkVulkanErrorOccured(commandBuffers[currentFrameIndex].reset(), "", "Failed to reset command buffer"))
+	if(logger.checkVulkanError(commandBuffers[currentFrameIndex].reset(), "", "Failed to reset command buffer"))
 		return false;
 
 	if(!recordCommandBuffer(commandBuffers[currentFrameIndex], imageIndex))
@@ -439,14 +451,14 @@ bool RenderEngine::drawFrame()
 
 	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrameIndex].get(), waitStage, commandBuffers[currentFrameIndex], renderFinishedSemaphores[currentFrameIndex].get());
-	if(checkVulkanErrorOccured(graphicsQueue.submit(submitInfo, inFlightFences[currentFrameIndex].get()), "", "Failed to submit to graphics queue"))
+	if(logger.checkVulkanError(graphicsQueue.submit(submitInfo, inFlightFences[currentFrameIndex].get()), "", "Failed to submit to graphics queue"))
 		return false;
 
 	vk::PresentInfoKHR presentInfo(renderFinishedSemaphores[currentFrameIndex].get(), swapchainResources.swapchain.get(), imageIndex);
 	result = presentationQueue.presentKHR(presentInfo);
 	if(result == vk::Result::eErrorOutOfDateKHR || result == vk::Result::eSuboptimalKHR)
 		return recreateSwapchain();
-	else if(checkVulkanErrorOccured(result, "", "Failed to present image"))
+	else if(logger.checkVulkanError(result, "", "Failed to present image"))
 		return false;
 
 	currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
@@ -463,16 +475,16 @@ bool RenderEngine::drawFrame()
 
 bool RenderEngine::recreateSwapchain()
 {
-	if(checkVulkanErrorOccured(physicalDeviceInfo.surfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface.get()), "", "Failed to get surface capabilities"))
+	if(logger.checkVulkanError(physicalDeviceInfo.surfaceCapabilities, physicalDevice.getSurfaceCapabilitiesKHR(surface.get()), "", "Failed to get surface capabilities"))
 		return false;
 
 	if(physicalDeviceInfo.surfaceCapabilities.currentExtent.width == 0 || physicalDeviceInfo.surfaceCapabilities.currentExtent.height == 0)
 		return true;
 
-	if(checkVulkanErrorOccured(physicalDeviceInfo.surfaceFormats, physicalDevice.getSurfaceFormatsKHR(surface.get()), "", "Failed to get surface formats"))
+	if(logger.checkVulkanError(physicalDeviceInfo.surfaceFormats, physicalDevice.getSurfaceFormatsKHR(surface.get()), "", "Failed to get surface formats"))
 		return false;
 
-	if(checkVulkanErrorOccured(physicalDeviceInfo.presentModes, physicalDevice.getSurfacePresentModesKHR(surface.get()), "", "Failed to get surface present modes"))
+	if(logger.checkVulkanError(physicalDeviceInfo.presentModes, physicalDevice.getSurfacePresentModesKHR(surface.get()), "", "Failed to get surface present modes"))
 		return false;
 
 	oldSwapchainResources = std::move(swapchainResources);
@@ -484,7 +496,7 @@ bool RenderEngine::recreateSwapchain()
 bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const
 {
 	vk::CommandBufferBeginInfo beginInfo;
-	if(checkVulkanErrorOccured(commandBuffer.begin(beginInfo), "", "Failed to begin command buffer"))
+	if(logger.checkVulkanError(commandBuffer.begin(beginInfo), "", "Failed to begin command buffer"))
 		return false;
 
 	vk::Rect2D renderArea({0, 0}, swapchainResources.imageExtent);
@@ -508,40 +520,10 @@ bool RenderEngine::recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t
 
 	commandBuffer.endRenderPass();
 
-	if(checkVulkanErrorOccured(commandBuffer.end(), "", "Failed to end command buffer"))
+	if(logger.checkVulkanError(commandBuffer.end(), "", "Failed to end command buffer"))
 		return false;
 
 	return true;
-}
-
-template<class Value, class Result>
-bool RenderEngine::checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage) const
-{
-	if(result.result != vk::Result::eSuccess)
-	{
-		auto errorString = errorMessage.data() + ": "s + vk::to_string(result.result);
-		logger.logError(errorString);
-		return true;
-	}
-	else if(!successMessage.empty())
-		logger.logInfo(successMessage);
-
-	value = std::move(result.value);
-	return false;
-}
-
-bool RenderEngine::checkVulkanErrorOccured(vk::Result result, std::string_view successMessage, std::string_view errorMessage) const
-{
-	if(result != vk::Result::eSuccess)
-	{
-		auto errorString = errorMessage.data() + ": "s + vk::to_string(result);
-		logger.logError(errorString);
-		return true;
-	}
-	else if(!successMessage.empty())
-		logger.logInfo(successMessage);
-
-	return false;
 }
 
 std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions) const
@@ -569,7 +551,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 		}
 
 		vk::Bool32 surfaceSupport;
-		if(checkVulkanErrorOccured(surfaceSupport, device.getSurfaceSupportKHR(i, surface.get()), "", "Failed to get surface support info"))
+		if(logger.checkVulkanError(surfaceSupport, device.getSurfaceSupportKHR(i, surface.get()), "", "Failed to get surface support info"))
 			return result;
 		if(surfaceSupport)
 		{
@@ -593,7 +575,7 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 	}
 
 	std::vector<vk::ExtensionProperties> deviceExtensions;
-	if(checkVulkanErrorOccured(deviceExtensions, device.enumerateDeviceExtensionProperties(), "", "Failed to enumerate physical device extension properties"))
+	if(logger.checkVulkanError(deviceExtensions, device.enumerateDeviceExtensionProperties(), "", "Failed to enumerate physical device extension properties"))
 		return result;
 	logger.logInfo(std::format("\t{} physical device extensions available:", deviceExtensions.size()));
 	std::unordered_set<std::string> extensionSet;
@@ -611,13 +593,13 @@ std::pair<int32_t, RenderEngine::PhysicalDeviceInfo> RenderEngine::getPhysicalDe
 		return result;
 	}
 
-	if(checkVulkanErrorOccured(formats, device.getSurfaceFormatsKHR(surface.get()), "", "\tFailed to get surface formats"))
+	if(logger.checkVulkanError(formats, device.getSurfaceFormatsKHR(surface.get()), "", "\tFailed to get surface formats"))
 		return result;
 
-	if(checkVulkanErrorOccured(presentModes, device.getSurfacePresentModesKHR(surface.get()), "", "\tFailed to get surface present modes"))
+	if(logger.checkVulkanError(presentModes, device.getSurfacePresentModesKHR(surface.get()), "", "\tFailed to get surface present modes"))
 		return result;
 
-	if(checkVulkanErrorOccured(surfaceCapabilities, device.getSurfaceCapabilitiesKHR(surface.get()), "", "\tFailed to get surface capabilities"))
+	if(logger.checkVulkanError(surfaceCapabilities, device.getSurfaceCapabilitiesKHR(surface.get()), "", "\tFailed to get surface capabilities"))
 		return result;
 
 	memoryProperties = device.getMemoryProperties();
@@ -696,7 +678,7 @@ vk::UniqueShaderModule RenderEngine::createShaderModule(std::string_view shaderF
 	shaderFile.read(reinterpret_cast<char*>(fileBuffer.data()), fileSize);
 
 	vk::ShaderModuleCreateInfo createInfo({}, fileSize, fileBuffer.data());
-	if(checkVulkanErrorOccured(result, device->createShaderModuleUnique(createInfo), "Created shader module "s + shaderFileName.data(), "Failed to create shader module "s + shaderFileName.data()))
+	if(logger.checkVulkanError(result, device->createShaderModuleUnique(createInfo), "Created shader module "s + shaderFileName.data(), "Failed to create shader module "s + shaderFileName.data()))
 		return result;
 
 	return result;
@@ -708,7 +690,7 @@ bool RenderEngine::BufferResources<T>::createBuffer(RenderEngine const& engine, 
 	auto const& info = engine.physicalDeviceInfo;
 
 	vk::BufferCreateInfo bufferCreateInfo({}, sizeof(T) * size, usage, vk::SharingMode::eExclusive, info.graphicsIndex);
-	if(engine.checkVulkanErrorOccured(buffer, engine.device->createBufferUnique(bufferCreateInfo), "", "Failed to create buffer"))
+	if(logger.checkVulkanError(buffer, engine.device->createBufferUnique(bufferCreateInfo), "", "Failed to create buffer"))
 		return false;
 	auto memoryRequirements = engine.device->getBufferMemoryRequirements(buffer.get());
 
@@ -727,10 +709,10 @@ bool RenderEngine::BufferResources<T>::createBuffer(RenderEngine const& engine, 
 		memoryAllocateFlagsInfo = {vk::MemoryAllocateFlagBits::eDeviceAddress};
 
 	vk::MemoryAllocateInfo memoryAllocateInfo(memoryRequirements.size, selectedMemoryType, &memoryAllocateFlagsInfo);
-	if(engine.checkVulkanErrorOccured(bufferMemory, engine.device->allocateMemoryUnique(memoryAllocateInfo), "", "Failed to allocate buffer memory"))
+	if(logger.checkVulkanError(bufferMemory, engine.device->allocateMemoryUnique(memoryAllocateInfo), "", "Failed to allocate buffer memory"))
 		return false;
 
-	if(engine.checkVulkanErrorOccured(engine.device->bindBufferMemory(buffer.get(), bufferMemory.get(), 0), "", "Failed to bind buffer memory"))
+	if(logger.checkVulkanError(engine.device->bindBufferMemory(buffer.get(), bufferMemory.get(), 0), "", "Failed to bind buffer memory"))
 		return false;
 
 	if(usage == vk::BufferUsageFlagBits::eShaderDeviceAddress)
@@ -744,7 +726,7 @@ bool RenderEngine::BufferResources<T>::createBuffer(RenderEngine const& engine, 
 		}
 	}
 
-	if(engine.checkVulkanErrorOccured(data, engine.device->mapMemory(bufferMemory.get(), 0, bufferCreateInfo.size), "", "Failed to map buffer memory"))
+	if(logger.checkVulkanError(data, engine.device->mapMemory(bufferMemory.get(), 0, bufferCreateInfo.size), "", "Failed to map buffer memory"))
 		return false;
 
 	return true;
@@ -762,15 +744,15 @@ bool RenderEngine::TextureResources::createTexture(RenderEngine const& engine, s
 	vk::ImageCreateInfo imageCreateInfo({}, vk::ImageType::e2D, vk::Format::eR8Unorm, vk::Extent3D{(uint32_t)tileImage.width, (uint32_t)tileImage.height, 1u},
 										1, 1, vk::SampleCountFlagBits::e1, vk::ImageTiling::eOptimal, vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled,
 										vk::SharingMode::eExclusive, engine.physicalDeviceInfo.graphicsIndex, vk::ImageLayout::eUndefined);
-	if(engine.checkVulkanErrorOccured(image, engine.device->createImageUnique(imageCreateInfo), "", "Failed to create texture image"))
+	if(logger.checkVulkanError(image, engine.device->createImageUnique(imageCreateInfo), "", "Failed to create texture image"))
 		return false;
 
 	auto memoryRequirements = engine.device->getImageMemoryRequirements(image.get());
 	vk::MemoryAllocateInfo imageMemoryAllocateInfo(memoryRequirements.size, engine.getMemoryType(memoryRequirements, vk::MemoryPropertyFlagBits::eDeviceLocal));
-	if(engine.checkVulkanErrorOccured(imageMemory, engine.device->allocateMemoryUnique(imageMemoryAllocateInfo), "", "Failed to allocate texture memory"))
+	if(logger.checkVulkanError(imageMemory, engine.device->allocateMemoryUnique(imageMemoryAllocateInfo), "", "Failed to allocate texture memory"))
 		return false;
 
-	if(engine.checkVulkanErrorOccured(engine.device->bindImageMemory(image.get(), imageMemory.get(), 0), "", "Failed to bind tile texture memory"))
+	if(logger.checkVulkanError(engine.device->bindImageMemory(image.get(), imageMemory.get(), 0), "", "Failed to bind tile texture memory"))
 		return false;
 
 	{
@@ -801,14 +783,14 @@ bool RenderEngine::TextureResources::createTexture(RenderEngine const& engine, s
 
 	vk::ImageSubresourceRange subresourceRange(vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1);
 	vk::ImageViewCreateInfo viewCreateInfo({}, image.get(), vk::ImageViewType::e2D, vk::Format::eR8Unorm, {}, subresourceRange);
-	if(engine.checkVulkanErrorOccured(imageView, engine.device->createImageViewUnique(viewCreateInfo), "", "Failed to create texture image view"))
+	if(logger.checkVulkanError(imageView, engine.device->createImageViewUnique(viewCreateInfo), "", "Failed to create texture image view"))
 		return false;
 
 	vk::SamplerCreateInfo samplerCreateInfo({}, vk::Filter::eLinear, vk::Filter::eLinear, vk::SamplerMipmapMode::eLinear,
 											vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eRepeat, vk::SamplerAddressMode::eRepeat,
 											0.0f, VK_TRUE, engine.physicalDeviceInfo.properties.limits.maxSamplerAnisotropy, VK_FALSE, vk::CompareOp::eAlways,
 											0.0f, 0.0f, vk::BorderColor::eIntOpaqueBlack, VK_FALSE);
-	if(engine.checkVulkanErrorOccured(sampler, engine.device->createSamplerUnique(samplerCreateInfo), "", "Failed to create texture sampler"))
+	if(logger.checkVulkanError(sampler, engine.device->createSamplerUnique(samplerCreateInfo), "", "Failed to create texture sampler"))
 		return false;
 
 	return true;
@@ -819,26 +801,26 @@ RenderEngine::SingleUseCommandBuffer::SingleUseCommandBuffer(RenderEngine const&
 	vk::CommandBufferAllocateInfo allocateInfo(engine.commandPool.get(), vk::CommandBufferLevel::ePrimary, 1);
 
 	std::vector<vk::UniqueCommandBuffer> allocatedBuffers;
-	if(engine.checkVulkanErrorOccured(allocatedBuffers, engine.device->allocateCommandBuffersUnique(allocateInfo), "", "Failed to allocate single use command buffer"))
+	if(logger.checkVulkanError(allocatedBuffers, engine.device->allocateCommandBuffersUnique(allocateInfo), "", "Failed to allocate single use command buffer"))
 		return;
 
 	commandBuffer = std::move(allocatedBuffers[0]);
 
 	vk::CommandBufferBeginInfo beginInfo(vk::CommandBufferUsageFlagBits::eOneTimeSubmit);
-	if(engine.checkVulkanErrorOccured(commandBuffer->begin(beginInfo), "", "Failed to begin command buffer"))
+	if(logger.checkVulkanError(commandBuffer->begin(beginInfo), "", "Failed to begin command buffer"))
 		return;
 }
 
 RenderEngine::SingleUseCommandBuffer::~SingleUseCommandBuffer()
 {
-	if(engine.checkVulkanErrorOccured(commandBuffer->end(), "", "Failed to end command buffer"))
+	if(logger.checkVulkanError(commandBuffer->end(), "", "Failed to end command buffer"))
 		return;
 
 	vk::SubmitInfo submitInfo({}, {}, commandBuffer.get());
-	if(engine.checkVulkanErrorOccured(submitQueue.submit(submitInfo), "", "Failed to submit command buffer"))
+	if(logger.checkVulkanError(submitQueue.submit(submitInfo), "", "Failed to submit command buffer"))
 		return;
 
-	if(engine.checkVulkanErrorOccured(submitQueue.waitIdle(), "", "Failed to wait after submitting command buffer"))
+	if(logger.checkVulkanError(submitQueue.waitIdle(), "", "Failed to wait after submitting command buffer"))
 		return;
 }
 

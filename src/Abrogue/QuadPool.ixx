@@ -13,11 +13,6 @@ export struct QuadData
 		:position(position), scale(tileScale* scale), colors(colors), glyph(glyph)
 	{}
 
-	static uint32_t packColor(uint8_t red, uint8_t green, uint8_t blue, uint8_t alpha)
-	{
-		return (uint32_t)red << 24 | (uint32_t)green << 16 | (uint32_t)blue << 8 | (uint32_t)alpha;
-	}
-
 	static constexpr glm::vec2 tileScale{0.5f / Constants::screenHeight, 1.0f / Constants::screenHeight};
 
 	glm::vec2 position;
@@ -41,6 +36,7 @@ public:
 
 		void setPosition(glm::vec2 position) const;
 		void setGlyph(std::uint8_t glyph) const;
+		void setBackgroundColor(uint32_t packedColor) const;
 
 	private:
 		int64_t index{-1};

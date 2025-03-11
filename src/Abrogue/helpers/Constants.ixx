@@ -14,6 +14,15 @@ export inline constexpr bool useExtraAsserts{true};
 export inline constexpr bool useExtraAsserts{false};
 #endif
 
+export class Helpers
+{
+public:
+	static constexpr std::uint32_t packColor(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha)
+	{
+		return (std::uint32_t)red << 24 | (std::uint32_t)green << 16 | (std::uint32_t)blue << 8 | (std::uint32_t)alpha;
+	}
+};
+
 export class Constants
 {
 public:
@@ -44,4 +53,11 @@ public:
 	static constexpr size_t mapHeight{36};
 
 	static constexpr double tileAspectRatio{0.5};
+
+	static constexpr std::uint32_t labelBackgroundColor{Helpers::packColor(255, 255, 255, 0)};
+	static constexpr std::uint32_t labelHoverColor{Helpers::packColor(8, 8, 8, 255)};
+	static constexpr std::uint32_t healthBackgroundColor{Helpers::packColor(128, 0, 0, 255)};
+	static constexpr std::uint32_t healthHoverColor{Helpers::packColor(144, 0, 0, 255)};
+	static constexpr std::uint32_t nutritionBackgroundColor{Helpers::packColor(0, 0, 128, 255)};
+	static constexpr std::uint32_t nutritionHoverColor{Helpers::packColor(0, 0, 144, 255)};
 };

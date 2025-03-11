@@ -37,8 +37,14 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 			if(event->button.button == 1)
 				game.onMousePressed(event->button.x, event->button.y);
 			break;
+		case SDL_EVENT_MOUSE_MOTION:
+			game.onMouseMoved(event->motion.x, event->motion.y);
+			break;
 		default: break;
 	}
+
+	if(game.getState() == Game::eFinished)
+		return SDL_APP_SUCCESS;
 
 	return SDL_APP_CONTINUE;
 }

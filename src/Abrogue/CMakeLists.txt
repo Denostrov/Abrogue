@@ -22,7 +22,7 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 
 	"Game.ixx" 
 	"QuadPool.ixx" 
-	"Player.ixx" "Map.ixx" "gui/Label.ixx" "gui/GUI.ixx" "gui/Button.ixx" "helpers/Event.ixx" "GameSystems.ixx")
+	"Player.ixx" "Map.ixx" "gui/Label.ixx" "gui/GUI.ixx"  "helpers/Event.ixx" "GameSystems.ixx")
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})

@@ -13,8 +13,10 @@ export import QuadPool;
 export import Configuration;
 export import Logger;
 
+//Class for handling Vulkan resources
 export class RenderEngine
 {
+	//Struct for storing physical device properties
 	struct PhysicalDeviceInfo
 	{
 		std::string name;
@@ -26,12 +28,17 @@ export class RenderEngine
 		vk::PhysicalDeviceMemoryProperties memoryProperties;
 	};
 
+	//Class for handling swapchain creation
 	class SwapchainResources
 	{
 	public:
 		SwapchainResources() = default;
 
-		bool createSwapchain(RenderEngine const& engine);
+		SwapchainResources(SwapchainResources&& rhs) { *this = std::move(rhs); }
+		SwapchainResources& operator=(SwapchainResources&& rhs);
+
+		//Initialize swapchain resources
+		[[nodiscard]] bool createSwapchain(RenderEngine const& engine);
 
 		vk::UniqueSwapchainKHR swapchain;
 		std::vector<vk::Image> images;
@@ -42,13 +49,15 @@ export class RenderEngine
 		std::vector<vk::UniqueFramebuffer> framebuffers;
 	};
 
+	//Class for handling buffer creation
 	template<class T>
 	class BufferResources
 	{
 	public:
 		BufferResources() = default;
 
-		bool createBuffer(RenderEngine const& engine, uint32_t size, vk::BufferUsageFlags usage);
+		//Initialize buffer resources
+		[[nodiscard]] bool createBuffer(RenderEngine const& engine, uint32_t size, vk::BufferUsageFlags usage);
 
 		vk::UniqueBuffer buffer;
 		vk::UniqueDeviceMemory bufferMemory;
@@ -56,12 +65,14 @@ export class RenderEngine
 		void* data{};
 	};
 
+	//Class for handling texture creation
 	class TextureResources
 	{
 	public:
 		TextureResources() = default;
 
-		bool createTexture(RenderEngine const& engine, std::string_view filePath);
+		//Initialize texture resources
+		[[nodiscard]] bool createTexture(RenderEngine const& engine, std::string_view filePath);
 
 		vk::UniqueImage image;
 		vk::UniqueDeviceMemory imageMemory;
@@ -69,10 +80,13 @@ export class RenderEngine
 		vk::UniqueSampler sampler;
 	};
 
+	//Class for creating and submitting one time command buffers
 	class SingleUseCommandBuffer
 	{
 	public:
+		//Create command buffer resources
 		SingleUseCommandBuffer(RenderEngine const& engine, vk::Queue submitQueue);
+		//Submit command buffer upon deletion
 		~SingleUseCommandBuffer();
 
 		auto get() const { return commandBuffer.get(); }
@@ -85,6 +99,7 @@ export class RenderEngine
 		vk::Queue submitQueue;
 	};
 
+	//Struct for shader constants
 	struct PushConstantsBlock
 	{
 		vk::DeviceAddress quadReference;
@@ -92,29 +107,34 @@ export class RenderEngine
 
 public:
 	RenderEngine() = default;
+	//Wait until rendering is finished and cleanup
 	~RenderEngine();
 
-	bool initVulkan();
+	//Initialize Vulkan resources
+	[[nodiscard]] bool initVulkan();
 
-	bool drawFrame();
+	//Submit drawing commands for current frame
+	[[nodiscard]] bool drawFrame();
 
-	std::pair<uint32_t, uint32_t> getFramebufferSize() const { return window.getFramebufferSize(); };
+	[[nodiscard]] auto getFramebufferSize() const { return window.getWindowSize(); };
 
 private:
-	bool recreateSwapchain();
+	//Create new swapchain and mark old one for deletion
+	[[nodiscard]] bool recreateSwapchain();
 
-	bool recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const;
+	//Record drawing commands to buffer
+	[[nodiscard]] bool recordCommandBuffer(vk::CommandBuffer commandBuffer, uint32_t imageIndex) const;
 
-	template<class Value, class Result>
-	bool checkVulkanErrorOccured(Value& value, Result result, std::string_view successMessage, std::string_view errorMessage) const;
-	bool checkVulkanErrorOccured(vk::Result result, std::string_view successMessage, std::string_view errorMessage) const;
+	//Get physical device suitability score and its properties(-1 score - device not suitable)
+	[[nodiscard]] std::pair<int32_t, PhysicalDeviceInfo> getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions) const;
 
-	std::pair<int32_t, PhysicalDeviceInfo> getPhysicalDeviceInfo(vk::PhysicalDevice device, std::vector<char const*> const& requiredExtensions) const;
+	//Get index of memory type that fits requirements(-1 index - no fitting type found)
+	[[nodiscard]] int32_t getMemoryType(vk::MemoryRequirements const& requirements, vk::MemoryPropertyFlags properties) const;
 
-	int32_t getMemoryType(vk::MemoryRequirements const& requirements, vk::MemoryPropertyFlags properties) const;
+	//Create shader from file
+	[[nodiscard]] vk::UniqueShaderModule createShaderModule(std::string_view shaderFileName) const;
 
-	vk::UniqueShaderModule createShaderModule(std::string_view shaderFileName) const;
-
+	//Callback for debug utils messenger
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 														VkDebugUtilsMessageTypeFlagsEXT messageType,
 														const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,

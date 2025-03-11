@@ -4,48 +4,75 @@ import GameSystems;
 
 void GUI::init()
 {
-	buttons[eStartGame].setPosition(120, 30);
-	buttons[eResume].setPosition(0, 2);
-	buttons[eQuitToMenu].setPosition(0, 3);
+	buttons[eStartGame].init("New game", 120, 30);
+	buttons[eQuitToDesktop].init("Quit to desktop", 113, 31);
+	buttons[eResume].init("Resume", 0, 2);
+	buttons[eQuitToMenu].init("Quit to menu", 0, 3);
 
-	fpsLabel.setPosition(0, 0);
-	healthLabel.setPosition(0, 1);
-	hungerLabel.setPosition(7, 1);
+	fpsLabel.init("FPS:", 0, 0, true);
+	healthLabel.init("Health", 0, 1);
+	healthLabel.setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
+	hungerLabel.init("Nutrition", 7, 1);
+	hungerLabel.setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
 }
 
 void GUI::showStartMenu()
 {
-	buttons[eStartGame].setText("New game");
+	buttons[eStartGame].setVisible(true);
+	buttons[eQuitToDesktop].setVisible(true);
 }
 
 void GUI::startGame()
 {
-	buttons[eStartGame].clear();
+	buttons[eStartGame].setVisible(false);
+	buttons[eQuitToDesktop].setVisible(false);
 
-	healthLabel.setText("Health");
-	hungerLabel.setText("Nutrition");
+	healthLabel.setVisible(true);
+	hungerLabel.setVisible(true);
 }
 
 void GUI::quitToMenu()
 {
-	buttons[eResume].clear();
-	buttons[eQuitToMenu].clear();
-	healthLabel.clear();
-	hungerLabel.clear();
+	buttons[eResume].setVisible(false);
+	buttons[eQuitToMenu].setVisible(false);
+	healthLabel.setVisible(false);
+	hungerLabel.setVisible(false);
 
-	buttons[eStartGame].setText("New game");
+	buttons[eStartGame].setVisible(true);
+	buttons[eQuitToDesktop].setVisible(true);
 }
 
 void GUI::pauseGame()
 {
-	buttons[eResume].setText("Resume");
-	buttons[eQuitToMenu].setText("Quit to menu");
+	buttons[eResume].setVisible(true);
+	buttons[eQuitToMenu].setVisible(true);
 }
 
 void GUI::resumeGame()
 {
-	buttons[eResume].clear();
-	buttons[eQuitToMenu].clear();
+	buttons[eResume].setVisible(false);
+	buttons[eQuitToMenu].setVisible(false);
+}
+
+void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
+{
+	ButtonType newHoveredButton{COUNT};
+	for(size_t i = 0; i < buttons.size(); i++)
+	{
+		if(buttons[i].checkCollision(x, y))
+		{
+			buttons[i].setHovered(true);
+			newHoveredButton = (ButtonType)i;
+			break;
+		}
+	}
+
+	if(newHoveredButton != hoveredButton)
+	{
+		if(hoveredButton != COUNT)
+			buttons[hoveredButton].setHovered(false);
+		hoveredButton = newHoveredButton;
+	}
 }
 
 void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
@@ -53,7 +80,10 @@ void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 	for(size_t i = 0; i < buttons.size(); i++)
 	{
 		if(buttons[i].checkCollision(x, y))
+		{
 			onButtonPressed((ButtonType)i);
+			break;
+		}
 	}
 }
 
@@ -68,6 +98,8 @@ void GUI::onButtonPressed(ButtonType type)
 {
 	if(type == eStartGame)
 		game.startGame();
+	else if(type == eQuitToDesktop)
+		game.quitToDesktop();
 	else if(type == eResume)
 		game.resumeGame();
 	else if(type == eQuitToMenu)

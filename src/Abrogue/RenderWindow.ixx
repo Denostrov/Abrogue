@@ -7,22 +7,25 @@ export module RenderWindow;
 
 export import std;
 
+//Class for handling SDL initialization and window creation
 export class RenderWindow
 {
 public:
 	RenderWindow() = default;
 	~RenderWindow();
 
-	bool initSDL();
+	//Initialize SDL and create a window
+	[[nodiscard]] bool initSDL();
 
+	//Create Vulkan surface from window
 	[[nodiscard]] VkSurfaceKHR createSurface(VkInstance instance);
 
+	//Get names of extensions required for surface creation
 	[[nodiscard]] auto const& getRequiredExtensions() const { return requiredExtensions; }
-	[[nodiscard]] std::pair<uint32_t, uint32_t> getFramebufferSize() const;
+	//Get size of window in pixels
+	[[nodiscard]] std::pair<uint32_t, uint32_t> getWindowSize() const;
 
 private:
-	bool checkSDLErrorOccured(bool checkValue);
-
-	SDL_Window* window;
-	std::vector<char const*> requiredExtensions{};
+	SDL_Window* window{};
+	std::vector<char const*> requiredExtensions;
 };
