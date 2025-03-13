@@ -118,7 +118,7 @@ void Game::quitToMenu()
 
 void Game::onKeyPressed(SDL_Scancode scanCode)
 {
-	if(scanCode == SDL_SCANCODE_ESCAPE)
+	if(scanCode == SDL_SCANCODE_SPACE)
 	{
 		if(state == eRunning)
 			pauseGame();

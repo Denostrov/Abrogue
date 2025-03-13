@@ -16,7 +16,7 @@ void Label::setVisible(bool visible)
 	size = visible ? text.size() : 0;
 	for(size_t i = 0; i < quadReferences.size(); i++)
 	{
-		quadReferences[i].setGlyph(visible ? text[i] : ' ');
+		quadReferences[i].setGlyph(visible && i < text.size() ? text[i] : ' ');
 		quadReferences[i].setBackgroundColor(visible ? backgroundColor : 0);
 	}
 }
@@ -24,9 +24,9 @@ void Label::setVisible(bool visible)
 void Label::setHovered(bool hovered)
 {
 	isHovered = hovered;
-	for(size_t i = 0; i < size; i++)
+	for(size_t i = 0; i < quadReferences.size(); i++)
 	{
-		quadReferences[i].setBackgroundColor(hovered ? hoverBackgroundColor : backgroundColor);
+		quadReferences[i].setBackgroundColor(hovered && i < size ? hoverBackgroundColor : backgroundColor);
 	}
 }
 
@@ -46,10 +46,14 @@ void Label::setText(std::string_view newText)
 	for(size_t i = 0; i < size; i++)
 	{
 		quadReferences[i].setGlyph(text[i]);
+		quadReferences[i].setBackgroundColor(isHovered ? hoverBackgroundColor : backgroundColor);
 	}
 
 	for(size_t i = size; i < quadReferences.size(); i++)
+	{
 		quadReferences[i].setGlyph(' ');
+		quadReferences[i].setBackgroundColor(0);
+	}
 }
 
 void Label::setPosition(std::uint32_t newX, std::uint32_t newY)

@@ -9,8 +9,21 @@ public:
 	{
 		eStartGame,
 		eQuitToDesktop,
-		eResume,
-		eQuitToMenu,
+		eEnableDebug,
+		eAbandonGame,
+		eSaveAndQuit,
+		ePause,
+		eHealth,
+		eNutrition,
+		COUNT
+	};
+
+	enum class TabButton
+	{
+		eDebug,
+		eInventory,
+		eDiscoveries,
+		eMenu,
 		COUNT
 	};
 
@@ -32,11 +45,13 @@ public:
 
 private:
 	void onButtonPressed(ButtonType type);
+	void onTabButtonPressed(TabButton type);
 
 	std::array<Label, COUNT> buttons;
-	ButtonType hoveredButton{COUNT};
+	std::array<Label, (size_t)TabButton::COUNT> tabButtons;
+	Label* hoveredButton{};
+
+	bool isMenuToggled{};
 
 	Label fpsLabel;
-	Label healthLabel;
-	Label hungerLabel;
 };
