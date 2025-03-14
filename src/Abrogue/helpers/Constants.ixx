@@ -55,9 +55,11 @@ public:
 	static constexpr double tileAspectRatio{0.5};
 
 	static constexpr std::uint32_t labelBackgroundColor{Helpers::packColor(255, 255, 255, 0)};
-	static constexpr std::uint32_t labelHoverColor{Helpers::packColor(8, 8, 8, 255)};
+	static constexpr std::uint32_t labelHoveredColor{Helpers::packColor(8, 8, 8, 255)};
+	static constexpr std::uint32_t labelPressedColor{Helpers::packColor(16, 16, 16, 255)};
+	static constexpr std::uint32_t labelHoveredPressedColor{Helpers::packColor(24, 24, 24, 255)};
 	static constexpr std::uint32_t healthBackgroundColor{Helpers::packColor(128, 0, 0, 255)};
-	static constexpr std::uint32_t healthHoverColor{Helpers::packColor(144, 0, 0, 255)};
+	static constexpr std::uint32_t healthHoverColor{Helpers::packColor(160, 0, 0, 255)};
 	static constexpr std::uint32_t nutritionBackgroundColor{Helpers::packColor(0, 0, 128, 255)};
-	static constexpr std::uint32_t nutritionHoverColor{Helpers::packColor(0, 0, 144, 255)};
+	static constexpr std::uint32_t nutritionHoverColor{Helpers::packColor(0, 0, 160, 255)};
 };

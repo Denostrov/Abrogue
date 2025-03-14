@@ -15,16 +15,25 @@ public:
 		return x <= checkX && checkX < x + size && y <= checkY && checkY < y + 1;
 	}
 
+	void togglePressed() { setPressed(!isPressed); }
+
+	auto getPressed() const { return isPressed; }
+
 	void setVisible(bool visible);
 	void setHovered(bool hovered);
+	void setPressed(bool pressed);
 
 	void setText(std::string_view text);
 	void setPosition(std::uint32_t newX, std::uint32_t newY);
 	void setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor);
+	void setPressedBackgroundColor(std::uint32_t color, std::uint32_t hoverColor);
 
 private:
+	std::uint32_t getBackgroundColor() const;
+
 	bool isVisible{};
 	bool isHovered{};
+	bool isPressed{};
 
 	std::string text;
 
@@ -32,6 +41,9 @@ private:
 	std::size_t size{};
 
 	std::uint32_t backgroundColor{Constants::labelBackgroundColor};
-	std::uint32_t hoverBackgroundColor{Constants::labelHoverColor};
+	std::uint32_t hoveredBackgroundColor{Constants::labelHoveredColor};
+	std::uint32_t pressedBackgroundColor{Constants::labelPressedColor};
+	std::uint32_t hoveredPressedBackgroundColor{Constants::labelHoveredPressedColor};
+
 	std::vector<QuadPool::Reference> quadReferences;
 };

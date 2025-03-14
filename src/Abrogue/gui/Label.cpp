@@ -14,20 +14,31 @@ void Label::setVisible(bool visible)
 {
 	isVisible = visible;
 	size = visible ? text.size() : 0;
+
+	auto color = visible ? getBackgroundColor() : 0;
 	for(size_t i = 0; i < quadReferences.size(); i++)
 	{
 		quadReferences[i].setGlyph(visible && i < text.size() ? text[i] : ' ');
-		quadReferences[i].setBackgroundColor(visible ? backgroundColor : 0);
+		quadReferences[i].setBackgroundColor(color);
 	}
 }
 
 void Label::setHovered(bool hovered)
 {
 	isHovered = hovered;
-	for(size_t i = 0; i < quadReferences.size(); i++)
-	{
-		quadReferences[i].setBackgroundColor(hovered && i < size ? hoverBackgroundColor : backgroundColor);
-	}
+
+	auto color = getBackgroundColor();
+	for(size_t i = 0; i < size; i++)
+		quadReferences[i].setBackgroundColor(color);
+}
+
+void Label::setPressed(bool pressed)
+{
+	isPressed = pressed;
+
+	auto color = getBackgroundColor();
+	for(size_t i = 0; i < size; i++)
+		quadReferences[i].setBackgroundColor(color);
 }
 
 void Label::setText(std::string_view newText)
@@ -46,7 +57,7 @@ void Label::setText(std::string_view newText)
 	for(size_t i = 0; i < size; i++)
 	{
 		quadReferences[i].setGlyph(text[i]);
-		quadReferences[i].setBackgroundColor(isHovered ? hoverBackgroundColor : backgroundColor);
+		quadReferences[i].setBackgroundColor(isHovered ? hoveredBackgroundColor : backgroundColor);
 	}
 
 	for(size_t i = size; i < quadReferences.size(); i++)
@@ -69,9 +80,26 @@ void Label::setPosition(std::uint32_t newX, std::uint32_t newY)
 void Label::setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)
 {
 	backgroundColor = color;
-	hoverBackgroundColor = hoverColor;
+	hoveredBackgroundColor = hoverColor;
 	for(size_t i = 0; i < size; i++)
 	{
-		quadReferences[i].setBackgroundColor(isHovered ? hoverBackgroundColor : backgroundColor);
+		quadReferences[i].setBackgroundColor(isHovered ? hoveredBackgroundColor : backgroundColor);
 	}
+}
+
+void Label::setPressedBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)
+{
+	pressedBackgroundColor = color;
+	hoveredPressedBackgroundColor = hoverColor;
+	if(!isPressed)
+		return;
+
+	for(size_t i = 0; i < size; i++)
+		quadReferences[i].setBackgroundColor(isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor);
+}
+
+std::uint32_t Label::getBackgroundColor() const
+{
+	return isPressed ? (isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor)
+		: (isHovered ? hoveredBackgroundColor : backgroundColor);
 }

@@ -11,7 +11,7 @@ void GUI::init()
 	buttons[eAbandonGame].init("Abandon game", 0, 4);
 	buttons[eSaveAndQuit].init("Save and quit", 0, 5);
 
-	buttons[ePause].init("Pause [SPACE]", 20, 1);
+	buttons[ePause].init("Pause [SPACE]", 26, 1);
 
 	buttons[eHealth].init("Health", 0, 1);
 	buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
@@ -115,11 +115,23 @@ void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 			return;
 		}
 	}
+
+	auto updatePressedButton = [this](TabButton newPressedButton)
+	{
+		if(newPressedButton != pressedTabButton)
+		{
+			if(pressedTabButton != TabButton::COUNT)
+				tabButtons[(size_t)pressedTabButton].setPressed(false);
+			pressedTabButton = newPressedButton;
+		}
+	};
 	for(size_t i = 0; i < tabButtons.size(); i++)
 	{
 		if(tabButtons[i].checkCollision(x, y))
 		{
+			tabButtons[i].setPressed(true);
 			onTabButtonPressed((TabButton)i);
+			updatePressedButton((TabButton)i);
 			return;
 		}
 	}
@@ -140,6 +152,7 @@ void GUI::onButtonPressed(ButtonType type)
 		game.quitToDesktop();
 	else if(type == ePause)
 	{
+		buttons[(size_t)type].togglePressed();
 		if(game.getState() == Game::ePaused)
 			game.resumeGame();
 		else
@@ -151,11 +164,21 @@ void GUI::onButtonPressed(ButtonType type)
 
 void GUI::onTabButtonPressed(TabButton type)
 {
+	if(pressedTabButton != type)
+	{
+		if(pressedTabButton == TabButton::eMenu)
+		{
+			buttons[eEnableDebug].setVisible(false);
+			buttons[eAbandonGame].setVisible(false);
+			buttons[eSaveAndQuit].setVisible(false);
+		}
+	}
+
 	if(type == TabButton::eMenu)
 	{
-		isMenuToggled = !isMenuToggled;
-		buttons[eEnableDebug].setVisible(isMenuToggled);
-		buttons[eAbandonGame].setVisible(isMenuToggled);
-		buttons[eSaveAndQuit].setVisible(isMenuToggled);
+		auto isPressed = tabButtons[(size_t)type].getPressed();
+		buttons[eEnableDebug].setVisible(isPressed);
+		buttons[eAbandonGame].setVisible(isPressed);
+		buttons[eSaveAndQuit].setVisible(isPressed);
 	}
 }

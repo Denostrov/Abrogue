@@ -50,8 +50,7 @@ private:
 	std::array<Label, COUNT> buttons;
 	std::array<Label, (size_t)TabButton::COUNT> tabButtons;
 	Label* hoveredButton{};
-
-	bool isMenuToggled{};
+	TabButton pressedTabButton{TabButton::COUNT};
 
 	Label fpsLabel;
 };
