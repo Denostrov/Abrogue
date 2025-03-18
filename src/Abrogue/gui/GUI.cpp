@@ -11,17 +11,17 @@ void GUI::init()
 	buttons[eAbandonGame].init("Abandon game", 0, 4);
 	buttons[eSaveAndQuit].init("Save and quit", 0, 5);
 
-	buttons[ePause].init("Pause [SPACE]", 26, 1);
+	buttons[ePause].init("Pause[SPACE]", 26, 1);
 
 	buttons[eHealth].init("Health", 0, 1);
 	buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
 	buttons[eNutrition].init("Nutrition", 7, 1);
 	buttons[eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
 
-	tabButtons[(size_t)TabButton::eDebug].init("Debug", 0, 35);
-	tabButtons[(size_t)TabButton::eInventory].init("Inventory", 8, 35);
-	tabButtons[(size_t)TabButton::eDiscoveries].init("Discoveries", 21, 35);
-	tabButtons[(size_t)TabButton::eMenu].init("Menu [ESC]", 36, 35);
+	tabButtons[(size_t)TabButton::eDebug].init("Debug[F3]", 0, 35);
+	tabButtons[(size_t)TabButton::eSearch].init("Search[s]", 11, 35);
+	tabButtons[(size_t)TabButton::eDiscoveries].init("Discoveries[D]", 22, 35);
+	tabButtons[(size_t)TabButton::eMenu].init("Menu[ESC]", 38, 35);
 
 	fpsLabel.init("FPS:", 0, 0, true);
 }
@@ -39,7 +39,7 @@ void GUI::startGame()
 
 	buttons[eHealth].setVisible(true);
 	buttons[eNutrition].setVisible(true);
-	buttons[ePause].setText("Pause [SPACE]");
+	buttons[ePause].setText("Pause[SPACE]");
 	buttons[ePause].setVisible(true);
 	for(auto& button : tabButtons)
 		button.setVisible(true);
@@ -64,12 +64,12 @@ void GUI::quitToMenu()
 
 void GUI::pauseGame()
 {
-	buttons[ePause].setText("PAUSED [SPACE]");
+	buttons[ePause].setText("PAUSED[SPACE]");
 }
 
 void GUI::resumeGame()
 {
-	buttons[ePause].setText("Pause [SPACE]");
+	buttons[ePause].setText("Pause[SPACE]");
 }
 
 void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)

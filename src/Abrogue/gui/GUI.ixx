@@ -21,7 +21,7 @@ public:
 	enum class TabButton
 	{
 		eDebug,
-		eInventory,
+		eSearch,
 		eDiscoveries,
 		eMenu,
 		COUNT
