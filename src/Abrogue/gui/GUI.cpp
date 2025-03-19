@@ -1,4 +1,4 @@
-import GUI;
+module GUI;
 
 import GameSystems;
 
@@ -6,10 +6,6 @@ void GUI::init()
 {
 	buttons[eStartGame].init("New game", 120, 30);
 	buttons[eQuitToDesktop].init("Quit to desktop", 113, 31);
-
-	buttons[eEnableDebug].init("Enable debug", 0, 3);
-	buttons[eAbandonGame].init("Abandon game", 0, 4);
-	buttons[eSaveAndQuit].init("Save and quit", 0, 5);
 
 	buttons[ePause].init("Pause[SPACE]", 26, 1);
 
@@ -22,6 +18,8 @@ void GUI::init()
 	tabButtons[(size_t)TabButton::eSearch].init("Search[s]", 11, 35);
 	tabButtons[(size_t)TabButton::eDiscoveries].init("Discoveries[D]", 22, 35);
 	tabButtons[(size_t)TabButton::eMenu].init("Menu[ESC]", 38, 35);
+
+	menu.init();
 
 	fpsLabel.init("FPS:", 0, 0, true);
 }
@@ -47,9 +45,6 @@ void GUI::startGame()
 
 void GUI::quitToMenu()
 {
-	buttons[eEnableDebug].setVisible(false);
-	buttons[eAbandonGame].setVisible(false);
-	buttons[eSaveAndQuit].setVisible(false);
 	buttons[eHealth].setVisible(false);
 	buttons[eNutrition].setVisible(false);
 
@@ -158,8 +153,6 @@ void GUI::onButtonPressed(ButtonType type)
 		else
 			game.pauseGame();
 	}
-	else if(type == eSaveAndQuit)
-		game.quitToMenu();
 }
 
 void GUI::onTabButtonPressed(TabButton type)
@@ -168,17 +161,13 @@ void GUI::onTabButtonPressed(TabButton type)
 	{
 		if(pressedTabButton == TabButton::eMenu)
 		{
-			buttons[eEnableDebug].setVisible(false);
-			buttons[eAbandonGame].setVisible(false);
-			buttons[eSaveAndQuit].setVisible(false);
+			menu.setVisible(false);
 		}
 	}
 
 	if(type == TabButton::eMenu)
 	{
 		auto isPressed = tabButtons[(size_t)type].getPressed();
-		buttons[eEnableDebug].setVisible(isPressed);
-		buttons[eAbandonGame].setVisible(isPressed);
-		buttons[eSaveAndQuit].setVisible(isPressed);
+		menu.setVisible(isPressed);
 	}
 }

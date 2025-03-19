@@ -1,5 +1,6 @@
 export module GUI;
 
+export import Menu;
 export import Label;
 
 export class GUI
@@ -9,9 +10,6 @@ public:
 	{
 		eStartGame,
 		eQuitToDesktop,
-		eEnableDebug,
-		eAbandonGame,
-		eSaveAndQuit,
 		ePause,
 		eHealth,
 		eNutrition,
@@ -51,6 +49,8 @@ private:
 	std::array<Label, (size_t)TabButton::COUNT> tabButtons;
 	Label* hoveredButton{};
 	TabButton pressedTabButton{TabButton::COUNT};
+
+	Menu menu;
 
 	Label fpsLabel;
 };

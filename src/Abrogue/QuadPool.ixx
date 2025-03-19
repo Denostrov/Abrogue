@@ -10,7 +10,7 @@ export struct QuadData
 {
 	QuadData() = default;
 	QuadData(glm::vec2 position, float scale, glm::uvec2 colors, uint32_t glyph)
-		:position(position), scale(tileScale* scale), colors(colors), glyph(glyph)
+		:position(position), scale(tileScale * scale), colors(colors), glyph(glyph)
 	{}
 
 	static constexpr glm::vec2 tileScale{0.5f / Constants::screenHeight, 1.0f / Constants::screenHeight};
@@ -24,11 +24,20 @@ export struct QuadData
 export class QuadPool
 {
 public:
+	enum Layer
+	{
+		eMap,
+		eItem,
+		eEntity,
+		ePopupBackground,
+		ePopup,
+		COUNT
+	};
+
 	class Reference
 	{
 	public:
 		Reference() = default;
-		Reference(size_t index): index(index) {}
 		~Reference();
 
 		Reference(Reference&& rhs) { *this = std::move(rhs); }
@@ -39,26 +48,26 @@ public:
 		void setBackgroundColor(uint32_t packedColor) const;
 
 	private:
+		Reference(size_t index, Layer layer): index(index), layer(layer) {}
+
 		int64_t index{-1};
+		Layer layer;
 
 		friend class QuadPool;
 	};
 
-	[[nodiscard]] Reference insert(QuadData const& newData);
-
-	[[nodiscard]] auto const getData() { return data.data(); }
-	[[nodiscard]] auto getSize() { return data.size(); }
-	[[nodiscard]] auto getCapacity() { return capacity; }
-
-private:
 	void prepare();
 
-	static constexpr size_t capacity{8192};
+	[[nodiscard]] Reference insert(QuadData const& newData, Layer layer);
 
-	std::vector<QuadData> data;
-	std::vector<Reference*> references;
+	[[nodiscard]] auto const& getData() { return data; }
+	[[nodiscard]] constexpr auto getCapacity() { return std::accumulate(capacities.begin(), capacities.end(), 0); }
 
-	friend class Game;
+private:
+	static constexpr std::array<size_t, COUNT> capacities{8192, 8192, 8192, 512, 2048};
+
+	std::array<std::vector<QuadData>, COUNT> data;
+	std::array<std::vector<Reference*>, COUNT> references;
 };
 
 
