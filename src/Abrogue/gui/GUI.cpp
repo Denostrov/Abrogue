@@ -4,24 +4,24 @@ import GameSystems;
 
 void GUI::init()
 {
-	buttons[eStartGame].init("New game", 120, 30);
-	buttons[eQuitToDesktop].init("Quit to desktop", 113, 31);
+	buttons[eStartGame].init("New game", 120, 30, QuadPool::eMap);
+	buttons[eQuitToDesktop].init("Quit to desktop", 113, 31, QuadPool::eMap);
 
-	buttons[ePause].init("Pause[SPACE]", 26, 1);
+	buttons[ePause].init("Pause[SPACE]", 26, 1, QuadPool::eMap);
 
-	buttons[eHealth].init("Health", 0, 1);
+	buttons[eHealth].init("Health", 0, 1, QuadPool::eMap);
 	buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
-	buttons[eNutrition].init("Nutrition", 7, 1);
+	buttons[eNutrition].init("Nutrition", 7, 1, QuadPool::eMap);
 	buttons[eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
 
-	tabButtons[(size_t)TabButton::eDebug].init("Debug[F3]", 0, 35);
-	tabButtons[(size_t)TabButton::eSearch].init("Search[s]", 11, 35);
-	tabButtons[(size_t)TabButton::eDiscoveries].init("Discoveries[D]", 22, 35);
-	tabButtons[(size_t)TabButton::eMenu].init("Menu[ESC]", 38, 35);
+	tabButtons[(size_t)TabButton::eDebug].init("Debug[F3]", 0, 35, QuadPool::eMap);
+	tabButtons[(size_t)TabButton::eSearch].init("Search[s]", 11, 35, QuadPool::eMap);
+	tabButtons[(size_t)TabButton::eDiscoveries].init("Discoveries[D]", 22, 35, QuadPool::eMap);
+	tabButtons[(size_t)TabButton::eMenu].init("Menu[ESC]", 38, 35, QuadPool::eMap);
 
 	menu.init();
 
-	fpsLabel.init("FPS:", 0, 0, true);
+	fpsLabel.init("FPS:", 0, 0, QuadPool::eMap, true);
 }
 
 void GUI::showStartMenu()

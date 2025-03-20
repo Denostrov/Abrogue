@@ -2,8 +2,9 @@ module Label;
 
 import GameSystems;
 
-void Label::init(std::string_view text, std::uint32_t x, std::uint32_t y, bool visible)
+void Label::init(std::string_view text, std::uint32_t x, std::uint32_t y, QuadPool::Layer layer, bool visible)
 {
+	this->layer = layer;
 	setPosition(x, y);
 	setText(text);
 
@@ -51,7 +52,7 @@ void Label::setText(std::string_view newText)
 	for(size_t i = quadReferences.size(); i < text.size(); i++)
 	{
 		quadReferences.emplace_back(quadPool.insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y}, 1.0f,
-													 {Helpers::packColor(255, 255, 255, 255), isVisible ? backgroundColor : 0}, isVisible ? (uint32_t)text[i] : ' '}));
+													 {Helpers::packColor(255, 255, 255, 255), isVisible ? backgroundColor : 0}, isVisible ? (uint32_t)text[i] : ' '}, layer));
 	}
 
 	for(size_t i = 0; i < size; i++)

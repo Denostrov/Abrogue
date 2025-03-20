@@ -447,7 +447,13 @@ bool RenderEngine::drawFrame()
 	if(!recordCommandBuffer(commandBuffers[currentFrameIndex], imageIndex))
 		return false;
 
-	memcpy(quadDataBuffers[currentFrameIndex].data, quadPool.getData(), sizeof(QuadData) * quadPool.getSize());
+	auto const& quadPools = quadPool.getData();
+	size_t currentSize{};
+	for(auto const& pool : quadPools)
+	{
+		memcpy((char*)quadDataBuffers[currentFrameIndex].data + currentSize, pool.data(), sizeof(QuadData) * pool.size());
+		currentSize += sizeof(QuadData) * pool.size();
+	}
 
 	vk::PipelineStageFlags waitStage(vk::PipelineStageFlagBits::eColorAttachmentOutput);
 	vk::SubmitInfo submitInfo(imageAvailableSemaphores[currentFrameIndex].get(), waitStage, commandBuffers[currentFrameIndex], renderFinishedSemaphores[currentFrameIndex].get());

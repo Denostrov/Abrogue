@@ -51,7 +51,7 @@ public:
 		Reference(size_t index, Layer layer): index(index), layer(layer) {}
 
 		int64_t index{-1};
-		Layer layer;
+		Layer layer{COUNT};
 
 		friend class QuadPool;
 	};
@@ -60,14 +60,16 @@ public:
 
 	[[nodiscard]] Reference insert(QuadData const& newData, Layer layer);
 
-	[[nodiscard]] auto const& getData() { return data; }
-	[[nodiscard]] constexpr auto getCapacity() { return std::accumulate(capacities.begin(), capacities.end(), 0); }
+	[[nodiscard]] auto const& getData() const { return data; }
+	[[nodiscard]] auto getSize() const { return size; }
+	[[nodiscard]] constexpr auto getCapacity() const { return std::accumulate(capacities.begin(), capacities.end(), 0); }
 
 private:
 	static constexpr std::array<size_t, COUNT> capacities{8192, 8192, 8192, 512, 2048};
 
 	std::array<std::vector<QuadData>, COUNT> data;
 	std::array<std::vector<Reference*>, COUNT> references;
+	size_t size{};
 };
 
 
