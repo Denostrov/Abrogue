@@ -1,7 +1,8 @@
 export module GUI;
 
 export import Menu;
-export import Label;
+export import Discoveries;
+export import DebugMenu;
 
 export class GUI
 {
@@ -51,6 +52,8 @@ private:
 	TabButton pressedTabButton{TabButton::COUNT};
 
 	Menu menu;
+	Discoveries discoveries;
+	DebugMenu debugMenu;
 
 	Label fpsLabel;
 };

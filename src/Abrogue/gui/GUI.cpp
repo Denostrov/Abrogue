@@ -20,6 +20,8 @@ void GUI::init()
 	tabButtons[(size_t)TabButton::eMenu].init("Menu[ESC]", 38, 35, QuadPool::eMap);
 
 	menu.init();
+	discoveries.init();
+	debugMenu.init();
 
 	fpsLabel.init("FPS:", 0, 0, QuadPool::eMap, true);
 }
@@ -160,14 +162,18 @@ void GUI::onTabButtonPressed(TabButton type)
 	if(pressedTabButton != type)
 	{
 		if(pressedTabButton == TabButton::eMenu)
-		{
 			menu.setVisible(false);
-		}
+		else if(pressedTabButton == TabButton::eDiscoveries)
+			discoveries.setVisible(false);
+		else if(pressedTabButton == TabButton::eDebug)
+			debugMenu.setVisible(false);
 	}
 
+	auto isPressed = tabButtons[(size_t)type].getPressed();
 	if(type == TabButton::eMenu)
-	{
-		auto isPressed = tabButtons[(size_t)type].getPressed();
 		menu.setVisible(isPressed);
-	}
+	else if(type == TabButton::eDiscoveries)
+		discoveries.setVisible(isPressed);
+	else if(type == TabButton::eDebug)
+		debugMenu.setVisible(isPressed);
 }
