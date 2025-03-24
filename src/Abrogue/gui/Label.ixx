@@ -8,7 +8,7 @@ export class Label
 public:
 	Label() = default;
 
-	void init(std::string_view text, std::uint32_t x, std::uint32_t y, QuadPool::Layer layer, bool visible = false);
+	void init(std::string_view text, std::uint32_t x, std::uint32_t y, QuadPool::Layer drawLayer, bool visible = false);
 
 	[[nodiscard]] bool checkCollision(std::uint32_t checkX, std::uint32_t checkY) const
 	{
