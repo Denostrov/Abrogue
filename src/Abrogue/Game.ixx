@@ -27,8 +27,8 @@ public:
 	void startGame();
 	void quitToDesktop();
 
-	void pauseGame();
-	void resumeGame();
+	void setPaused(bool paused);
+
 	void quitToMenu();
 
 	void onKeyPressed(SDL_Scancode scanCode);

@@ -95,16 +95,10 @@ void Game::quitToDesktop()
 	state = eFinished;
 }
 
-void Game::pauseGame()
+void Game::setPaused(bool paused)
 {
-	state = ePaused;
-	gui.pauseGame();
-}
-
-void Game::resumeGame()
-{
-	state = eRunning;
-	gui.resumeGame();
+	state = paused ? ePaused : eRunning;
+	gui.setPaused(paused);
 }
 
 void Game::quitToMenu()
@@ -121,9 +115,14 @@ void Game::onKeyPressed(SDL_Scancode scanCode)
 	if(scanCode == SDL_SCANCODE_SPACE)
 	{
 		if(state == eRunning)
-			pauseGame();
+			setPaused(true);
 		else if(state == ePaused)
-			resumeGame();
+			setPaused(false);
+	}
+	else if(scanCode == SDL_SCANCODE_ESCAPE)
+	{
+		if(state == eRunning || state == ePaused)
+			gui.onMenuToggled();
 	}
 
 	pressedButtons[scanCode] = true;

@@ -59,14 +59,10 @@ void GUI::quitToMenu()
 	buttons[eQuitToDesktop].setVisible(true);
 }
 
-void GUI::pauseGame()
+void GUI::setPaused(bool paused)
 {
-	buttons[ePause].setText("PAUSED[SPACE]");
-}
-
-void GUI::resumeGame()
-{
-	buttons[ePause].setText("Pause[SPACE]");
+	buttons[ePause].setPressed(paused);
+	buttons[ePause].setText(paused ? "PAUSED[SPACE]" : "Pause[SPACE]");
 }
 
 void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
@@ -134,6 +130,31 @@ void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 	}
 }
 
+void GUI::onMenuToggled()
+{
+	if(state == State::eRunning)
+	{
+		if(pressedTabButton != TabButton::COUNT)
+		{
+			tabButtons[(size_t)pressedTabButton].setPressed(false);
+			pressedTabButton = TabButton::eMenu;
+		}
+		tabButtons[(size_t)TabButton::eMenu].setPressed(true);
+		onTabButtonPressed(TabButton::eMenu);
+	}
+	else if(state == State::ePaused)
+	{
+		if(pressedTabButton != TabButton::COUNT)
+		{
+			tabButtons[(size_t)pressedTabButton].setPressed(false);
+			pressedTabButton = TabButton::COUNT;
+		}
+		menu.setVisible(false);
+		game.setPaused(false);
+		state = State::eRunning;
+	}
+}
+
 void GUI::setFPS(std::uint32_t fps)
 {
 	std::array<char, 16> fpsString{"FPS:"};
@@ -148,13 +169,7 @@ void GUI::onButtonPressed(ButtonType type)
 	else if(type == eQuitToDesktop)
 		game.quitToDesktop();
 	else if(type == ePause)
-	{
-		buttons[(size_t)type].togglePressed();
-		if(game.getState() == Game::ePaused)
-			game.resumeGame();
-		else
-			game.pauseGame();
-	}
+		game.setPaused(!buttons[(size_t)type].getPressed());
 }
 
 void GUI::onTabButtonPressed(TabButton type)
@@ -171,9 +186,26 @@ void GUI::onTabButtonPressed(TabButton type)
 
 	auto isPressed = tabButtons[(size_t)type].getPressed();
 	if(type == TabButton::eMenu)
+	{
 		menu.setVisible(isPressed);
+		game.setPaused(true);
+		state = State::ePaused;
+	}
 	else if(type == TabButton::eDiscoveries)
+	{
 		discoveries.setVisible(isPressed);
+		game.setPaused(true);
+		state = State::ePaused;
+	}
 	else if(type == TabButton::eDebug)
+	{
 		debugMenu.setVisible(isPressed);
+		game.setPaused(true);
+		state = State::ePaused;
+	}
+	else
+	{
+		game.setPaused(false);
+		state = State::eRunning;
+	}
 }
