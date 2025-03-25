@@ -43,6 +43,8 @@ void GUI::startGame()
 	buttons[ePause].setVisible(true);
 	for(auto& button : tabButtons)
 		button.setVisible(true);
+
+	state = State::eNormal;
 }
 
 void GUI::quitToMenu()
@@ -57,101 +59,75 @@ void GUI::quitToMenu()
 
 	buttons[eStartGame].setVisible(true);
 	buttons[eQuitToDesktop].setVisible(true);
+
+	state = State::eMainMenu;
 }
 
 void GUI::setPaused(bool paused)
 {
+	logger.extraAssert(state != State::eMainMenu, "Paused while the game is not running");
+
 	buttons[ePause].setPressed(paused);
 	buttons[ePause].setText(paused ? "PAUSED[SPACE]" : "Pause[SPACE]");
 }
 
 void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
 {
-	auto updateHoveredButton = [this](Label* newHoveredButton)
+	if(state == State::eMainMenu || state == State::eNormal)
 	{
-		if(newHoveredButton != hoveredButton)
+		auto updateHoveredButton = [this](Label* newHoveredButton)
 		{
-			if(hoveredButton)
-				hoveredButton->setHovered(false);
-			hoveredButton = newHoveredButton;
-		}
-	};
+			if(newHoveredButton != hoveredButton)
+			{
+				if(hoveredButton)
+					hoveredButton->setHovered(false);
+				hoveredButton = newHoveredButton;
+			}
+		};
 
-	for(size_t i = 0; i < buttons.size(); i++)
-	{
-		if(buttons[i].checkCollision(x, y))
+		for(size_t i = 0; i < buttons.size(); i++)
 		{
-			buttons[i].setHovered(true);
-			updateHoveredButton(&buttons[i]);
-			return;
+			if(buttons[i].checkCollision(x, y))
+			{
+				buttons[i].setHovered(true);
+				updateHoveredButton(&buttons[i]);
+				return;
+			}
 		}
-	}
-	for(size_t i = 0; i < tabButtons.size(); i++)
-	{
-		if(tabButtons[i].checkCollision(x, y))
+		for(size_t i = 0; i < tabButtons.size(); i++)
 		{
-			tabButtons[i].setHovered(true);
-			updateHoveredButton(&tabButtons[i]);
-			return;
+			if(tabButtons[i].checkCollision(x, y))
+			{
+				tabButtons[i].setHovered(true);
+				updateHoveredButton(&tabButtons[i]);
+				return;
+			}
 		}
+		updateHoveredButton(nullptr);
 	}
-	updateHoveredButton(nullptr);
 }
 
 void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 {
-	for(size_t i = 0; i < buttons.size(); i++)
+	if(state == State::eMainMenu || state == State::eNormal)
 	{
-		if(buttons[i].checkCollision(x, y))
+		for(size_t i = 0; i < buttons.size(); i++)
 		{
-			onButtonPressed((ButtonType)i);
-			return;
+			if(buttons[i].checkCollision(x, y))
+			{
+				onButtonPressed((ButtonType)i);
+				return;
+			}
 		}
-	}
 
-	auto updatePressedButton = [this](TabButton newPressedButton)
-	{
-		if(newPressedButton != pressedTabButton)
+		for(size_t i = 0; i < tabButtons.size(); i++)
 		{
-			if(pressedTabButton != TabButton::COUNT)
-				tabButtons[(size_t)pressedTabButton].setPressed(false);
-			pressedTabButton = newPressedButton;
+			if(tabButtons[i].checkCollision(x, y))
+			{
+				setPressedTabButton(pressedTabButton == (TabButton)i ? TabButton::COUNT : (TabButton)i);
+				return;
+			}
 		}
-	};
-	for(size_t i = 0; i < tabButtons.size(); i++)
-	{
-		if(tabButtons[i].checkCollision(x, y))
-		{
-			tabButtons[i].setPressed(true);
-			onTabButtonPressed((TabButton)i);
-			updatePressedButton((TabButton)i);
-			return;
-		}
-	}
-}
-
-void GUI::onMenuToggled()
-{
-	if(state == State::eRunning)
-	{
-		if(pressedTabButton != TabButton::COUNT)
-		{
-			tabButtons[(size_t)pressedTabButton].setPressed(false);
-			pressedTabButton = TabButton::eMenu;
-		}
-		tabButtons[(size_t)TabButton::eMenu].setPressed(true);
-		onTabButtonPressed(TabButton::eMenu);
-	}
-	else if(state == State::ePaused)
-	{
-		if(pressedTabButton != TabButton::COUNT)
-		{
-			tabButtons[(size_t)pressedTabButton].setPressed(false);
-			pressedTabButton = TabButton::COUNT;
-		}
-		menu.setVisible(false);
-		game.setPaused(false);
-		state = State::eRunning;
 	}
 }
 
@@ -172,9 +148,12 @@ void GUI::onButtonPressed(ButtonType type)
 		game.setPaused(!buttons[(size_t)type].getPressed());
 }
 
-void GUI::onTabButtonPressed(TabButton type)
+void GUI::setPressedTabButton(TabButton type)
 {
-	if(pressedTabButton != type)
+	if(pressedTabButton == type)
+		return;
+
+	if(pressedTabButton != TabButton::COUNT)
 	{
 		if(pressedTabButton == TabButton::eMenu)
 			menu.setVisible(false);
@@ -182,30 +161,37 @@ void GUI::onTabButtonPressed(TabButton type)
 			discoveries.setVisible(false);
 		else if(pressedTabButton == TabButton::eDebug)
 			debugMenu.setVisible(false);
-	}
 
-	auto isPressed = tabButtons[(size_t)type].getPressed();
-	if(type == TabButton::eMenu)
-	{
-		menu.setVisible(isPressed);
-		game.setPaused(true);
-		state = State::ePaused;
+		tabButtons[(size_t)pressedTabButton].setPressed(false);
 	}
-	else if(type == TabButton::eDiscoveries)
+	pressedTabButton = type;
+
+	if(type != TabButton::COUNT)
 	{
-		discoveries.setVisible(isPressed);
-		game.setPaused(true);
-		state = State::ePaused;
-	}
-	else if(type == TabButton::eDebug)
-	{
-		debugMenu.setVisible(isPressed);
-		game.setPaused(true);
-		state = State::ePaused;
+		if(type == TabButton::eMenu)
+		{
+			menu.setVisible(true);
+			game.setPaused(true);
+			state = State::eMenu;
+		}
+		else if(type == TabButton::eDiscoveries)
+		{
+			discoveries.setVisible(true);
+			game.setPaused(true);
+			state = State::eDiscoveries;
+		}
+		else if(type == TabButton::eDebug)
+		{
+			debugMenu.setVisible(true);
+			game.setPaused(true);
+			state = State::eDebug;
+		}
+
+		tabButtons[(size_t)type].setPressed(true);
 	}
 	else
 	{
 		game.setPaused(false);
-		state = State::eRunning;
+		state = State::eNormal;
 	}
 }

@@ -28,8 +28,11 @@ public:
 
 	enum class State
 	{
-		eRunning,
-		ePaused
+		eMainMenu,
+		eNormal,
+		eDebug,
+		eDiscoveries,
+		eMenu
 	};
 
 	GUI() = default;
@@ -45,15 +48,17 @@ public:
 	void onMouseMoved(std::uint32_t x, std::uint32_t y);
 	void onMousePressed(std::uint32_t x, std::uint32_t y);
 
-	void onMenuToggled();
+	void toggleMenu() { setPressedTabButton(pressedTabButton == TabButton::COUNT ? TabButton::eMenu : TabButton::COUNT); }
+	void toggleDiscoveries() { setPressedTabButton(pressedTabButton == TabButton::eDiscoveries ? TabButton::COUNT : TabButton::eDiscoveries); }
+	void toggleDebugOptions() { setPressedTabButton(pressedTabButton == TabButton::eDebug ? TabButton::COUNT : TabButton::eDebug); }
 
 	void setFPS(std::uint32_t fps);
 
 private:
 	void onButtonPressed(ButtonType type);
-	void onTabButtonPressed(TabButton type);
+	void setPressedTabButton(TabButton type);
 
-	State state{State::eRunning};
+	State state{State::eMainMenu};
 
 	std::array<Label, COUNT> buttons;
 	std::array<Label, (size_t)TabButton::COUNT> tabButtons;

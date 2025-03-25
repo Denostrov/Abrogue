@@ -120,10 +120,9 @@ void Game::onKeyPressed(SDL_Scancode scanCode)
 			setPaused(false);
 	}
 	else if(scanCode == SDL_SCANCODE_ESCAPE)
-	{
-		if(state == eRunning || state == ePaused)
-			gui.onMenuToggled();
-	}
+		gui.toggleMenu();
+	else if(scanCode == SDL_SCANCODE_F3)
+		gui.toggleDebugOptions();
 
 	pressedButtons[scanCode] = true;
 }
