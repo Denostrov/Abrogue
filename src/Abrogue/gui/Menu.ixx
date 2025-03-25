@@ -17,7 +17,11 @@ public:
 
 	void init();
 
+	auto& getButtons() { return buttons; }
+
 	void setVisible(bool visible);
+
+	void onButtonPressed(ButtonType type);
 
 private:
 	std::array<Label, COUNT> buttons;

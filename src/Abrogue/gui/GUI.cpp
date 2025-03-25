@@ -53,6 +53,7 @@ void GUI::quitToMenu()
 	buttons[eNutrition].setVisible(false);
 
 	buttons[ePause].setVisible(false);
+	buttons[ePause].setPressed(false);
 
 	for(auto& button : tabButtons)
 		button.setVisible(false);
@@ -60,15 +61,13 @@ void GUI::quitToMenu()
 	buttons[eStartGame].setVisible(true);
 	buttons[eQuitToDesktop].setVisible(true);
 
+	menu.setVisible(false);
+	debugMenu.setVisible(false);
+	discoveries.setVisible(false);
+
+	pressedTabButton = TabButton::COUNT;
+
 	state = State::eMainMenu;
-}
-
-void GUI::setPaused(bool paused)
-{
-	logger.extraAssert(state != State::eMainMenu, "Paused while the game is not running");
-
-	buttons[ePause].setPressed(paused);
-	buttons[ePause].setText(paused ? "PAUSED[SPACE]" : "Pause[SPACE]");
 }
 
 void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
@@ -105,6 +104,8 @@ void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
 		}
 		updateHoveredButton(nullptr);
 	}
+	else if(state == State::eMenu)
+		updateMouseMoved(menu, x, y);
 }
 
 void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
@@ -129,6 +130,14 @@ void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 			}
 		}
 	}
+	else if(state == State::eMenu)
+		updateMousePressed(menu, x, y);
+}
+
+void GUI::togglePause()
+{
+	if(state == State::eNormal)
+		setPaused(!buttons[ePause].getPressed());
 }
 
 void GUI::setFPS(std::uint32_t fps)
@@ -150,7 +159,7 @@ void GUI::onButtonPressed(ButtonType type)
 
 void GUI::setPressedTabButton(TabButton type)
 {
-	if(pressedTabButton == type)
+	if(pressedTabButton == type || state == State::eMainMenu)
 		return;
 
 	if(pressedTabButton != TabButton::COUNT)
@@ -171,19 +180,19 @@ void GUI::setPressedTabButton(TabButton type)
 		if(type == TabButton::eMenu)
 		{
 			menu.setVisible(true);
-			game.setPaused(true);
+			setPaused(true);
 			state = State::eMenu;
 		}
 		else if(type == TabButton::eDiscoveries)
 		{
 			discoveries.setVisible(true);
-			game.setPaused(true);
+			setPaused(true);
 			state = State::eDiscoveries;
 		}
 		else if(type == TabButton::eDebug)
 		{
 			debugMenu.setVisible(true);
-			game.setPaused(true);
+			setPaused(true);
 			state = State::eDebug;
 		}
 
@@ -191,7 +200,17 @@ void GUI::setPressedTabButton(TabButton type)
 	}
 	else
 	{
-		game.setPaused(false);
+		setPaused(false);
 		state = State::eNormal;
 	}
+}
+
+void GUI::setPaused(bool paused)
+{
+	if(buttons[ePause].getPressed() == paused)
+		return;
+
+	buttons[ePause].setPressed(paused);
+	buttons[ePause].setText(paused ? "PAUSED[SPACE]" : "Pause[SPACE]");
+	game.setPaused(paused);
 }

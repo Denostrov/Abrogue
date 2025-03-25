@@ -23,3 +23,11 @@ void Menu::setVisible(bool visible)
 	else
 		background = QuadPool::Reference();
 }
+
+void Menu::onButtonPressed(ButtonType type)
+{
+	if(type == ButtonType::eResume)
+		gui.toggleMenu();
+	else if(type == ButtonType::eAbandonGame || type == ButtonType::eSaveAndQuit)
+		game.quitToMenu();
+}

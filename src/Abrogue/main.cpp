@@ -28,10 +28,10 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 		case SDL_EVENT_QUIT:
 			return SDL_APP_SUCCESS;
 		case SDL_EVENT_KEY_DOWN:
-			game.onKeyPressed(event->key.scancode);
+			inputHandler.setButtonPressed(event->key.scancode, true);
 			break;
 		case SDL_EVENT_KEY_UP:
-			game.onKeyReleased(event->key.scancode);
+			inputHandler.setButtonPressed(event->key.scancode, false);
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			if(event->button.button == 1)

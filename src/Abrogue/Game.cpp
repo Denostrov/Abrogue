@@ -32,8 +32,8 @@ bool Game::init()
 
 bool Game::update()
 {
-	player.setMovementX(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A]);
-	player.setMovementY(pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
+	player.setMovementX(inputHandler.getButtonPressed(SDL_SCANCODE_D) - inputHandler.getButtonPressed(SDL_SCANCODE_A));
+	player.setMovementY(inputHandler.getButtonPressed(SDL_SCANCODE_S) - inputHandler.getButtonPressed(SDL_SCANCODE_W));
 
 	uint64_t currentTime = SDL_GetTicksNS();
 	uint64_t updateCount{};
@@ -98,7 +98,6 @@ void Game::quitToDesktop()
 void Game::setPaused(bool paused)
 {
 	state = paused ? ePaused : eRunning;
-	gui.setPaused(paused);
 }
 
 void Game::quitToMenu()
@@ -108,23 +107,6 @@ void Game::quitToMenu()
 	player = Player();
 	enemies.clear();
 	gui.quitToMenu();
-}
-
-void Game::onKeyPressed(SDL_Scancode scanCode)
-{
-	if(scanCode == SDL_SCANCODE_SPACE)
-	{
-		if(state == eRunning)
-			setPaused(true);
-		else if(state == ePaused)
-			setPaused(false);
-	}
-	else if(scanCode == SDL_SCANCODE_ESCAPE)
-		gui.toggleMenu();
-	else if(scanCode == SDL_SCANCODE_F3)
-		gui.toggleDebugOptions();
-
-	pressedButtons[scanCode] = true;
 }
 
 void Game::onMouseMoved(float x, float y)

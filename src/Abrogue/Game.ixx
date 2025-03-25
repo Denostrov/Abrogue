@@ -1,7 +1,3 @@
-module;
-
-#include <SDL3/SDL_scancode.h>
-
 export module Game;
 
 export import RenderEngine;
@@ -31,9 +27,6 @@ public:
 
 	void quitToMenu();
 
-	void onKeyPressed(SDL_Scancode scanCode);
-	void onKeyReleased(SDL_Scancode scanCode) { pressedButtons[scanCode] = false; }
-
 	void onMouseMoved(float x, float y);
 	void onMousePressed(float x, float y);
 
@@ -60,8 +53,4 @@ private:
 	Map map;
 	Player player;
 	std::vector<Enemy> enemies;
-
-	GUI gui;
-
-	std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };
