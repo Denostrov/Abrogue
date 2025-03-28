@@ -1,6 +1,17 @@
+module;
+
+#include <SDL3/SDL_mouse.h>
+
 module InputHandler;
 
 import GameSystems;
+
+std::pair<float, float> InputHandler::getMousePosition() const
+{
+	float x{}, y{};
+	SDL_GetMouseState(&x, &y);
+	return {x, y};
+}
 
 void InputHandler::setButtonPressed(SDL_Scancode scancode, bool pressed)
 {

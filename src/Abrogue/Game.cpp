@@ -23,7 +23,6 @@ bool Game::init()
 	lastFPSLogTime = lastUpdateTime;
 
 	gui.init();
-	gui.showStartMenu();
 
 	resetTickTimer();
 
@@ -100,13 +99,12 @@ void Game::setPaused(bool paused)
 	state = paused ? ePaused : eRunning;
 }
 
-void Game::quitToMenu()
+void Game::quitToMainMenu()
 {
 	state = eNotStarted;
 	map = Map();
 	player = Player();
 	enemies.clear();
-	gui.quitToMenu();
 }
 
 void Game::onMouseMoved(float x, float y)

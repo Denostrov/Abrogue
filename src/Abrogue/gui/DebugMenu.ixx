@@ -1,15 +1,15 @@
 export module DebugMenu;
 
-export import Label;
+export import Screen;
 
-export class DebugMenu
+export class DebugMenu : public Screen
 {
 public:
 	DebugMenu() = default;
 
 	void init();
 
-	void setVisible(bool visible);
+	void setVisible(bool visible) final;
 
 private:
 	Label title;

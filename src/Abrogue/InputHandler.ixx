@@ -11,6 +11,8 @@ export class InputHandler
 public:
 	InputHandler() = default;
 
+	std::pair<float, float> getMousePosition() const;
+
 	bool getButtonPressed(SDL_Scancode scancode) const { return pressedButtons[scancode]; }
 	void setButtonPressed(SDL_Scancode scancode, bool pressed);
 

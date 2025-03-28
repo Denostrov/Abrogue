@@ -1,8 +1,8 @@
 export module Menu;
 
-export import Label;
+export import Screen;
 
-export class Menu
+export class Menu : public Screen
 {
 public:
 	enum ButtonType
@@ -19,11 +19,11 @@ public:
 
 	auto& getButtons() { return buttons; }
 
-	void setVisible(bool visible);
-
-	void onButtonPressed(ButtonType type);
+	void setVisible(bool visible) final;
 
 private:
+	void onButtonPressed(size_t index) final;
+
 	std::array<Label, COUNT> buttons;
 	QuadPool::Reference background;
 };

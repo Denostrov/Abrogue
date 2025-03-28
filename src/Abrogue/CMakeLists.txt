@@ -7,22 +7,51 @@ add_executable(${PROJECT_NAME}
 	"RenderEngine.cpp" 
 	"RenderWindow.cpp" 
 	"PhysicsComponent.cpp" 
-	"Enemy.cpp" "Game.cpp" "Map.cpp" "Player.cpp" "QuadPool.cpp" "gui/GUI.cpp" "gui/Label.cpp" "gui/Menu.cpp" "gui/Discoveries.cpp" "gui/DebugMenu.cpp" "InputHandler.cpp")
+	"Enemy.cpp" 
+	"Game.cpp" 
+	"Map.cpp" 
+	"Player.cpp" 
+	"QuadPool.cpp" 
+	"InputHandler.cpp"
+	
+	"gui/GUI.cpp" 
+	"gui/Label.cpp" 
+	"gui/Menu.cpp" 
+	"gui/Discoveries.cpp" 
+	"gui/DebugMenu.cpp"  
+	"gui/PlayArea.cpp" 
+	"gui/MainMenu.cpp"
+	"gui/Screen.cpp"
+)
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES 
 	${STANDARD_MODULE_PATH} 
 	"helpers/Configuration.ixx" 
 	"helpers/Logger.ixx" 
 	"helpers/ImageLoader.ixx"
 	"helpers/Constants.ixx" 
+	"helpers/Event.ixx"
 
 	"RenderEngine.ixx"  
 	"RenderWindow.ixx" 
 	"PhysicsComponent.ixx"
 	"Enemy.ixx" 
-
 	"Game.ixx" 
 	"QuadPool.ixx" 
-	"Player.ixx" "Map.ixx" "gui/Label.ixx" "gui/GUI.ixx"  "helpers/Event.ixx" "GameSystems.ixx" "gui/Menu.ixx" "gui/Discoveries.ixx" "gui/DebugMenu.ixx" "GameEvents.ixx" "InputHandler.ixx")
+	"Player.ixx" 
+	"Map.ixx" 
+	"GameSystems.ixx"
+	"GameEvents.ixx"
+	"InputHandler.ixx"
+
+	"gui/Label.ixx" 
+	"gui/GUI.ixx"    
+	"gui/Menu.ixx" 
+	"gui/Discoveries.ixx" 
+	"gui/DebugMenu.ixx"   
+	"gui/PlayArea.ixx" 
+	"gui/MainMenu.ixx" 
+	"gui/Screen.ixx"
+)
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})

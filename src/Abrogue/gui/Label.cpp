@@ -28,10 +28,11 @@ void Label::setVisible(bool visible)
 	}
 
 	//Recreate quads
+	auto color = getBackgroundColor();
 	for(size_t i = 0; i < size; i++)
 	{
 		quadReferences.emplace_back(quadPool.insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y},
-											 {Helpers::packColor(255, 255, 255, 255), backgroundColor}, (uint32_t)text[i]}, layer));
+											 {Helpers::packColor(255, 255, 255, 255), color}, (uint32_t)text[i]}, layer));
 	}
 }
 

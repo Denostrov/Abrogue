@@ -7,6 +7,8 @@ void Menu::init()
 	buttons[eResume].init("Resume", 60, 15, QuadPool::ePopup);
 	buttons[eAbandonGame].init("Abandon game", 57, 16, QuadPool::ePopup);
 	buttons[eSaveAndQuit].init("Save and quit", 57, 17, QuadPool::ePopup);
+
+	pressableButtons = buttons;
 }
 
 void Menu::setVisible(bool visible)
@@ -24,10 +26,12 @@ void Menu::setVisible(bool visible)
 		background = QuadPool::Reference();
 }
 
-void Menu::onButtonPressed(ButtonType type)
+void Menu::onButtonPressed(size_t index)
 {
+	auto type = (ButtonType)index;
+
 	if(type == ButtonType::eResume)
 		gui.toggleMenu();
 	else if(type == ButtonType::eAbandonGame || type == ButtonType::eSaveAndQuit)
-		game.quitToMenu();
+		gui.quitToMainMenu();
 }

@@ -25,7 +25,7 @@ public:
 
 	void setPaused(bool paused);
 
-	void quitToMenu();
+	void quitToMainMenu();
 
 	void onMouseMoved(float x, float y);
 	void onMousePressed(float x, float y);
