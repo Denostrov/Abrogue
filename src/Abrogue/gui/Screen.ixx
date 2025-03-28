@@ -9,8 +9,6 @@ public:
 
 	virtual void setVisible(bool visible) {}
 
-	void recheckHoverPosition();
-
 	void updateMouseMoved(std::uint32_t x, std::uint32_t y);
 	void updateMousePressed(std::uint32_t x, std::uint32_t y);
 

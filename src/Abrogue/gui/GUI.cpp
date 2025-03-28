@@ -124,8 +124,9 @@ void GUI::toggleDiscoveries()
 
 void GUI::setCurrentScreen(Screen& newScreen)
 {
-	newScreen.recheckHoverPosition();
 	currentScreen = &newScreen;
+	auto [x, y] = inputHandler.getMousePosition();
+	game.onMouseMoved(x, y);
 }
 
 void GUI::setFPS(std::uint32_t fps)

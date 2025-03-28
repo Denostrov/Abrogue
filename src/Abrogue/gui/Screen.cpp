@@ -2,12 +2,6 @@ module Screen;
 
 import GameSystems;
 
-void Screen::recheckHoverPosition()
-{
-	auto [x, y] = inputHandler.getMousePosition();
-	updateMouseMoved(x, y);
-}
-
 void Screen::updateMouseMoved(std::uint32_t x, std::uint32_t y)
 {
 	for(auto& button : pressableButtons)
