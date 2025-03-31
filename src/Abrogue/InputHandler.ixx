@@ -16,6 +16,8 @@ public:
 	bool getButtonPressed(SDL_Scancode scancode) const { return pressedButtons[scancode]; }
 	void setButtonPressed(SDL_Scancode scancode, bool pressed);
 
+	void setShiftButtonPressed(SDL_Scancode scancode);
+
 private:
 	std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };

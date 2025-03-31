@@ -27,3 +27,8 @@ void InputHandler::setButtonPressed(SDL_Scancode scancode, bool pressed)
 
 	pressedButtons[scancode] = pressed;
 }
+
+void InputHandler::setShiftButtonPressed(SDL_Scancode scancode)
+{
+	if(scancode == SDL_SCANCODE_D) gui.toggleDiscoveries();
+}

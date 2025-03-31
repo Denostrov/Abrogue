@@ -58,67 +58,71 @@ void GUI::toggleMenu()
 	if(currentScreen == &mainMenu)
 		return;
 
-	if(currentScreen == &menu)
+	if(currentScreen == &playArea)
 	{
-		menu.setVisible(false);
-		setCurrentScreen(playArea);
-		playArea.setPaused(previouslyPaused);
+		playArea.setPaused(true);
+		menu.setVisible(true);
+		setCurrentScreen(menu);
 	}
 	else
 	{
-		if(currentScreen != &playArea)
-			currentScreen->setVisible(false);
-		else
-			playArea.setPaused(true);
-
-		menu.setVisible(true);
-		setCurrentScreen(menu);
+		currentScreen->setVisible(false);
+		setCurrentScreen(playArea);
+		playArea.setPaused(previouslyPaused);
 	}
 }
 
 void GUI::toggleDebugOptions()
 {
-	if(currentScreen == &mainMenu)
+	if(currentScreen == &mainMenu || currentScreen == &menu)
 		return;
 
-	if(currentScreen == &debugMenu)
+	if(currentScreen == &playArea)
 	{
-		debugMenu.setVisible(false);
-		setCurrentScreen(playArea);
-		playArea.setPaused(previouslyPaused);
+		playArea.setPaused(true);
+		debugMenu.setVisible(true);
+		setCurrentScreen(debugMenu);
 	}
 	else
 	{
-		if(currentScreen != &playArea)
-			currentScreen->setVisible(false);
+		currentScreen->setVisible(false);
+		if(currentScreen == &debugMenu)
+		{
+			setCurrentScreen(playArea);
+			playArea.setPaused(previouslyPaused);
+		}
 		else
-			playArea.setPaused(true);
-
-		debugMenu.setVisible(true);
-		setCurrentScreen(debugMenu);
+		{
+			debugMenu.setVisible(true);
+			setCurrentScreen(debugMenu);
+		}
 	}
 }
 
 void GUI::toggleDiscoveries()
 {
-	if(currentScreen == &mainMenu)
+	if(currentScreen == &mainMenu || currentScreen == &menu)
 		return;
 
-	if(currentScreen == &discoveries)
+	if(currentScreen == &playArea)
 	{
-		discoveries.setVisible(false);
-		setCurrentScreen(playArea);
-		playArea.setPaused(previouslyPaused);
+		playArea.setPaused(true);
+		discoveries.setVisible(true);
+		setCurrentScreen(discoveries);
 	}
 	else
 	{
-		if(currentScreen != &playArea)
-			currentScreen->setVisible(false);
+		currentScreen->setVisible(false);
+		if(currentScreen == &discoveries)
+		{
+			setCurrentScreen(playArea);
+			playArea.setPaused(previouslyPaused);
+		}
 		else
-			playArea.setPaused(true);
-
-		discoveries.setVisible(true);
-		setCurrentScreen(discoveries);
+		{
+			discoveries.setVisible(true);
+			setCurrentScreen(discoveries);
+		}
 	}
 }
 

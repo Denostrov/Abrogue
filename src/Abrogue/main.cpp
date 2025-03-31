@@ -28,7 +28,10 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 		case SDL_EVENT_QUIT:
 			return SDL_APP_SUCCESS;
 		case SDL_EVENT_KEY_DOWN:
-			inputHandler.setButtonPressed(event->key.scancode, true);
+			if((event->key.mod & SDL_KMOD_SHIFT) == 0)
+				inputHandler.setButtonPressed(event->key.scancode, true);
+			else
+				inputHandler.setShiftButtonPressed(event->key.scancode);
 			break;
 		case SDL_EVENT_KEY_UP:
 			inputHandler.setButtonPressed(event->key.scancode, false);
