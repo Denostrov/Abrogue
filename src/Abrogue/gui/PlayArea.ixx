@@ -29,6 +29,8 @@ public:
 	bool getPaused() const { return buttons[(size_t)ButtonType::ePause].getPressed(); }
 	void setPaused(bool paused);
 
+	void setTabButtonPressed(ButtonType type);
+
 private:
 	void onButtonPressed(size_t index) final;
 

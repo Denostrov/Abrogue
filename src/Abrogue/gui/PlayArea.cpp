@@ -35,6 +35,20 @@ void PlayArea::setPaused(bool paused)
 	game.setPaused(paused);
 }
 
+void PlayArea::setTabButtonPressed(ButtonType type)
+{
+	if(type < ButtonType::eDebug || pressedTabButton == type)
+		return;
+
+	if(pressedTabButton != ButtonType::COUNT)
+		buttons[(size_t)pressedTabButton].setPressed(false);
+
+	pressedTabButton = type;
+
+	if(type != ButtonType::COUNT)
+		buttons[(size_t)type].setPressed(true);
+}
+
 void PlayArea::onButtonPressed(size_t index)
 {
 	auto type = (ButtonType)index;

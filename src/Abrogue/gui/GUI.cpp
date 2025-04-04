@@ -63,12 +63,14 @@ void GUI::toggleMenu()
 		playArea.setPaused(true);
 		menu.setVisible(true);
 		setCurrentScreen(menu);
+		playArea.setTabButtonPressed(PlayArea::ButtonType::eMenu);
 	}
 	else
 	{
 		currentScreen->setVisible(false);
 		setCurrentScreen(playArea);
 		playArea.setPaused(previouslyPaused);
+		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
 	}
 }
 
@@ -82,6 +84,7 @@ void GUI::toggleDebugOptions()
 		playArea.setPaused(true);
 		debugMenu.setVisible(true);
 		setCurrentScreen(debugMenu);
+		playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
 	}
 	else
 	{
@@ -90,11 +93,13 @@ void GUI::toggleDebugOptions()
 		{
 			setCurrentScreen(playArea);
 			playArea.setPaused(previouslyPaused);
+			playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
 		}
 		else
 		{
 			debugMenu.setVisible(true);
 			setCurrentScreen(debugMenu);
+			playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
 		}
 	}
 }
@@ -109,6 +114,7 @@ void GUI::toggleDiscoveries()
 		playArea.setPaused(true);
 		discoveries.setVisible(true);
 		setCurrentScreen(discoveries);
+		playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 	}
 	else
 	{
@@ -117,11 +123,13 @@ void GUI::toggleDiscoveries()
 		{
 			setCurrentScreen(playArea);
 			playArea.setPaused(previouslyPaused);
+			playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
 		}
 		else
 		{
 			discoveries.setVisible(true);
 			setCurrentScreen(discoveries);
+			playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 		}
 	}
 }
