@@ -8,6 +8,7 @@ export struct Weapon
 	Weapon() = default;
 
 	std::uint64_t damage{};
+	double attackTime{};
 };
 
 export class Player : public PhysicsComponent
@@ -33,10 +34,26 @@ public:
 			}
 		}
 	}
+	void updateDraw(double deltaTime)
+	{
+		float guiOffset = 48.0f;
+
+		auto [x, y] = getPosition();
+		auto [vx, vy] = getVelocity();
+		quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
+		if(attackTimer > 0.0)
+		{
+			double attackPeak = weapon.attackTime / 2.0;
+			double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak;
+			weaponReference.setPosition({(guiOffset + x + vx * deltaTime + weaponOffset * attackAngleCos) * QuadData::tileScale.x, (y + vy * deltaTime + weaponOffset * attackAngleSin) * QuadData::tileScale.y});
+		}
+	}
 
 	Weapon weapon;
 	QuadPool::Reference weaponReference;
 	double attackTimer{};
+	double attackAngleCos{};
+	double attackAngleSin{};
 
 	QuadPool::Reference quadReference;
 };

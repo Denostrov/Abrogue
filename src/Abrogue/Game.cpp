@@ -131,13 +131,6 @@ void Game::initDraw()
 
 	float guiOffset = 48.0f;
 
-	auto [x, y] = player.getPosition();
-	player.quadReference.setPosition({(guiOffset + x) * QuadData::tileScale.x, y * QuadData::tileScale.y});
-	if(player.attackTimer > 0.0)
-	{
-		player.weaponReference.setPosition({(guiOffset + x - 1.0f) * QuadData::tileScale.x, y * QuadData::tileScale.y});
-	}
-
 	for(auto const& enemy : enemies)
 	{
 		auto [x, y] = enemy.getPosition();
@@ -160,13 +153,7 @@ bool Game::updateDraw(double deltaTime)
 	{
 		float guiOffset = 48.0f;
 
-		auto [x, y] = player.getPosition();
-		auto [vx, vy] = player.getVelocity();
-		player.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
-		if(player.attackTimer > 0.0)
-		{
-			player.weaponReference.setPosition({(guiOffset + x + vx * deltaTime - 1.0f) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
-		}
+		player.updateDraw(deltaTime);
 
 		for(auto const& enemy : enemies)
 		{
