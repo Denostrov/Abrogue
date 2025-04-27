@@ -63,3 +63,6 @@ bool Map::getTileExists(std::uint32_t x, std::uint32_t y) const
 
 	return tiles[x + y * width].exists;
 }
+
+void Map::onMousePressed(std::uint32_t x, std::uint32_t y)
+{}

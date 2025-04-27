@@ -31,7 +31,6 @@ public:
 	void onMousePressed(float x, float y);
 
 	auto getState() const { return state; }
-	std::pair<double, double> getPlayerPosition() { return player.getPosition(); }
 	bool getTileSolid(std::uint32_t x, std::uint32_t y) { return map.getTileExists(x, y); }
 
 private:
@@ -51,6 +50,5 @@ private:
 	State state{};
 
 	Map map;
-	Player player;
 	std::vector<Enemy> enemies;
 };

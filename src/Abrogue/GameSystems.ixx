@@ -8,4 +8,5 @@ export inline Logger logger;
 export inline Configuration configuration;
 export inline InputHandler inputHandler;
 export inline GUI gui;
+export inline Player player;
 export inline Game game;

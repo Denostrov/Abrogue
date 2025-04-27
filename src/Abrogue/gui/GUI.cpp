@@ -42,6 +42,10 @@ void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
 void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 {
 	currentScreen->updateMousePressed(x, y);
+	if(currentScreen == &playArea && !playArea.getPaused())
+	{
+		player.onMousePressed(x, y);
+	}
 }
 
 void GUI::togglePause()
