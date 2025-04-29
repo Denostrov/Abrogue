@@ -27,3 +27,52 @@ void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
 
 	weaponReference = quadPool.insert(weaponData, QuadPool::eItem);
 }
+
+void Player::update()
+{
+	PhysicsComponent::update();
+
+	if(attackTimer > 0.0)
+	{
+		bool readyToDamage = attackTimer > weapon.attackTime / 2.0;
+		attackTimer -= Constants::tickDuration;
+		if(readyToDamage && attackTimer <= weapon.attackTime / 2.0)
+		{
+			auto [positionX, positionY] = getPosition();
+			double weaponX = positionX + attackAngleCos;
+			double weaponY = positionY + attackAngleSin;
+
+			auto& enemies = game.getEnemies();
+			for(size_t i = 0; i < enemies.size(); i++)
+			{
+				auto [enemyX, enemyY] = enemies[i].getPosition();
+				if(weaponX > enemyX - 0.5 && weaponX < enemyX + 0.5 && weaponY > enemyY - 0.5 && weaponY < enemyY + 0.5)
+				{
+					enemies.erase(enemies.begin() + i);
+					i--;
+				}
+			}
+		}
+
+		if(attackTimer <= 0.0)
+		{
+			attackTimer = 0.0;
+			weaponReference = QuadPool::Reference{};
+		}
+	}
+}
+
+void Player::updateDraw(double deltaTime)
+{
+	float guiOffset = 48.0f;
+
+	auto [x, y] = getPosition();
+	auto [vx, vy] = getVelocity();
+	quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
+	if(attackTimer > 0.0)
+	{
+		double attackPeak = weapon.attackTime / 2.0;
+		double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak;
+		weaponReference.setPosition({(guiOffset + x + vx * deltaTime + weaponOffset * attackAngleCos) * QuadData::tileScale.x, (y + vy * deltaTime + weaponOffset * attackAngleSin) * QuadData::tileScale.y});
+	}
+}
