@@ -10,14 +10,17 @@ export struct QuadData
 {
 	QuadData() = default;
 	QuadData(glm::vec2 position, glm::uvec2 colors, uint32_t glyph)
-		:position(position), scale(tileScale), colors(colors), glyph(glyph)
+		:position(position), scale(tileScale), rotation(1.0, 0.0), colors(colors), glyph(glyph)
 	{}
 	void setScale(float scaleX, float scaleY) { scale = {tileScale.x * scaleX, tileScale.y * scaleY}; }
+	void setRotation(float angle) { rotation = {std::cos(angle), std::sin(angle)}; }
+	void setRotation(float cos, float sin) { rotation = {cos, sin}; }
 
 	static constexpr glm::vec2 tileScale{0.5f / Constants::screenHeight, 1.0f / Constants::screenHeight};
 
 	glm::vec2 position;
 	glm::vec2 scale;
+	glm::vec2 rotation;
 	glm::uvec2 colors;
 	uint32_t glyph;
 };

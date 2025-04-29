@@ -16,11 +16,14 @@ void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
 {
 	attackTimer = weapon.attackTime;
 	auto [positionX, positionY] = getPosition();
-	weaponReference = quadPool.insert(QuadData{{positionX, positionY}, {Helpers::packColor(255, 255, 0, 255), Helpers::packColor(255, 255, 0, 0)}, 24}, QuadPool::eItem);
+	QuadData weaponData{{positionX, positionY}, {Helpers::packColor(255, 255, 0, 255), Helpers::packColor(255, 255, 0, 0)}, 24};
 
 	double distanceX = (x + 0.5 - positionX);
 	double distanceY = (y + 0.5 - positionY);
 	double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
 	attackAngleCos = distanceX / distance;
 	attackAngleSin = distanceY / distance;
+	weaponData.setRotation(-attackAngleSin, attackAngleCos);
+
+	weaponReference = quadPool.insert(weaponData, QuadPool::eItem);
 }

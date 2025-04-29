@@ -29,9 +29,7 @@ QuadPool::Reference& QuadPool::Reference::operator=(QuadPool::Reference&& rhs)
 {
 	if(index != -1 && rhs.index != -1)
 	{
-		auto& data = quadPool.data[layer];
 		auto& references = quadPool.references[layer];
-		std::swap(data[index], data[rhs.index]);
 		std::swap(references[index], references[rhs.index]);
 	}
 	else if(rhs.index != -1)
