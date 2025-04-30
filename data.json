@@ -1,0 +1,22 @@
+{
+	"enemies" : [
+	{
+		"name" : "rat",
+		"symbol" : "r",
+		"speed" : 10,
+		"mass" : 10
+	},
+	{
+		"name" : "jackal",
+		"symbol" : "j",
+		"speed" : 20,
+		"mass" : 10
+	},
+	{
+		"name" : "ogre",
+		"symbol" : "O",
+		"speed" : 10,
+		"mass" : 20
+	}
+	]
+}

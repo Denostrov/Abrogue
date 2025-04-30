@@ -27,6 +27,7 @@ export class Constants
 {
 public:
 	static constexpr std::string_view configFileName{"config"};
+	static constexpr std::string_view dataFileName{"data"};
 	static constexpr std::string_view infoLogFileName{"infoLog"};
 	static constexpr std::string_view errorLogFileName{"errorLog"};
 

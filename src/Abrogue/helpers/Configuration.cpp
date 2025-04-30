@@ -10,32 +10,52 @@ using namespace std::literals;
 
 bool Configuration::load()
 {
-	auto configFile = std::ifstream(Constants::configFileName.data() + ".json"s, std::ios::in | std::ios::binary);
-	if(!configFile)
-		return saveToFile();
-
-	nlohmann::json configJSON = nlohmann::json::parse(configFile, nullptr, false);
-	if(configJSON.is_discarded() || !configJSON.is_object())
-		return saveToFile();
-
-	auto readJSONValue = [&configJSON](std::string_view key, auto& value)
+	auto openJSONFile = [](std::string_view fileName)
 	{
-		if(!configJSON.contains(key))
+		nlohmann::json result;
+
+		auto configFile = std::ifstream(fileName.data() + ".json"s, std::ios::in | std::ios::binary);
+		if(!configFile)
+			return result;
+
+		result = nlohmann::json::parse(configFile, nullptr, false);
+		return result;
+	};
+
+	auto readJSONValue = [](nlohmann::json const& json, std::string_view key, auto& value)
+	{
+		if(!json.contains(key))
 			return;
 
 		using ValueType = std::decay_t<decltype(value)>;
 
 		if constexpr(std::is_integral_v<ValueType>)
 		{
-			if(!configJSON[key].is_number_integer())
+			if(!json[key].is_number_integer())
 				return;
 
-			value = configJSON[key].get<ValueType>();
+			value = json[key].get<ValueType>();
 		}
 	};
 
-	readJSONValue("windowWidth", windowWidth);
-	readJSONValue("windowHeight", windowHeight);
+	auto configJSON = openJSONFile(Constants::configFileName);
+	if(configJSON.is_discarded() || !configJSON.is_object())
+	{
+		bool saveResult = saveToFile();
+		if(!saveResult)
+			return false;
+
+		configJSON = openJSONFile(Constants::configFileName);
+		if(configJSON.is_discarded() || !configJSON.is_object())
+			return false;
+	}
+
+	readJSONValue(configJSON, "windowWidth", windowWidth);
+	readJSONValue(configJSON, "windowHeight", windowHeight);
+
+	auto dataJSON = openJSONFile(Constants::dataFileName);
+	if(dataJSON.is_discarded() || !dataJSON.is_object())
+		dataJSON = nlohmann::json::parse(R"({})", nullptr, false);
 
 	return true;
 }

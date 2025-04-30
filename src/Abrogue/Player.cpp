@@ -19,7 +19,7 @@ void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
 	QuadData weaponData{{positionX, positionY}, {Helpers::packColor(255, 255, 0, 255), Helpers::packColor(255, 255, 0, 0)}, 24};
 
 	double distanceX = (x + 0.5 - positionX);
-	double distanceY = (y + 0.5 - positionY);
+	double distanceY = (y + 0.5 - positionY) * 2.0;
 	double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
 	attackAngleCos = distanceX / distance;
 	attackAngleSin = distanceY / distance;
@@ -39,8 +39,8 @@ void Player::update()
 		if(readyToDamage && attackTimer <= weapon.attackTime / 2.0)
 		{
 			auto [positionX, positionY] = getPosition();
-			double weaponX = positionX + attackAngleCos;
-			double weaponY = positionY + attackAngleSin;
+			double weaponX = positionX + 1.5 * attackAngleCos;
+			double weaponY = positionY + 1.5 * attackAngleSin / 2.0;
 
 			auto& enemies = game.getEnemies();
 			for(size_t i = 0; i < enemies.size(); i++)
@@ -72,7 +72,7 @@ void Player::updateDraw(double deltaTime)
 	if(attackTimer > 0.0)
 	{
 		double attackPeak = weapon.attackTime / 2.0;
-		double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak;
-		weaponReference.setPosition({(guiOffset + x + vx * deltaTime + weaponOffset * attackAngleCos) * QuadData::tileScale.x, (y + vy * deltaTime + weaponOffset * attackAngleSin) * QuadData::tileScale.y});
+		double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak + 0.5;
+		weaponReference.setPosition({(guiOffset + x + vx * deltaTime + weaponOffset * attackAngleCos) * QuadData::tileScale.x, (y + vy * deltaTime + weaponOffset * attackAngleSin * 0.5) * QuadData::tileScale.y});
 	}
 }
