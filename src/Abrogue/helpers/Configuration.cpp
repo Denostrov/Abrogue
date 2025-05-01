@@ -29,11 +29,29 @@ bool Configuration::load()
 
 		using ValueType = std::decay_t<decltype(value)>;
 
-		if constexpr(std::is_integral_v<ValueType>)
+		if constexpr(std::is_same_v<ValueType, char>)
+		{
+			if(!json[key].is_string())
+				return;
+
+			value = json[key].get<std::string>()[0];
+		}
+		else if constexpr(std::is_same_v<ValueType, std::string>)
+		{
+			if(!json[key].is_string())
+				return;
+
+			value = json[key].get<ValueType>();
+		}
+		else if constexpr(std::is_integral_v<ValueType>)
 		{
 			if(!json[key].is_number_integer())
 				return;
 
+			value = json[key].get<ValueType>();
+		}
+		else if constexpr(std::is_floating_point_v<ValueType>)
+		{
 			value = json[key].get<ValueType>();
 		}
 	};
@@ -57,7 +75,28 @@ bool Configuration::load()
 	if(dataJSON.is_discarded() || !dataJSON.is_object())
 		dataJSON = nlohmann::json::parse(R"({})", nullptr, false);
 
+	if(dataJSON.contains("enemies"))
+	{
+		for(auto const& enemyJSON : dataJSON["enemies"])
+		{
+			EnemyData data;
+			readJSONValue(enemyJSON, "name", data.name);
+			readJSONValue(enemyJSON, "symbol", data.symbol);
+			readJSONValue(enemyJSON, "speed", data.speed);
+			readJSONValue(enemyJSON, "mass", data.mass);
+			enemyData.emplace_back(data);
+		}
+	}
+
+	if(enemyData.empty())
+		enemyData.emplace_back();
+
 	return true;
+}
+
+EnemyData const& Configuration::getSuitableEnemy()
+{
+	return enemyData[std::random_device()() % enemyData.size()];
 }
 
 bool Configuration::saveToFile()

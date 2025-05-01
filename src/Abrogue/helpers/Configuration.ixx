@@ -2,6 +2,14 @@ export module Configuration;
 
 export import std;
 
+export struct EnemyData
+{
+	std::string name;
+	char symbol{};
+	double speed{10.0};
+	double mass{10.0};
+};
+
 export class Configuration
 {
 public:
@@ -10,9 +18,13 @@ public:
 	auto getWindowWidth() const { return windowWidth; }
 	auto getWindowHeight() const { return windowHeight; }
 
+	EnemyData const& getSuitableEnemy();
+
 private:
 	bool saveToFile();
 
 	std::uint32_t windowWidth{800};
 	std::uint32_t windowHeight{450};
+
+	std::vector<EnemyData> enemyData;
 };

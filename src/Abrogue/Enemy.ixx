@@ -7,7 +7,7 @@ export class Enemy : public PhysicsComponent
 {
 public:
 	Enemy() = default;
-	Enemy(std::uint8_t type);
+	Enemy(std::uint8_t type, double speed, double mass);
 
 	void update();
 

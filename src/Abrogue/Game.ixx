@@ -52,4 +52,5 @@ private:
 
 	Map map;
 	std::vector<Enemy> enemies;
+	double lastEnemySpawnTime{};
 };

@@ -44,8 +44,12 @@ bool Game::update()
 
 			player.update();
 
-			if(currentTick / (Constants::ticksPerSecond * 5) > enemies.size())
-				enemies.emplace_back(48 + (double)std::random_device()() / std::numeric_limits<std::uint32_t>::max() * 80.0);
+			if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 5.0)
+			{
+				auto const& enemyData = configuration.getSuitableEnemy();
+				enemies.emplace_back(enemyData.symbol, enemyData.speed, enemyData.mass);
+				lastEnemySpawnTime = currentTick / (double)Constants::ticksPerSecond;
+			}
 			for(auto& enemy : enemies) enemy.update();
 		}
 
