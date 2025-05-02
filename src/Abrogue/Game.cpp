@@ -159,11 +159,12 @@ bool Game::updateDraw(double deltaTime)
 
 		player.updateDraw(deltaTime);
 
-		for(auto const& enemy : enemies)
+		for(auto& enemy : enemies)
 		{
 			auto [x, y] = enemy.getPosition();
 			auto [vx, vy] = enemy.getVelocity();
 			enemy.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
+			enemy.updateDraw();
 		}
 	}
 

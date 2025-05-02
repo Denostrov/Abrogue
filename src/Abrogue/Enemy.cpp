@@ -9,6 +9,8 @@ Enemy::Enemy(std::uint8_t type, double speed, double mass):PhysicsComponent(36.0
 
 	setMass(mass);
 	setMaxVelocity(speed);
+
+	weapon.init(Weapon::Type::eClaw, false);
 }
 
 void Enemy::update()
@@ -19,5 +21,17 @@ void Enemy::update()
 	setMovementX(playerX > x + 1.0 ? 1 : playerX < x - 1.0 ? -1 : 0);
 	setMovementY(playerY > y + 1.0 ? 1 : playerY < y - 1.0 ? -1 : 0);
 
+	if(std::abs(playerX - x) < 1.0 && std::abs(playerY - y) < 1.0 && !weapon.getIsAttacking())
+		weapon.startAttack(x, y, playerX, playerY);
+
 	PhysicsComponent::update();
+
+	std::tie(x, y) = getPosition();
+	weapon.update(x, y);
+}
+
+void Enemy::updateDraw()
+{
+	auto [x, y] = getPosition();
+	weapon.updateDraw(48.0 + x, y);
 }

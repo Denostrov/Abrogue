@@ -2,14 +2,7 @@ export module Player;
 
 export import PhysicsComponent;
 export import QuadPool;
-
-export struct Weapon
-{
-	Weapon() = default;
-
-	std::uint64_t damage{};
-	double attackTime{};
-};
+export import Weapon;
 
 export class Player : public PhysicsComponent
 {
@@ -23,10 +16,6 @@ public:
 	void updateDraw(double deltaTime);
 
 	Weapon weapon;
-	QuadPool::Reference weaponReference;
-	double attackTimer{};
-	double attackAngleCos{};
-	double attackAngleSin{};
 
 	QuadPool::Reference quadReference;
 };
