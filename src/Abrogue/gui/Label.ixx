@@ -27,9 +27,10 @@ public:
 	void setPosition(std::uint32_t newX, std::uint32_t newY);
 	void setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor);
 	void setPressedBackgroundColor(std::uint32_t color, std::uint32_t hoverColor);
+	void setProgress(double percentage);
 
 private:
-	std::uint32_t getBackgroundColor() const;
+	std::uint32_t getBackgroundColor(std::size_t index) const;
 
 	bool isVisible{};
 	bool isHovered{};
@@ -40,6 +41,7 @@ private:
 
 	std::uint32_t x{}, y{};
 	std::size_t size{};
+	double progress{1.0};
 
 	std::uint32_t backgroundColor{Constants::labelBackgroundColor};
 	std::uint32_t hoveredBackgroundColor{Constants::labelHoveredColor};

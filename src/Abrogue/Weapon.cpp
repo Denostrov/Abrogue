@@ -51,6 +51,14 @@ void Weapon::update(double positionX, double positionY)
 				}
 			}
 		}
+		else
+		{
+			auto [playerX, playerY] = player.getPosition();
+			if(weaponX > playerX - 0.5 && weaponX < playerX + 0.5 && weaponY > playerY - 0.5 && weaponY < playerY + 0.5)
+			{
+				player.takeDamage(damage);
+			}
+		}
 	}
 
 	if(attackTimer <= 0.0)

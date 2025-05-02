@@ -15,7 +15,12 @@ public:
 	void update();
 	void updateDraw(double deltaTime);
 
+	void takeDamage(std::int64_t damage);
+
+	void setHealth(std::int64_t newHealth);
+
 	Weapon weapon;
+	std::int64_t health{};
 
 	QuadPool::Reference quadReference;
 };

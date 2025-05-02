@@ -28,11 +28,10 @@ void Label::setVisible(bool visible)
 	}
 
 	//Recreate quads
-	auto color = getBackgroundColor();
 	for(size_t i = 0; i < size; i++)
 	{
 		quadReferences.emplace_back(quadPool.insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y},
-											 {Helpers::packColor(255, 255, 255, 255), color}, (uint32_t)text[i]}, layer));
+											 {Helpers::packColor(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
 	}
 }
 
@@ -43,9 +42,8 @@ void Label::setHovered(bool hovered)
 
 	isHovered = hovered;
 
-	auto color = getBackgroundColor();
 	for(size_t i = 0; i < size; i++)
-		quadReferences[i].setBackgroundColor(color);
+		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
 }
 
 void Label::setPressed(bool pressed)
@@ -55,9 +53,8 @@ void Label::setPressed(bool pressed)
 
 	isPressed = pressed;
 
-	auto color = getBackgroundColor();
 	for(size_t i = 0; i < size; i++)
-		quadReferences[i].setBackgroundColor(color);
+		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
 }
 
 void Label::setText(std::string_view newText)
@@ -69,19 +66,18 @@ void Label::setText(std::string_view newText)
 	size = text.size();
 
 	//Create remaining quads when new text is longer
-	auto color = getBackgroundColor();
 	quadReferences.reserve(size);
 	for(size_t i = quadReferences.size(); i < size; i++)
 	{
 		quadReferences.emplace_back(quadPool.insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y},
-													 {Helpers::packColor(255, 255, 255, 255), color}, (uint32_t)text[i]}, layer));
+													 {Helpers::packColor(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
 	}
 
 	//Set existing quad parameters
 	for(size_t i = 0; i < size; i++)
 	{
 		quadReferences[i].setGlyph(text[i]);
-		quadReferences[i].setBackgroundColor(color);
+		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
 	}
 
 	//Erase extra quads when new text is shorter
@@ -101,9 +97,8 @@ void Label::setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)
 	backgroundColor = color;
 	hoveredBackgroundColor = hoverColor;
 
-	auto newColor = getBackgroundColor();
 	for(size_t i = 0; i < size; i++)
-		quadReferences[i].setBackgroundColor(newColor);
+		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
 }
 
 void Label::setPressedBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)
@@ -111,13 +106,22 @@ void Label::setPressedBackgroundColor(std::uint32_t color, std::uint32_t hoverCo
 	pressedBackgroundColor = color;
 	hoveredPressedBackgroundColor = hoverColor;
 
-	auto newColor = getBackgroundColor();
 	for(size_t i = 0; i < size; i++)
-		quadReferences[i].setBackgroundColor(newColor);
+		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
 }
 
-std::uint32_t Label::getBackgroundColor() const
+void Label::setProgress(double percentage)
 {
-	return isPressed ? (isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor)
-		: (isHovered ? hoveredBackgroundColor : backgroundColor);
+	progress = percentage;
+
+	for(size_t i = 0; i < size; i++)
+		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
+}
+
+std::uint32_t Label::getBackgroundColor(std::size_t index) const
+{
+	auto [r, g, b, a] = Helpers::unpackColor(isPressed ? (isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor)
+											 : (isHovered ? hoveredBackgroundColor : backgroundColor));
+	double colorCoefficient = std::clamp((progress - (double)index / size) * size, 0.0, 1.0);
+	return Helpers::packColor(r * colorCoefficient, g * colorCoefficient, b * colorCoefficient, a);
 }

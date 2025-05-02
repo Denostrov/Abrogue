@@ -8,18 +8,19 @@ import GameSystems;
 
 QuadPool::Reference::~Reference()
 {
+	//Reference isn't valid
 	if(index == -1) return;
 
 	auto& data = quadPool.data[layer];
 	auto& references = quadPool.references[layer];
 
-	std::swap(data[index], data[data.size() - 1]);
+	//Copy last element in place of deleted and pop
+	data[index] = data.back();
 	data.pop_back();
 
-	if(index != references.size() - 1)
-		references[references.size() - 1]->index = index;
-
-	std::swap(references[index], references[references.size() - 1]);
+	//Update the reference index
+	references[index] = references.back();
+	references[index]->index = index;
 	references.pop_back();
 
 	quadPool.size--;
@@ -27,16 +28,16 @@ QuadPool::Reference::~Reference()
 
 QuadPool::Reference& QuadPool::Reference::operator=(QuadPool::Reference&& rhs)
 {
-	if(index != -1 && rhs.index != -1)
+	//Update reference pointers in quad pool
+	if(index != -1)
 	{
-		auto& references = quadPool.references[layer];
-		std::swap(references[index], references[rhs.index]);
+		if(rhs.index != -1)
+			std::swap(quadPool.references[layer][index], quadPool.references[rhs.layer][rhs.index]);
+		else
+			quadPool.references[layer][index] = &rhs;
 	}
 	else if(rhs.index != -1)
-	{
-		auto& references = quadPool.references[rhs.layer];
-		references[rhs.index] = this;
-	}
+		quadPool.references[rhs.layer][rhs.index] = this;
 
 	std::swap(index, rhs.index);
 	std::swap(layer, rhs.layer);

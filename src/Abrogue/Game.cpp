@@ -44,7 +44,7 @@ bool Game::update()
 
 			player.update();
 
-			if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 5.0)
+			if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 3.0)
 			{
 				auto const& enemyData = configuration.getSuitableEnemy();
 				enemies.emplace_back(enemyData.symbol, enemyData.speed, enemyData.mass);

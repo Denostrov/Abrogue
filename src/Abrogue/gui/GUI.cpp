@@ -151,3 +151,8 @@ void GUI::setFPS(std::uint32_t fps)
 	std::to_chars(fpsString.data() + 4, fpsString.data() + 14, fps);
 	fpsLabel.setText(fpsString.data());
 }
+
+void GUI::setPlayerHealth(double percentage)
+{
+	playArea.setPlayerHealth(percentage);
+}

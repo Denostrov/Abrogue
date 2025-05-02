@@ -4,9 +4,9 @@ import GameSystems;
 
 void PlayArea::init()
 {
-	buttons[(size_t)ButtonType::eHealth].init("Health", 0, 1, QuadPool::eMap);
+	buttons[(size_t)ButtonType::eHealth].init("     Health     ", 0, 1, QuadPool::eMap);
 	buttons[(size_t)ButtonType::eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
-	buttons[(size_t)ButtonType::eNutrition].init("Nutrition", 7, 1, QuadPool::eMap);
+	buttons[(size_t)ButtonType::eNutrition].init("   Nutrition    ", 0, 2, QuadPool::eMap);
 	buttons[(size_t)ButtonType::eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
 	buttons[(size_t)ButtonType::eSearch].init("Search[S]", 11, 35, QuadPool::eMap);
 	buttons[(size_t)ButtonType::eInventory].init("Inventory", 0, 5, QuadPool::eMap);
@@ -47,6 +47,11 @@ void PlayArea::setTabButtonPressed(ButtonType type)
 
 	if(type != ButtonType::COUNT)
 		buttons[(size_t)type].setPressed(true);
+}
+
+void PlayArea::setPlayerHealth(double percentage)
+{
+	buttons[(size_t)ButtonType::eHealth].setProgress(percentage);
 }
 
 void PlayArea::onButtonPressed(size_t index)

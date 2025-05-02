@@ -21,6 +21,7 @@ public:
 	void onMousePressed(std::uint32_t x, std::uint32_t y);
 
 	void setFPS(std::uint32_t fps);
+	void setPlayerHealth(double percentage);
 
 	void togglePause();
 	void toggleMenu();

@@ -31,6 +31,8 @@ public:
 
 	void setTabButtonPressed(ButtonType type);
 
+	void setPlayerHealth(double percentage);
+
 private:
 	void onButtonPressed(size_t index) final;
 

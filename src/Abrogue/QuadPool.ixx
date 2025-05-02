@@ -25,9 +25,11 @@ export struct QuadData
 	uint32_t glyph;
 };
 
+//Object pool for unordered quad data storage
 export class QuadPool
 {
 public:
+	//Layers for defining draw order
 	enum Layer
 	{
 		eMap,
@@ -38,6 +40,7 @@ public:
 		COUNT
 	};
 
+	//Bidirectional reference for modifying quad data
 	class Reference
 	{
 	public:

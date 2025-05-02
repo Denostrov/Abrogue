@@ -64,4 +64,11 @@ endif()
 set_target_properties(${PROJECT_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ABROGUE_BIN_DIR})
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 26)
 set_target_properties(${PROJECT_NAME} PROPERTIES CXX_SCAN_FOR_MODULES ON)
-set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release,RelWithDebInfo,MinSizeRel>)
+
+if(WIN32)
+	set_target_properties(${PROJECT_NAME} PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release,RelWithDebInfo,MinSizeRel>)
+endif()
+
+if(MSVC)
+	target_link_options(${PROJECT_NAME} PRIVATE /STACK:8388608)
+endif()

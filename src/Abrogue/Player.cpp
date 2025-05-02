@@ -2,12 +2,13 @@ module Player;
 
 import GameSystems;
 
-Player::Player(double velocity) :PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.32, 0.4)
+Player::Player(double velocity):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.32, 0.4)
 {
 	quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {Helpers::packColor(64, 255, 0, 255), Helpers::packColor(64, 255, 0, 0)}, 64},
 									QuadPool::eEntity);
 
 	setMaxVelocity(velocity);
+	setHealth(100);
 
 	weapon.init(Weapon::Type::eDagger, true);
 }
@@ -37,4 +38,20 @@ void Player::updateDraw(double deltaTime)
 	quadReference.setPosition({drawPositionX * QuadData::tileScale.x, drawPositionY * QuadData::tileScale.y});
 
 	weapon.updateDraw(drawPositionX, drawPositionY);
+}
+
+void Player::takeDamage(std::int64_t damage)
+{
+	std::int64_t newHealth = health - damage;
+	if(newHealth < 0)
+		newHealth = 0;
+
+	setHealth(newHealth);
+}
+
+void Player::setHealth(std::int64_t newHealth)
+{
+	health = newHealth;
+
+	gui.setPlayerHealth(health / 100.0);
 }
