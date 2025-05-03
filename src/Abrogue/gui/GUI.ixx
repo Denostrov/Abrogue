@@ -27,6 +27,8 @@ public:
 	void toggleMenu();
 	void toggleDebugOptions();
 	void toggleDiscoveries();
+	void toggleStopTime();
+	void toggleStepTime();
 
 private:
 	void setCurrentScreen(Screen& newScreen);

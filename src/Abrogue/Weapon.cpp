@@ -13,12 +13,14 @@ void Weapon::init(Type newType, bool friendly)
 		{
 			damage = 1;
 			attackTime = 0.25;
+			drawOffset = 0.2;
 			break;
 		}
 		case Type::eDagger:
 		{
 			damage = 1;
 			attackTime = 0.25;
+			drawOffset = 0.4;
 			break;
 		}
 		default:
@@ -38,13 +40,19 @@ void Weapon::update(double positionX, double positionY)
 		double weaponX = positionX + 1.5 * attackAngleCos;
 		double weaponY = positionY + 1.5 * attackAngleSin / 2.0;
 
+		if(drawDebugInfo)
+		{
+			auto quadData = QuadData{{(48.0 + weaponX) * QuadData::tileScale.x, weaponY * QuadData::tileScale.y}, {Helpers::packColor(255, 0, 0, 255), Helpers::packColor(255, 0, 0, 0)}, 249};
+			damageReference = quadPool.insert(quadData, QuadPool::ePopup);
+		}
+
 		if(isFriendly)
 		{
 			auto& enemies = game.getEnemies();
 			for(size_t i = 0; i < enemies.size(); i++)
 			{
 				auto [enemyX, enemyY] = enemies[i].getPosition();
-				if(weaponX > enemyX - 0.5 && weaponX < enemyX + 0.5 && weaponY > enemyY - 0.5 && weaponY < enemyY + 0.5)
+				if(weaponX > enemyX - 0.6 && weaponX < enemyX + 0.6 && weaponY > enemyY - 0.6 && weaponY < enemyY + 0.6)
 				{
 					enemies.erase(enemies.begin() + i);
 					i--;
@@ -55,10 +63,12 @@ void Weapon::update(double positionX, double positionY)
 		{
 			auto [playerX, playerY] = player.getPosition();
 			if(weaponX > playerX - 0.5 && weaponX < playerX + 0.5 && weaponY > playerY - 0.5 && weaponY < playerY + 0.5)
-			{
 				player.takeDamage(damage);
-			}
 		}
+	}
+	else if(drawDebugInfo)
+	{
+		damageReference = QuadPool::Reference{};
 	}
 
 	if(attackTimer <= 0.0)
@@ -74,7 +84,7 @@ void Weapon::updateDraw(double positionX, double positionY)
 		return;
 
 	double attackPeak = attackTime / 2.0;
-	double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak + 0.5;
+	double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak + drawOffset;
 	weaponReference.setPosition({(positionX + weaponOffset * attackAngleCos) * QuadData::tileScale.x, (positionY + weaponOffset * attackAngleSin * 0.5) * QuadData::tileScale.y});
 }
 

@@ -50,11 +50,11 @@ void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 
 void GUI::togglePause()
 {
-	if(currentScreen == &playArea)
-	{
-		previouslyPaused = !playArea.getPaused();
-		playArea.setPaused(previouslyPaused);
-	}
+	if(currentScreen != &playArea)
+		return;
+
+	previouslyPaused = !playArea.getPaused();
+	playArea.setPaused(previouslyPaused);
 }
 
 void GUI::toggleMenu()
@@ -136,6 +136,22 @@ void GUI::toggleDiscoveries()
 			playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 		}
 	}
+}
+
+void GUI::toggleStopTime()
+{
+	if(currentScreen == &mainMenu)
+		return;
+
+	debugMenu.toggleStopTime();
+}
+
+void GUI::toggleStepTime()
+{
+	if(currentScreen == &mainMenu)
+		return;
+
+	debugMenu.toggleStepTime();
 }
 
 void GUI::setCurrentScreen(Screen& newScreen)

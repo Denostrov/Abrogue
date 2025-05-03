@@ -23,6 +23,10 @@ void InputHandler::setButtonPressed(SDL_Scancode scancode, bool pressed)
 			gui.toggleMenu();
 		else if(scancode == SDL_SCANCODE_F3)
 			gui.toggleDebugOptions();
+		else if(scancode == SDL_SCANCODE_KP_7)
+			gui.toggleStopTime();
+		else if(scancode == SDL_SCANCODE_KP_8)
+			gui.toggleStepTime();
 	}
 
 	pressedButtons[scancode] = pressed;

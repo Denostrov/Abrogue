@@ -36,24 +36,11 @@ bool Game::update()
 
 	uint64_t currentTime = SDL_GetTicksNS();
 	uint64_t updateCount{};
-	while(currentTime - lastUpdateTime > Constants::tickDurationNS)
+	while((currentTime - lastUpdateTime) * speedMultiplier > Constants::tickDurationNS)
 	{
-		if(state == eRunning)
-		{
-			currentTick++;
+		advanceStep();
 
-			player.update();
-
-			if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 3.0)
-			{
-				auto const& enemyData = configuration.getSuitableEnemy();
-				enemies.emplace_back(enemyData.symbol, enemyData.speed, enemyData.mass);
-				lastEnemySpawnTime = currentTick / (double)Constants::ticksPerSecond;
-			}
-			for(auto& enemy : enemies) enemy.update();
-		}
-
-		lastUpdateTime += Constants::tickDurationNS;
+		lastUpdateTime += Constants::tickDurationNS / speedMultiplier;
 
 		updateCount++;
 		if(updateCount > 4)
@@ -64,7 +51,7 @@ bool Game::update()
 		}
 	}
 
-	if(!updateDraw((currentTime - lastUpdateTime) / 1000000000.0))
+	if(!updateDraw((currentTime - lastUpdateTime) * speedMultiplier / 1000000000.0))
 		return false;
 
 	framesDrawn++;
@@ -79,6 +66,26 @@ bool Game::update()
 	}
 
 	return true;
+}
+
+void Game::advanceStep()
+{
+	if(state == eRunning)
+	{
+		currentTick++;
+
+		player.update();
+
+		if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 3.0)
+		{
+			auto const& enemyData = configuration.getSuitableEnemy();
+			enemies.emplace_back(enemyData.symbol, enemyData.speed, enemyData.mass);
+			lastEnemySpawnTime = currentTick / (double)Constants::ticksPerSecond;
+		}
+
+		for(auto& enemy : enemies)
+			enemy.update();
+	}
 }
 
 void Game::startGame()
@@ -101,6 +108,14 @@ void Game::quitToDesktop()
 void Game::setPaused(bool paused)
 {
 	state = paused ? ePaused : eRunning;
+}
+
+void Game::setSpeedMultiplier(double speed)
+{
+	logger.extraAssert(speed >= 0.0, "Set incorrect speed multiplier");
+
+	speedMultiplier = speed;
+	lastUpdateTime = SDL_GetTicksNS();
 }
 
 void Game::quitToMainMenu()

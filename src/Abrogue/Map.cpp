@@ -50,7 +50,7 @@ Map::Map(size_t width, size_t height)
 		}
 		else
 		{
-			tiles[i].quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {Helpers::packColor(255, 255, 255, 255), Helpers::packColor(8, 8, 8, 255)}, 46},
+			tiles[i].quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {Helpers::packColor(96, 96, 96, 255), Helpers::packColor(4, 4, 4, 255)}, 250},
 													 QuadPool::eMap);
 		}
 	}

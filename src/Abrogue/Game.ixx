@@ -19,11 +19,13 @@ public:
 
 	bool init();
 	bool update();
+	void advanceStep();
 
 	void startGame();
 	void quitToDesktop();
 
 	void setPaused(bool paused);
+	void setSpeedMultiplier(double speed);
 
 	void quitToMainMenu();
 
@@ -44,6 +46,7 @@ private:
 
 	uint64_t currentTick{};
 	uint64_t lastUpdateTime{};
+	double speedMultiplier{1.0};
 
 	uint64_t framesDrawn{};
 	uint64_t lastFPSLogTime{};

@@ -4,19 +4,46 @@ import GameSystems;
 
 void DebugMenu::init()
 {
-	title.init("Debug Options", 56, 6, QuadPool::ePopup);
+	labels[eTitle].init("Debug Options", 56, 6, QuadPool::ePopup);
+	labels[eStopTime].init("Stop time[Num7]", 40, 8, QuadPool::ePopup);
+	labels[eStepTime].init("Step forward[Num8]", 38, 10, QuadPool::ePopup);
+	labels[eShowDamage].init("Show damage", 70, 8, QuadPool::ePopup);
+
+	pressableButtons = labels;
 }
 
 void DebugMenu::setVisible(bool visible)
 {
-	title.setVisible(visible);
+	for(auto& label : labels)
+		label.setVisible(visible);
 	
 	if(visible)
 	{
-		QuadData backgroundQuad{{0.8889f, 0.5f}, {Helpers::packColor(0, 0, 0, 0), Helpers::packColor(0, 0, 0, 240)}, ' '};
+		QuadData backgroundQuad{{16.0f / 9.0f / 2.0f, 0.5f}, {Helpers::packColor(0, 0, 0, 0), Helpers::packColor(0, 0, 0, 240)}, ' '};
 		backgroundQuad.setScale(128.0f, 36.0f);
 		background = quadPool.insert(backgroundQuad, QuadPool::ePopupBackground);
 	}
 	else
 		background = QuadPool::Reference();
+}
+
+void DebugMenu::onButtonPressed(std::size_t index)
+{
+	auto type = (ButtonType)index;
+
+	if(type == eStopTime)
+	{
+		game.setSpeedMultiplier(labels[eStopTime].getPressed() ? 1.0 : 0.0);
+		labels[eStopTime].togglePressed();
+	}
+	else if(type == eStepTime)
+	{
+		if(labels[eStopTime].getPressed())
+			game.advanceStep();
+	}
+	else if(type == eShowDamage)
+	{
+		Weapon::setDrawDebug(!labels[eShowDamage].getPressed());
+		labels[eShowDamage].togglePressed();
+	}
 }

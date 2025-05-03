@@ -22,14 +22,21 @@ public:
 
 	void startAttack(double positionX, double positionY, double targetPositionX, double targetPositionY);
 
+	static void setDrawDebug(bool draw) { drawDebugInfo = draw; }
+
 private:
+	inline static bool drawDebugInfo{};
+
 	Type type;
 	std::uint64_t damage{};
 	double attackTime{};
+	double drawOffset{};
 	bool isFriendly{};
 
 	QuadPool::Reference weaponReference;
 	double attackTimer{};
 	double attackAngleCos{};
 	double attackAngleSin{};
+
+	QuadPool::Reference damageReference;
 };
