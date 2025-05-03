@@ -84,6 +84,8 @@ bool Configuration::load()
 			readJSONValue(enemyJSON, "symbol", data.symbol);
 			readJSONValue(enemyJSON, "speed", data.speed);
 			readJSONValue(enemyJSON, "mass", data.mass);
+			readJSONValue(enemyJSON, "damage", data.damage);
+			readJSONValue(enemyJSON, "attackTime", data.attackTime);
 			enemyData.emplace_back(data);
 		}
 	}

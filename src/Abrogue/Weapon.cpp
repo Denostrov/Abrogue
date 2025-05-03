@@ -2,24 +2,22 @@ module Weapon;
 
 import GameSystems;
 
-void Weapon::init(Type newType, bool friendly)
+void Weapon::init(Type newType, std::int64_t newDamage, double newAttackTime, bool friendly)
 {
 	isFriendly = friendly;
 	type = newType;
+	damage = newDamage;
+	attackTime = newAttackTime;
 
 	switch(type)
 	{
 		case Type::eClaw:
 		{
-			damage = 1;
-			attackTime = 0.25;
 			drawOffset = 0.2;
 			break;
 		}
 		case Type::eDagger:
 		{
-			damage = 1;
-			attackTime = 0.25;
 			drawOffset = 0.4;
 			break;
 		}

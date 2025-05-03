@@ -12,6 +12,7 @@ public:
 	std::pair<double, double> getPosition() const { return {x, y}; }
 	std::pair<double, double> getVelocity() const { return {velocityX, velocityY}; }
 
+protected:
 	void setMass(double newMass) { mass = newMass; }
 	void setFrictionCoefficient(double newFriction) { frictionCoefficient = newFriction; }
 	void setMaxVelocity(double newMaxSpeed) { maxVelocity = newMaxSpeed; walkingForce = maxVelocity * resistanceCoefficient; }

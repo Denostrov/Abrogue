@@ -4,19 +4,25 @@
 		"name" : "rat",
 		"symbol" : "r",
 		"speed" : 10,
-		"mass" : 5
+		"mass" : 5,
+		"damage" : 10,
+		"attackTime" : 0.25
 	},
 	{
 		"name" : "jackal",
 		"symbol" : "j",
 		"speed" : 20,
-		"mass" : 5
+		"mass" : 5,
+		"damage" : 10,
+		"attackTime" : 0.25
 	},
 	{
 		"name" : "ogre",
 		"symbol" : "O",
 		"speed" : 10,
-		"mass" : 10
+		"mass" : 10,
+		"damage" : 30,
+		"attackTime" : 0.3
 	}
 	]
 }

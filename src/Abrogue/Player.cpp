@@ -10,7 +10,7 @@ Player::Player(double velocity):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.32, 0
 	setMaxVelocity(velocity);
 	setHealth(100);
 
-	weapon.init(Weapon::Type::eDagger, true);
+	weapon.init(Weapon::Type::eDagger, 1, 0.25, true);
 }
 
 void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
@@ -49,11 +49,24 @@ void Player::takeDamage(std::int64_t damage)
 	setHealth(newHealth);
 }
 
+void Player::setMovement(std::int32_t movementX, std::int32_t movementY)
+{
+	if(health == 0)
+		return;
+
+	setMovementX(movementX);
+	setMovementY(movementY);
+}
+
 void Player::setHealth(std::int64_t newHealth)
 {
 	health = newHealth;
 
 	gui.setPlayerHealth(health / 100.0);
 	if(health == 0)
+	{
 		gui.triggerGameOver();
+		setMovementX(0);
+		setMovementY(0);
+	}
 }

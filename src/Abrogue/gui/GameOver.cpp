@@ -4,8 +4,8 @@ import GameSystems;
 
 void GameOver::init()
 {
-	gameOverLabel.init("you ded...", 56, 12, QuadPool::ePopup);
-	pressSpaceLabel.init("Press [SPACE] to quit", 50, 13, QuadPool::ePopup);
+	gameOverLabel.init("you ded...", 58, 15, QuadPool::ePopup);
+	pressSpaceLabel.init("Press [SPACE] to quit", 52, 16, QuadPool::ePopup);
 }
 
 void GameOver::setVisible(bool visible)

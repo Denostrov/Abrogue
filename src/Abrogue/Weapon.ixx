@@ -13,7 +13,7 @@ public:
 	};
 
 	Weapon() = default;
-	void init(Type newType, bool friendly);
+	void init(Type newType, std::int64_t newDamage, double newAttackTime, bool friendly);
 
 	bool getIsAttacking() const { return attackTimer > 0.0; }
 

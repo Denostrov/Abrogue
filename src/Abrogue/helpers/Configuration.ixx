@@ -8,6 +8,8 @@ export struct EnemyData
 	char symbol{};
 	double speed{10.0};
 	double mass{10.0};
+	std::int64_t damage{};
+	double attackTime{0.25};
 };
 
 export class Configuration

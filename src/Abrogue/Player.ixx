@@ -17,6 +17,7 @@ public:
 
 	void takeDamage(std::int64_t damage);
 
+	void setMovement(std::int32_t movementX, std::int32_t movementY);
 	void setHealth(std::int64_t newHealth);
 
 	Weapon weapon;

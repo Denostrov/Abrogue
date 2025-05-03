@@ -48,9 +48,7 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 			if(game.getState() != Game::eRunning)
 				return;
 
-			player.setMovementX(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A]);
-			player.setMovementY(pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
-
+			player.setMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
 		}
 	}
 	else
@@ -60,8 +58,7 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 			if(game.getState() != Game::eRunning)
 				return;
 
-			player.setMovementX(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A]);
-			player.setMovementY(pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
+			player.setMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
 		}
 	}
 }
