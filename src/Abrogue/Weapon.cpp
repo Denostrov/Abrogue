@@ -2,28 +2,19 @@ module Weapon;
 
 import GameSystems;
 
-void Weapon::init(Type newType, std::int64_t newDamage, double newAttackTime, bool friendly)
+void Weapon::init(WeaponType newType, std::int64_t newDamage, double newAttackTime, bool friendly)
 {
 	isFriendly = friendly;
 	type = newType;
 	damage = newDamage;
 	attackTime = newAttackTime;
 
-	switch(type)
-	{
-		case Type::eClaw:
-		{
-			drawOffset = 0.2;
-			break;
-		}
-		case Type::eDagger:
-		{
-			drawOffset = 0.4;
-			break;
-		}
-		default:
-			break;
-	}
+	if(type == WeaponType::eClaw)
+		drawOffset = 0.2;
+	else if(type == WeaponType::eClub)
+		drawOffset = 0.2;
+	else if(type == WeaponType::eDagger)
+		drawOffset = 0.4;
 }
 
 void Weapon::update(double positionX, double positionY)
@@ -89,7 +80,8 @@ void Weapon::updateDraw(double positionX, double positionY)
 void Weapon::startAttack(double positionX, double positionY, double targetPositionX, double targetPositionY)
 {
 	attackTimer = attackTime;
-	QuadData weaponData{{positionX, positionY}, {Helpers::packColor(255, 255, 0, 255), Helpers::packColor(255, 255, 0, 0)}, type == Type::eDagger ? 24u : 94u};
+	auto weaponGlyph = type == WeaponType::eDagger ? 24u : type == WeaponType::eClub ? 20u : 94u;
+	QuadData weaponData{{positionX, positionY}, {Helpers::packColor(255, 255, 0, 255), Helpers::packColor(255, 255, 0, 0)}, weaponGlyph};
 
 	double distanceX = (targetPositionX - positionX);
 	double distanceY = (targetPositionY - positionY) * 2.0;

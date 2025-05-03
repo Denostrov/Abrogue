@@ -2,7 +2,7 @@ module Enemy;
 
 import GameSystems;
 
-Enemy::Enemy(std::uint8_t type, double speed, double mass, std::int64_t damage, double attackTime)
+Enemy::Enemy(std::uint8_t type, double speed, double mass, WeaponType weaponType, std::int64_t damage, double attackTime)
 	:PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0.48)
 {
 	quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {Helpers::packColor(255, 0, 0, 255), Helpers::packColor(255, 0, 0, 0)}, type},
@@ -11,7 +11,7 @@ Enemy::Enemy(std::uint8_t type, double speed, double mass, std::int64_t damage, 
 	setMass(mass);
 	setMaxVelocity(speed);
 
-	weapon.init(Weapon::Type::eClaw, damage, attackTime, false);
+	weapon.init(weaponType, damage, attackTime, false);
 }
 
 void Enemy::update()

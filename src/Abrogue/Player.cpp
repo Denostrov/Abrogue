@@ -10,7 +10,7 @@ Player::Player(double velocity):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.32, 0
 	setMaxVelocity(velocity);
 	setHealth(100);
 
-	weapon.init(Weapon::Type::eDagger, 1, 0.25, true);
+	weapon.init(WeaponType::eDagger, 1, 0.25, true);
 }
 
 void Player::onMousePressed(std::uint32_t x, std::uint32_t y)

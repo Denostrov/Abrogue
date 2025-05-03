@@ -2,12 +2,20 @@ export module Configuration;
 
 export import std;
 
+export enum class WeaponType
+{
+	eClaw,
+	eClub,
+	eDagger
+};
+
 export struct EnemyData
 {
 	std::string name;
 	char symbol{};
 	double speed{10.0};
 	double mass{10.0};
+	WeaponType weaponType{};
 	std::int64_t damage{};
 	double attackTime{0.25};
 };

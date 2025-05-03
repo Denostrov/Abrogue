@@ -86,6 +86,11 @@ bool Configuration::load()
 			readJSONValue(enemyJSON, "mass", data.mass);
 			readJSONValue(enemyJSON, "damage", data.damage);
 			readJSONValue(enemyJSON, "attackTime", data.attackTime);
+
+			std::string weaponType;
+			readJSONValue(enemyJSON, "weaponType", weaponType);
+			data.weaponType = weaponType == "dagger" ? WeaponType::eDagger : weaponType == "club" ? WeaponType::eClub : WeaponType::eClaw;
+
 			enemyData.emplace_back(data);
 		}
 	}

@@ -76,7 +76,7 @@ void Game::advanceStep()
 		if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 3.0)
 		{
 			auto const& enemyData = configuration.getSuitableEnemy();
-			enemies.emplace_back(enemyData.symbol, enemyData.speed, enemyData.mass, enemyData.damage, enemyData.attackTime);
+			enemies.emplace_back(enemyData.symbol, enemyData.speed, enemyData.mass, enemyData.weaponType, enemyData.damage, enemyData.attackTime);
 			lastEnemySpawnTime = currentTick / (double)Constants::ticksPerSecond;
 		}
 

@@ -1,19 +1,13 @@
 export module Weapon;
 
-export import std;
+export import Configuration;
 export import QuadPool;
 
 export class Weapon
 {
 public:
-	enum class Type
-	{
-		eClaw,
-		eDagger
-	};
-
 	Weapon() = default;
-	void init(Type newType, std::int64_t newDamage, double newAttackTime, bool friendly);
+	void init(WeaponType newType, std::int64_t newDamage, double newAttackTime, bool friendly);
 
 	bool getIsAttacking() const { return attackTimer > 0.0; }
 
@@ -27,7 +21,7 @@ public:
 private:
 	inline static bool drawDebugInfo{};
 
-	Type type;
+	WeaponType type;
 	std::uint64_t damage{};
 	double attackTime{};
 	double drawOffset{};
