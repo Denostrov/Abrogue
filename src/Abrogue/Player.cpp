@@ -54,4 +54,6 @@ void Player::setHealth(std::int64_t newHealth)
 	health = newHealth;
 
 	gui.setPlayerHealth(health / 100.0);
+	if(health == 0)
+		gui.triggerGameOver();
 }

@@ -30,5 +30,5 @@ private:
 
 	std::array<Label, COUNT> labels;
 
-	QuadPool::Reference background;
+	QuadPool::Reference backgroundQuad;
 };

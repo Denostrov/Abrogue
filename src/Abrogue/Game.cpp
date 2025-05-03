@@ -19,10 +19,10 @@ bool Game::init()
 	if(!renderEngine.initVulkan())
 		return false;
 
+	gui.init();
+
 	lastUpdateTime = SDL_GetTicksNS();
 	lastFPSLogTime = lastUpdateTime;
-
-	gui.init();
 
 	resetTickTimer();
 
@@ -94,6 +94,7 @@ void Game::startGame()
 
 	state = eRunning;
 
+	lastUpdateTime = SDL_GetTicksNS();
 	resetTickTimer();
 }
 
@@ -125,8 +126,8 @@ void Game::quitToMainMenu()
 
 void Game::resetTickTimer()
 {
-	lastUpdateTime = SDL_GetTicksNS();
 	currentTick = 0;
+	lastEnemySpawnTime = 0.0;
 }
 
 void Game::initDraw()

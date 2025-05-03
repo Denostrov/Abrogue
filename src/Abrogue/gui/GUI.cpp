@@ -9,6 +9,7 @@ void GUI::init()
 	menu.init();
 	discoveries.init();
 	debugMenu.init();
+	gameOver.init();
 
 	fpsLabel.init("FPS:", 0, 0, QuadPool::eMap, true);
 
@@ -28,10 +29,20 @@ void GUI::quitToMainMenu()
 {
 	playArea.setVisible(false);
 	menu.setVisible(false);
+	gameOver.setVisible(false);
 
 	mainMenu.setVisible(true);
 	setCurrentScreen(mainMenu);
 	game.quitToMainMenu();
+}
+
+void GUI::triggerGameOver()
+{
+	if(currentScreen != &playArea)
+		currentScreen->setVisible(false);
+
+	gameOver.setVisible(true);
+	setCurrentScreen(gameOver);
 }
 
 void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
@@ -50,6 +61,12 @@ void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
 
 void GUI::togglePause()
 {
+	if(currentScreen == &gameOver)
+	{
+		quitToMainMenu();
+		return;
+	}
+
 	if(currentScreen != &playArea)
 		return;
 
@@ -59,7 +76,7 @@ void GUI::togglePause()
 
 void GUI::toggleMenu()
 {
-	if(currentScreen == &mainMenu)
+	if(currentScreen == &mainMenu || currentScreen == &gameOver)
 		return;
 
 	if(currentScreen == &playArea)
@@ -80,7 +97,7 @@ void GUI::toggleMenu()
 
 void GUI::toggleDebugOptions()
 {
-	if(currentScreen == &mainMenu || currentScreen == &menu)
+	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
 		return;
 
 	if(currentScreen == &playArea)
@@ -110,7 +127,7 @@ void GUI::toggleDebugOptions()
 
 void GUI::toggleDiscoveries()
 {
-	if(currentScreen == &mainMenu || currentScreen == &menu)
+	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
 		return;
 
 	if(currentScreen == &playArea)
@@ -140,7 +157,7 @@ void GUI::toggleDiscoveries()
 
 void GUI::toggleStopTime()
 {
-	if(currentScreen == &mainMenu)
+	if(currentScreen == &mainMenu || currentScreen == &gameOver)
 		return;
 
 	debugMenu.toggleStopTime();
@@ -148,7 +165,7 @@ void GUI::toggleStopTime()
 
 void GUI::toggleStepTime()
 {
-	if(currentScreen == &mainMenu)
+	if(currentScreen == &mainMenu || currentScreen == &gameOver)
 		return;
 
 	debugMenu.toggleStepTime();
