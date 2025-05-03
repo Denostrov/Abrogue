@@ -158,7 +158,7 @@ void GUI::setCurrentScreen(Screen& newScreen)
 {
 	currentScreen = &newScreen;
 	auto [x, y] = inputHandler.getMousePosition();
-	game.onMouseMoved(x, y);
+	onMouseMoved(x, y);
 }
 
 void GUI::setFPS(std::uint32_t fps)

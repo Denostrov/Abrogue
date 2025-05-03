@@ -29,19 +29,19 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 			return SDL_APP_SUCCESS;
 		case SDL_EVENT_KEY_DOWN:
 			if((event->key.mod & SDL_KMOD_SHIFT) == 0)
-				inputHandler.setButtonPressed(event->key.scancode, true);
+				inputHandler.onButtonPressed(event->key.scancode, true);
 			else
-				inputHandler.setShiftButtonPressed(event->key.scancode);
+				inputHandler.onShiftButtonPressed(event->key.scancode);
 			break;
 		case SDL_EVENT_KEY_UP:
-			inputHandler.setButtonPressed(event->key.scancode, false);
+			inputHandler.onButtonPressed(event->key.scancode, false);
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			if(event->button.button == 1)
-				game.onMousePressed(event->button.x, event->button.y);
+				inputHandler.onMousePressed(event->button.x, event->button.y);
 			break;
 		case SDL_EVENT_MOUSE_MOTION:
-			game.onMouseMoved(event->motion.x, event->motion.y);
+			inputHandler.onMouseMoved(event->motion.x, event->motion.y);
 			break;
 		default: break;
 	}

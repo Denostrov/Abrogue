@@ -31,9 +31,6 @@ bool Game::init()
 
 bool Game::update()
 {
-	player.setMovementX(inputHandler.getButtonPressed(SDL_SCANCODE_D) - inputHandler.getButtonPressed(SDL_SCANCODE_A));
-	player.setMovementY(inputHandler.getButtonPressed(SDL_SCANCODE_S) - inputHandler.getButtonPressed(SDL_SCANCODE_W));
-
 	uint64_t currentTime = SDL_GetTicksNS();
 	uint64_t updateCount{};
 	while((currentTime - lastUpdateTime) * speedMultiplier > Constants::tickDurationNS)
@@ -124,18 +121,6 @@ void Game::quitToMainMenu()
 	map = Map();
 	player = Player();
 	enemies.clear();
-}
-
-void Game::onMouseMoved(float x, float y)
-{
-	auto [width, height] = renderEngine.getFramebufferSize();
-	gui.onMouseMoved(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
-}
-
-void Game::onMousePressed(float x, float y)
-{
-	auto [width, height] = renderEngine.getFramebufferSize();
-	gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
 }
 
 void Game::resetTickTimer()

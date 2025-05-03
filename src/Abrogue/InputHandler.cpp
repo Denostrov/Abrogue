@@ -10,11 +10,27 @@ std::pair<float, float> InputHandler::getMousePosition() const
 {
 	float x{}, y{};
 	SDL_GetMouseState(&x, &y);
-	return {x, y};
+
+	auto [width, height] = renderEngine.getFramebufferSize();
+	return {x / width * Constants::screenWidth, y / height * Constants::screenHeight};
 }
 
-void InputHandler::setButtonPressed(SDL_Scancode scancode, bool pressed)
+void InputHandler::onMouseMoved(float x, float y)
 {
+	auto [width, height] = renderEngine.getFramebufferSize();
+	gui.onMouseMoved(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
+}
+
+void InputHandler::onMousePressed(float x, float y)
+{
+	auto [width, height] = renderEngine.getFramebufferSize();
+	gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
+}
+
+void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
+{
+	pressedButtons[scancode] = pressed;
+
 	if(pressed)
 	{
 		if(scancode == SDL_SCANCODE_SPACE)
@@ -27,12 +43,30 @@ void InputHandler::setButtonPressed(SDL_Scancode scancode, bool pressed)
 			gui.toggleStopTime();
 		else if(scancode == SDL_SCANCODE_KP_8)
 			gui.toggleStepTime();
-	}
+		else if(scancode == SDL_SCANCODE_W || scancode == SDL_SCANCODE_A || scancode == SDL_SCANCODE_S || scancode == SDL_SCANCODE_D)
+		{
+			if(game.getState() != Game::eRunning)
+				return;
 
-	pressedButtons[scancode] = pressed;
+			player.setMovementX(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A]);
+			player.setMovementY(pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
+
+		}
+	}
+	else
+	{
+		if(scancode == SDL_SCANCODE_W || scancode == SDL_SCANCODE_A || scancode == SDL_SCANCODE_S || scancode == SDL_SCANCODE_D)
+		{
+			if(game.getState() != Game::eRunning)
+				return;
+
+			player.setMovementX(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A]);
+			player.setMovementY(pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
+		}
+	}
 }
 
-void InputHandler::setShiftButtonPressed(SDL_Scancode scancode)
+void InputHandler::onShiftButtonPressed(SDL_Scancode scancode)
 {
 	if(scancode == SDL_SCANCODE_D) gui.toggleDiscoveries();
 }

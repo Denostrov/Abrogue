@@ -6,17 +6,18 @@ export module InputHandler;
 
 export import std;
 
+//Class for processing user input
 export class InputHandler
 {
 public:
 	InputHandler() = default;
 
 	std::pair<float, float> getMousePosition() const;
+	void onMouseMoved(float x, float y);
+	void onMousePressed(float x, float y);
 
-	bool getButtonPressed(SDL_Scancode scancode) const { return pressedButtons[scancode]; }
-	void setButtonPressed(SDL_Scancode scancode, bool pressed);
-
-	void setShiftButtonPressed(SDL_Scancode scancode);
+	void onButtonPressed(SDL_Scancode scancode, bool pressed);
+	void onShiftButtonPressed(SDL_Scancode scancode);
 
 private:
 	std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
