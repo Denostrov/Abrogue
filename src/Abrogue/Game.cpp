@@ -167,6 +167,8 @@ bool Game::updateDraw(double deltaTime)
 			enemy.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
 			enemy.updateDraw();
 		}
+
+		map.updateDraw(deltaTime);
 	}
 
 	return renderEngine.drawFrame();

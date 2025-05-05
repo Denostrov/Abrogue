@@ -56,6 +56,41 @@ Map::Map(size_t width, size_t height)
 	}
 }
 
+void Map::updateDraw(double deltaTime)
+{
+	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
+		tiles[lastVisibleTiles[i]].quadReference.setBackgroundColor(Helpers::packColor(4, 4, 4, 255));
+
+	auto [playerX, playerY] = player.getPosition();
+	auto [playerVx, playerVy] = player.getVelocity();
+	playerX += playerVx * deltaTime;
+	playerY += playerVy * deltaTime;
+
+	std::uint64_t playerCell = playerX + (std::uint64_t)playerY * width;
+	tiles[playerCell].quadReference.setBackgroundColor(Helpers::packColor(128, 128, 128, 255));
+	lastVisibleTiles[0] = playerCell;
+	std::size_t visibleCount{1};
+
+	auto shadowcast = [this, playerX, playerY, &visibleCount]()
+	{
+		for(std::uint64_t i = 1; i <= 5; i++)
+		{
+			std::int64_t cellX = playerX - i;
+			std::int64_t cellY = playerY - i;
+			for(std::uint64_t j = cellX; j <= (uint64_t)playerX; j++)
+			{
+				tiles[j + cellY * width].quadReference.setBackgroundColor(Helpers::packColor(128, 128, 128, 255));
+				lastVisibleTiles[visibleCount] = j + cellY * width;
+				visibleCount++;
+			}
+		}
+	};
+
+	shadowcast();
+
+	lastVisibleTilesSize = visibleCount;
+}
+
 bool Map::getTileExists(std::uint32_t x, std::uint32_t y) const
 {
 	if(x >= width || y >= height)
@@ -63,6 +98,3 @@ bool Map::getTileExists(std::uint32_t x, std::uint32_t y) const
 
 	return tiles[x + y * width].exists;
 }
-
-void Map::onMousePressed(std::uint32_t x, std::uint32_t y)
-{}
