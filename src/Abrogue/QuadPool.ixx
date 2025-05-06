@@ -22,7 +22,7 @@ export struct QuadData
 	glm::vec2 scale;
 	glm::vec2 rotation;
 	glm::uvec2 colors;
-	uint32_t glyph;
+	uint32_t glyph{};
 };
 
 //Object pool for unordered quad data storage
@@ -52,6 +52,7 @@ public:
 
 		void setPosition(glm::vec2 position) const;
 		void setGlyph(std::uint8_t glyph) const;
+		void setColor(uint32_t packedColor) const;
 		void setBackgroundColor(uint32_t packedColor) const;
 
 	private:

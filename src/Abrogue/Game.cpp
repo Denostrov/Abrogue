@@ -87,7 +87,7 @@ void Game::advanceStep()
 
 void Game::startGame()
 {
-	map = Map(Constants::mapWidth, Constants::mapHeight);
+	map.init();
 	player = Player(10.0);
 
 	initDraw();
@@ -140,15 +140,6 @@ void Game::initDraw()
 	{
 		auto [x, y] = enemy.getPosition();
 		enemy.quadReference.setPosition({(guiOffset + x) * QuadData::tileScale.x, y * QuadData::tileScale.y});
-	}
-
-	auto const& mapTiles = map.getTiles();
-	for(size_t i = 0; i < mapTiles.size(); i++)
-	{
-		size_t row = i / Constants::mapWidth;
-		size_t column = i % Constants::mapWidth;
-		mapTiles[i].quadReference.setPosition({(guiOffset + column + 0.5f) * QuadData::tileScale.x,
-											  (row + 0.5f) * QuadData::tileScale.y});
 	}
 }
 

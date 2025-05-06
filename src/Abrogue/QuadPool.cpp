@@ -58,6 +58,13 @@ void QuadPool::Reference::setGlyph(std::uint8_t glyph) const
 	quadPool.data[layer][index].glyph = glyph;
 }
 
+void QuadPool::Reference::setColor(uint32_t packedColor) const
+{
+	logger.extraAssert(index != -1, "Set color of invalid quad reference");
+
+	quadPool.data[layer][index].colors[0] = packedColor;
+}
+
 void QuadPool::Reference::setBackgroundColor(uint32_t packedColor) const
 {
 	logger.extraAssert(index != -1, "Set background color of invalid quad reference");
