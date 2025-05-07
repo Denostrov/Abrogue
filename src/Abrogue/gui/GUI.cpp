@@ -27,6 +27,9 @@ void GUI::startGame()
 
 void GUI::quitToMainMenu()
 {
+	playArea.setPaused(false);
+	debugMenu.resetToDefault();
+
 	playArea.setVisible(false);
 	menu.setVisible(false);
 	gameOver.setVisible(false);

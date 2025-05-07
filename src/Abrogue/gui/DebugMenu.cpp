@@ -27,6 +27,15 @@ void DebugMenu::setVisible(bool visible)
 		backgroundQuad = QuadPool::Reference();
 }
 
+void DebugMenu::resetToDefault()
+{
+	if(labels[eStopTime].getPressed())
+		onButtonPressed((size_t)eStopTime);
+
+	if(labels[eShowDamage].getPressed())
+		onButtonPressed((size_t)eShowDamage);
+}
+
 void DebugMenu::onButtonPressed(std::size_t index)
 {
 	auto type = (ButtonType)index;

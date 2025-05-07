@@ -22,6 +22,7 @@ public:
 
 	void setVisible(bool visible) final;
 
+	void resetToDefault();
 	void toggleStopTime() { onButtonPressed(ButtonType::eStopTime); }
 	void toggleStepTime() { onButtonPressed(ButtonType::eStepTime); }
 

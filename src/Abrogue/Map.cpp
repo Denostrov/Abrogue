@@ -92,9 +92,11 @@ void Map::updateDraw(double deltaTime)
 	lastVisibleTiles[0] = playerCell;
 	std::size_t visibleCount{1};
 
+	std::uint64_t visionRange = 6;
+
 	//Octants are numbered clockwise from top left corner
 	//Octant 1
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
 		std::int64_t cellY = playerY - i;
@@ -106,7 +108,10 @@ void Map::updateDraw(double deltaTime)
 		{
 			std::int64_t distanceX = j - playerCellX;
 			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			updateTileProperties(getTile(j, cellY), std::clamp(5.0 - distance, 0.0, 1.0));
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
 			visibleCount++;
@@ -114,20 +119,22 @@ void Map::updateDraw(double deltaTime)
 	}
 
 	//Octant 2
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
 		std::int64_t cellY = playerY - i;
 		if(cellY < 0)
 			break;
 
+		std::int64_t distanceY = cellY - playerCellY;
 		for(std::int64_t j = cellX; j >= (int64_t)playerX; j--)
 		{
-			auto const& tile = getTile(j, cellY);
-			auto const& tileInfo = tilesInfo[(size_t)tile.type];
-			tile.quadReference.setGlyph(tileInfo.glyph);
-			tile.quadReference.setColor(tileInfo.color);
-			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+			std::int64_t distanceX = j - playerCellX;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
 			visibleCount++;
@@ -135,20 +142,22 @@ void Map::updateDraw(double deltaTime)
 	}
 
 	//Octant 3
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
 		std::int64_t cellY = playerY - i;
 		if(cellY < 0)
 			break;
 
+		std::int64_t distanceX = cellX - playerCellX;
 		for(std::int64_t j = cellY; j <= (int64_t)playerY; j++)
 		{
-			auto const& tile = getTile(cellX, j);
-			auto const& tileInfo = tilesInfo[(size_t)tile.type];
-			tile.quadReference.setGlyph(tileInfo.glyph);
-			tile.quadReference.setColor(tileInfo.color);
-			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+			std::int64_t distanceY = j - playerCellY;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
 			visibleCount++;
@@ -156,20 +165,22 @@ void Map::updateDraw(double deltaTime)
 	}
 
 	//Octant 4
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
 		std::int64_t cellY = playerY + i;
 		if(cellY >= Constants::mapHeight)
 			break;
 
+		std::int64_t distanceX = cellX - playerCellX;
 		for(std::int64_t j = cellY; j >= (int64_t)playerY; j--)
 		{
-			auto const& tile = getTile(cellX, j);
-			auto const& tileInfo = tilesInfo[(size_t)tile.type];
-			tile.quadReference.setGlyph(tileInfo.glyph);
-			tile.quadReference.setColor(tileInfo.color);
-			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+			std::int64_t distanceY = j - playerCellY;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
 			visibleCount++;
@@ -177,20 +188,22 @@ void Map::updateDraw(double deltaTime)
 	}
 
 	//Octant 5
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
 		std::int64_t cellY = playerY + i;
 		if(cellY >= Constants::mapHeight)
 			break;
 
+		std::int64_t distanceY = cellY - playerCellY;
 		for(std::int64_t j = cellX; j >= (int64_t)playerX; j--)
 		{
-			auto const& tile = getTile(j, cellY);
-			auto const& tileInfo = tilesInfo[(size_t)tile.type];
-			tile.quadReference.setGlyph(tileInfo.glyph);
-			tile.quadReference.setColor(tileInfo.color);
-			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+			std::int64_t distanceX = j - playerCellX;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
 			visibleCount++;
@@ -198,20 +211,22 @@ void Map::updateDraw(double deltaTime)
 	}
 
 	//Octant 6
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
 		std::int64_t cellY = playerY + i;
 		if(cellY >= Constants::mapHeight)
 			break;
 
+		std::int64_t distanceY = cellY - playerCellY;
 		for(std::int64_t j = cellX; j <= (int64_t)playerX; j++)
 		{
-			auto const& tile = getTile(j, cellY);
-			auto const& tileInfo = tilesInfo[(size_t)tile.type];
-			tile.quadReference.setGlyph(tileInfo.glyph);
-			tile.quadReference.setColor(tileInfo.color);
-			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+			std::int64_t distanceX = j - playerCellX;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
 			visibleCount++;
@@ -219,20 +234,22 @@ void Map::updateDraw(double deltaTime)
 	}
 
 	//Octant 7
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
 		std::int64_t cellY = playerY + i;
 		if(cellY >= Constants::mapHeight)
 			break;
 
+		std::int64_t distanceX = cellX - playerCellX;
 		for(std::int64_t j = cellY; j >= (int64_t)playerY; j--)
 		{
-			auto const& tile = getTile(cellX, j);
-			auto const& tileInfo = tilesInfo[(size_t)tile.type];
-			tile.quadReference.setGlyph(tileInfo.glyph);
-			tile.quadReference.setColor(tileInfo.color);
-			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+			std::int64_t distanceY = j - playerCellY;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
 			visibleCount++;
@@ -240,20 +257,22 @@ void Map::updateDraw(double deltaTime)
 	}
 
 	//Octant 8
-	for(std::uint64_t i = 1; i <= 5; i++)
+	for(std::uint64_t i = 1; i <= visionRange; i++)
 	{
 		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
 		std::int64_t cellY = playerY - i;
 		if(cellY < 0)
 			break;
 
+		std::int64_t distanceX = cellX - playerCellX;
 		for(std::int64_t j = cellY; j <= (int64_t)playerY; j++)
 		{
-			auto const& tile = getTile(cellX, j);
-			auto const& tileInfo = tilesInfo[(size_t)tile.type];
-			tile.quadReference.setGlyph(tileInfo.glyph);
-			tile.quadReference.setColor(tileInfo.color);
-			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+			std::int64_t distanceY = j - playerCellY;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			if(distance >= visionRange + 0.25)
+				continue;
+
+			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
 
 			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
 			visibleCount++;
