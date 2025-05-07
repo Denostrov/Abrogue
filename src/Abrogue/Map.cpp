@@ -66,57 +66,199 @@ void Map::init()
 
 void Map::updateDraw(double deltaTime)
 {
-	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
+	auto updateTileProperties = [](Tile const& tile, double brightness)
 	{
-		auto const& tile = tiles[lastVisibleTiles[i]];
 		auto const& tileInfo = tilesInfo[(size_t)tile.type];
 		auto [r, g, b, a] = Helpers::unpackColor(tileInfo.color);
 		auto [bgR, bgG, bgB, bgA] = Helpers::unpackColor(tileInfo.backgroundColor);
 
 		tile.quadReference.setGlyph(tileInfo.glyph);
-		tile.quadReference.setColor(Helpers::packColor(r / 2, g / 2, b / 2, a));
-		tile.quadReference.setBackgroundColor(Helpers::packColor(bgR / 2, bgG / 2, bgB / 2, bgA));
-	}
+		tile.quadReference.setColor(Helpers::packColor(r * brightness, g * brightness, b * brightness, a));
+		tile.quadReference.setBackgroundColor(Helpers::packColor(bgR * brightness, bgG * brightness, bgB * brightness, bgA));
+	};
+
+	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
+		updateTileProperties(tiles[lastVisibleTiles[i]], 0.5);
 
 	auto [playerX, playerY] = player.getPosition();
 	auto [playerVx, playerVy] = player.getVelocity();
 	playerX += playerVx * deltaTime;
 	playerY += playerVy * deltaTime;
 
-	std::uint64_t playerCell = playerX + (std::uint64_t)playerY * Constants::mapWidth;
-	auto const& tile = tiles[playerCell];
-	auto const& tileInfo = tilesInfo[(size_t)tile.type];
-	tile.quadReference.setGlyph(tileInfo.glyph);
-	tile.quadReference.setColor(tileInfo.color);
-	tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
-
+	std::int64_t playerCellX = playerX;
+	std::int64_t playerCellY = playerY;
+	std::uint64_t playerCell = playerCellX + playerCellY * Constants::mapWidth;
+	updateTileProperties(tiles[playerCell], 1.0);
 	lastVisibleTiles[0] = playerCell;
 	std::size_t visibleCount{1};
 
-	auto shadowcast = [this, playerX, playerY, &visibleCount]()
+	//Octants are numbered clockwise from top left corner
+	//Octant 1
+	for(std::uint64_t i = 1; i <= 5; i++)
 	{
-		for(std::uint64_t i = 1; i <= 5; i++)
+		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
+		std::int64_t cellY = playerY - i;
+		if(cellY < 0)
+			break;
+
+		std::int64_t distanceY = cellY - playerCellY;
+		for(std::int64_t j = cellX; j <= (int64_t)playerX; j++)
 		{
-			std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
-			std::int64_t cellY = playerY - i;
-			if(cellY < 0)
-				break;
+			std::int64_t distanceX = j - playerCellX;
+			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+			updateTileProperties(getTile(j, cellY), std::clamp(5.0 - distance, 0.0, 1.0));
 
-			for(std::uint64_t j = cellX; j <= (uint64_t)playerX; j++)
-			{
-				auto const& tile = getTile(j, cellY);
-				auto const& tileInfo = tilesInfo[(size_t)tile.type];
-				tile.quadReference.setGlyph(tileInfo.glyph);
-				tile.quadReference.setColor(tileInfo.color);
-				tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
-
-				lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
-				visibleCount++;
-			}
+			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
+			visibleCount++;
 		}
-	};
+	}
 
-	shadowcast();
+	//Octant 2
+	for(std::uint64_t i = 1; i <= 5; i++)
+	{
+		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
+		std::int64_t cellY = playerY - i;
+		if(cellY < 0)
+			break;
+
+		for(std::int64_t j = cellX; j >= (int64_t)playerX; j--)
+		{
+			auto const& tile = getTile(j, cellY);
+			auto const& tileInfo = tilesInfo[(size_t)tile.type];
+			tile.quadReference.setGlyph(tileInfo.glyph);
+			tile.quadReference.setColor(tileInfo.color);
+			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+
+			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
+			visibleCount++;
+		}
+	}
+
+	//Octant 3
+	for(std::uint64_t i = 1; i <= 5; i++)
+	{
+		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
+		std::int64_t cellY = playerY - i;
+		if(cellY < 0)
+			break;
+
+		for(std::int64_t j = cellY; j <= (int64_t)playerY; j++)
+		{
+			auto const& tile = getTile(cellX, j);
+			auto const& tileInfo = tilesInfo[(size_t)tile.type];
+			tile.quadReference.setGlyph(tileInfo.glyph);
+			tile.quadReference.setColor(tileInfo.color);
+			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+
+			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
+			visibleCount++;
+		}
+	}
+
+	//Octant 4
+	for(std::uint64_t i = 1; i <= 5; i++)
+	{
+		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
+		std::int64_t cellY = playerY + i;
+		if(cellY >= Constants::mapHeight)
+			break;
+
+		for(std::int64_t j = cellY; j >= (int64_t)playerY; j--)
+		{
+			auto const& tile = getTile(cellX, j);
+			auto const& tileInfo = tilesInfo[(size_t)tile.type];
+			tile.quadReference.setGlyph(tileInfo.glyph);
+			tile.quadReference.setColor(tileInfo.color);
+			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+
+			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
+			visibleCount++;
+		}
+	}
+
+	//Octant 5
+	for(std::uint64_t i = 1; i <= 5; i++)
+	{
+		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
+		std::int64_t cellY = playerY + i;
+		if(cellY >= Constants::mapHeight)
+			break;
+
+		for(std::int64_t j = cellX; j >= (int64_t)playerX; j--)
+		{
+			auto const& tile = getTile(j, cellY);
+			auto const& tileInfo = tilesInfo[(size_t)tile.type];
+			tile.quadReference.setGlyph(tileInfo.glyph);
+			tile.quadReference.setColor(tileInfo.color);
+			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+
+			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
+			visibleCount++;
+		}
+	}
+
+	//Octant 6
+	for(std::uint64_t i = 1; i <= 5; i++)
+	{
+		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
+		std::int64_t cellY = playerY + i;
+		if(cellY >= Constants::mapHeight)
+			break;
+
+		for(std::int64_t j = cellX; j <= (int64_t)playerX; j++)
+		{
+			auto const& tile = getTile(j, cellY);
+			auto const& tileInfo = tilesInfo[(size_t)tile.type];
+			tile.quadReference.setGlyph(tileInfo.glyph);
+			tile.quadReference.setColor(tileInfo.color);
+			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+
+			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
+			visibleCount++;
+		}
+	}
+
+	//Octant 7
+	for(std::uint64_t i = 1; i <= 5; i++)
+	{
+		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
+		std::int64_t cellY = playerY + i;
+		if(cellY >= Constants::mapHeight)
+			break;
+
+		for(std::int64_t j = cellY; j >= (int64_t)playerY; j--)
+		{
+			auto const& tile = getTile(cellX, j);
+			auto const& tileInfo = tilesInfo[(size_t)tile.type];
+			tile.quadReference.setGlyph(tileInfo.glyph);
+			tile.quadReference.setColor(tileInfo.color);
+			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+
+			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
+			visibleCount++;
+		}
+	}
+
+	//Octant 8
+	for(std::uint64_t i = 1; i <= 5; i++)
+	{
+		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
+		std::int64_t cellY = playerY - i;
+		if(cellY < 0)
+			break;
+
+		for(std::int64_t j = cellY; j <= (int64_t)playerY; j++)
+		{
+			auto const& tile = getTile(cellX, j);
+			auto const& tileInfo = tilesInfo[(size_t)tile.type];
+			tile.quadReference.setGlyph(tileInfo.glyph);
+			tile.quadReference.setColor(tileInfo.color);
+			tile.quadReference.setBackgroundColor(tileInfo.backgroundColor);
+
+			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
+			visibleCount++;
+		}
+	}
 
 	lastVisibleTilesSize = visibleCount;
 }
