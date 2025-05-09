@@ -34,6 +34,7 @@ public:
 	void updateDraw(double deltaTime);
 
 	bool getTileSolid(std::int32_t x, std::int32_t y) const;
+	bool getTileOpaque(std::int32_t x, std::int32_t y) const;
 	double getTileBrightness(std::int32_t x, std::int32_t y) const;
 
 private:

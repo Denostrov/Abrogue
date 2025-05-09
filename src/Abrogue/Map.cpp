@@ -130,7 +130,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceY = cellY - playerY;
 			for(std::int64_t j = startCellX; j <= endCellX; j++)
 			{
-				if(getTileSolid(j, cellY))
+				if(getTileOpaque(j, cellY))
 				{
 					double newEndSlope = (j - playerX) / (cellY + 1 - playerY);
 					if(startSlope > newEndSlope)
@@ -144,7 +144,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j++;
-					} while(j <= endCellX && getTileSolid(j, cellY));
+					} while(j <= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j - playerX) / (cellY - playerY);
 				}
@@ -171,7 +171,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceY = cellY - playerY;
 			for(std::int64_t j = startCellX; j >= endCellX; j--)
 			{
-				if(getTileSolid(j, cellY))
+				if(getTileOpaque(j, cellY))
 				{
 					double newEndSlope = (j + 1 - playerX) / (cellY + 1 - playerY);
 					if(startSlope < newEndSlope)
@@ -185,7 +185,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j--;
-					} while(j >= endCellX && getTileSolid(j, cellY));
+					} while(j >= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j + 1 - playerX) / (cellY - playerY);
 				}
@@ -212,7 +212,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceX = cellX - playerX;
 			for(std::int64_t j = startCellY; j <= endCellY; j++)
 			{
-				if(getTileSolid(cellX, j))
+				if(getTileOpaque(cellX, j))
 				{
 					double newEndSlope = (j - playerY) / (cellX - playerX);
 					if(startSlope < newEndSlope)
@@ -226,7 +226,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j++;
-					} while(j <= endCellY && getTileSolid(cellX, j));
+					} while(j <= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j - playerY) / (cellX + 1 - playerX);
 				}
@@ -253,7 +253,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceX = cellX - playerX;
 			for(std::int64_t j = startCellY; j >= endCellY; j--)
 			{
-				if(getTileSolid(cellX, j))
+				if(getTileOpaque(cellX, j))
 				{
 					double newEndSlope = (j + 1 - playerY) / (cellX - playerX);
 					if(startSlope > newEndSlope)
@@ -267,7 +267,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j--;
-					} while(j >= endCellY && getTileSolid(cellX, j));
+					} while(j >= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j + 1 - playerY) / (cellX + 1 - playerX);
 				}
@@ -294,7 +294,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceY = cellY - playerY;
 			for(std::int64_t j = startCellX; j >= endCellX; j--)
 			{
-				if(getTileSolid(j, cellY))
+				if(getTileOpaque(j, cellY))
 				{
 					double newEndSlope = (j + 1 - playerX) / (cellY - playerY);
 					if(startSlope > newEndSlope)
@@ -308,7 +308,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j--;
-					} while(j >= endCellX && getTileSolid(j, cellY));
+					} while(j >= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j + 1 - playerX) / (cellY + 1 - playerY);
 				}
@@ -335,7 +335,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceY = cellY - playerY;
 			for(std::int64_t j = startCellX; j <= endCellX; j++)
 			{
-				if(getTileSolid(j, cellY))
+				if(getTileOpaque(j, cellY))
 				{
 					double newEndSlope = (j - playerX) / (cellY - playerY);
 					if(startSlope < newEndSlope)
@@ -349,7 +349,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j++;
-					} while(j <= endCellX && getTileSolid(j, cellY));
+					} while(j <= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j - playerX) / (cellY + 1 - playerY);
 				}
@@ -376,7 +376,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceX = cellX - playerX;
 			for(std::int64_t j = startCellY; j >= endCellY; j--)
 			{
-				if(getTileSolid(cellX, j))
+				if(getTileOpaque(cellX, j))
 				{
 					double newEndSlope = (j + 1 - playerY) / (cellX + 1 - playerX);
 					if(startSlope < newEndSlope)
@@ -390,7 +390,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j--;
-					} while(j >= endCellY && getTileSolid(cellX, j));
+					} while(j >= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j + 1 - playerY) / (cellX - playerX);
 				}
@@ -417,7 +417,7 @@ void Map::updateDraw(double deltaTime)
 			double distanceX = cellX - playerX;
 			for(std::int64_t j = startCellY; j <= endCellY; j++)
 			{
-				if(getTileSolid(cellX, j))
+				if(getTileOpaque(cellX, j))
 				{
 					double newEndSlope = (j - playerY) / (cellX + 1 - playerX);
 					if(startSlope > newEndSlope)
@@ -431,7 +431,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j++;
-					} while(j >= endCellY && getTileSolid(cellX, j));
+					} while(j >= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j - playerY) / (cellX - playerX);
 				}
@@ -450,6 +450,14 @@ bool Map::getTileSolid(std::int32_t x, std::int32_t y) const
 
 	auto const& type = getTile(x, y).type;
 	return type == TileType::eBedrock || type == TileType::eWall;
+}
+
+bool Map::getTileOpaque(std::int32_t x, std::int32_t y) const
+{
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile opaqueness out of bounds");
+
+	auto const& type = getTile(x, y).type;
+	return type == TileType::eBedrock || type == TileType::eWall || type == TileType::eBush || type == TileType::eDoor;
 }
 
 double Map::getTileBrightness(std::int32_t x, std::int32_t y) const
