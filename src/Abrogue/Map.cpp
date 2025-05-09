@@ -78,7 +78,10 @@ void Map::updateDraw(double deltaTime)
 	};
 
 	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
-		updateTileProperties(tiles[lastVisibleTiles[i]], 0.5);
+	{
+		updateTileProperties(tiles[lastVisibleTiles[i]], 0.25);
+		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
+	}
 
 	auto [playerX, playerY] = player.getPosition();
 	auto [playerVx, playerVy] = player.getVelocity();
@@ -90,196 +93,155 @@ void Map::updateDraw(double deltaTime)
 	std::uint64_t playerCell = playerCellX + playerCellY * Constants::mapWidth;
 	updateTileProperties(tiles[playerCell], 1.0);
 	lastVisibleTiles[0] = playerCell;
-	std::size_t visibleCount{1};
+	lastVisibleTilesSize = 1;
+	tileBrightnessMask[playerCell] = 1.0;
 
-	std::uint64_t visionRange = 6;
+	double visionRange = 8.0;
+	std::uint64_t lookupRange = std::ceil(visionRange);
+
+	auto updateVisibleTile = [this, &updateTileProperties, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
+	{
+		double distance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
+		if(distance > visionRange)
+			return;
+
+		double lightStrength = std::clamp((visionRange - distance) / 2.0 + 0.5, 0.5, 1.0);
+		updateTileProperties(getTile(x, y), lightStrength);
+
+		lastVisibleTiles[lastVisibleTilesSize] = x + y * Constants::mapWidth;
+		lastVisibleTilesSize++;
+
+		tileBrightnessMask[x + y * Constants::mapWidth] = lightStrength;
+	};
 
 	//Octants are numbered clockwise from top left corner
 	//Octant 1
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange; i++)
 	{
-		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
+		std::int64_t cellX = std::max((std::int64_t)(playerX - 2 * i), 0ll);
 		std::int64_t cellY = playerY - i;
 		if(cellY < 0)
 			break;
 
-		std::int64_t distanceY = cellY - playerCellY;
-		for(std::int64_t j = cellX; j <= (int64_t)playerX; j++)
+		double distanceY = cellY - playerY;
+		for(std::int64_t j = cellX; j <= playerCellX; j++)
 		{
-			std::int64_t distanceX = j - playerCellX;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
-			visibleCount++;
+			double distanceX = j - playerX;
+			updateVisibleTile(j, cellY, distanceX, distanceY);
 		}
 	}
 
 	//Octant 2
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange; i++)
 	{
-		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
+		std::int64_t cellX = std::min((std::uint64_t)(playerX + 2 * i), Constants::mapWidth - 1);
 		std::int64_t cellY = playerY - i;
 		if(cellY < 0)
 			break;
 
-		std::int64_t distanceY = cellY - playerCellY;
+		double distanceY = cellY - playerY;
 		for(std::int64_t j = cellX; j >= (int64_t)playerX; j--)
 		{
-			std::int64_t distanceX = j - playerCellX;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
-			visibleCount++;
+			double distanceX = j - playerX;
+			updateVisibleTile(j, cellY, distanceX, distanceY);
 		}
 	}
 
 	//Octant 3
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange * 2; i++)
 	{
 		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
-		std::int64_t cellY = playerY - i;
+		std::int64_t cellY = playerY - (double)(i / 2);
 		if(cellY < 0)
 			break;
 
-		std::int64_t distanceX = cellX - playerCellX;
+		double distanceX = cellX - playerX;
 		for(std::int64_t j = cellY; j <= (int64_t)playerY; j++)
 		{
-			std::int64_t distanceY = j - playerCellY;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
-			visibleCount++;
+			double distanceY = j - playerY;
+			updateVisibleTile(cellX, j, distanceX, distanceY);
 		}
 	}
 
 	//Octant 4
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange * 2; i++)
 	{
 		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
-		std::int64_t cellY = playerY + i;
+		std::int64_t cellY = playerY + (double)(i / 2);
 		if(cellY >= Constants::mapHeight)
 			break;
 
-		std::int64_t distanceX = cellX - playerCellX;
+		double distanceX = cellX - playerX;
 		for(std::int64_t j = cellY; j >= (int64_t)playerY; j--)
 		{
-			std::int64_t distanceY = j - playerCellY;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
-			visibleCount++;
+			double distanceY = j - playerY;
+			updateVisibleTile(cellX, j, distanceX, distanceY);
 		}
 	}
 
 	//Octant 5
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange; i++)
 	{
-		std::int64_t cellX = std::min((std::uint64_t)(playerX + i), Constants::mapWidth - 1);
+		std::int64_t cellX = std::min((std::uint64_t)(playerX + 2 * i), Constants::mapWidth - 1);
 		std::int64_t cellY = playerY + i;
 		if(cellY >= Constants::mapHeight)
 			break;
 
-		std::int64_t distanceY = cellY - playerCellY;
+		double distanceY = cellY - playerY;
 		for(std::int64_t j = cellX; j >= (int64_t)playerX; j--)
 		{
-			std::int64_t distanceX = j - playerCellX;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
-			visibleCount++;
+			double distanceX = j - playerX;
+			updateVisibleTile(j, cellY, distanceX, distanceY);
 		}
 	}
 
 	//Octant 6
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange; i++)
 	{
-		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
+		std::int64_t cellX = std::max((std::int64_t)(playerX - 2 * i), 0ll);
 		std::int64_t cellY = playerY + i;
 		if(cellY >= Constants::mapHeight)
 			break;
 
-		std::int64_t distanceY = cellY - playerCellY;
+		double distanceY = cellY - playerY;
 		for(std::int64_t j = cellX; j <= (int64_t)playerX; j++)
 		{
-			std::int64_t distanceX = j - playerCellX;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(j, cellY), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = j + cellY * Constants::mapWidth;
-			visibleCount++;
+			double distanceX = j - playerX;
+			updateVisibleTile(j, cellY, distanceX, distanceY);
 		}
 	}
 
 	//Octant 7
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange * 2; i++)
 	{
 		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
-		std::int64_t cellY = playerY + i;
+		std::int64_t cellY = playerY + (double)(i / 2);
 		if(cellY >= Constants::mapHeight)
 			break;
 
-		std::int64_t distanceX = cellX - playerCellX;
+		double distanceX = cellX - playerX;
 		for(std::int64_t j = cellY; j >= (int64_t)playerY; j--)
 		{
-			std::int64_t distanceY = j - playerCellY;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
-			visibleCount++;
+			double distanceY = j - playerY;
+			updateVisibleTile(cellX, j, distanceX, distanceY);
 		}
 	}
 
 	//Octant 8
-	for(std::uint64_t i = 1; i <= visionRange; i++)
+	for(std::uint64_t i = 1; i <= lookupRange * 2; i++)
 	{
 		std::int64_t cellX = std::max((std::int64_t)(playerX - i), 0ll);
-		std::int64_t cellY = playerY - i;
+		std::int64_t cellY = playerY - (double)(i / 2);
 		if(cellY < 0)
 			break;
 
-		std::int64_t distanceX = cellX - playerCellX;
+		double distanceX = cellX - playerX;
 		for(std::int64_t j = cellY; j <= (int64_t)playerY; j++)
 		{
-			std::int64_t distanceY = j - playerCellY;
-			double distance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
-			if(distance >= visionRange + 0.25)
-				continue;
-
-			updateTileProperties(getTile(cellX, j), std::clamp(visionRange + 0.75 - distance, 0.5, 1.0));
-
-			lastVisibleTiles[visibleCount] = cellX + j * Constants::mapWidth;
-			visibleCount++;
+			double distanceY = j - playerY;
+			updateVisibleTile(cellX, j, distanceX, distanceY);
 		}
 	}
-
-	lastVisibleTilesSize = visibleCount;
 }
 
 bool Map::getTileSolid(std::int32_t x, std::int32_t y) const
@@ -288,4 +250,11 @@ bool Map::getTileSolid(std::int32_t x, std::int32_t y) const
 
 	auto const& type = getTile(x, y).type;
 	return type == TileType::eBedrock || type == TileType::eWall;
+}
+
+double Map::getTileBrightness(std::int32_t x, std::int32_t y) const
+{
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile brightness out of bounds");
+
+	return tileBrightnessMask[x + Constants::mapWidth * y];
 }

@@ -2,16 +2,16 @@ module Enemy;
 
 import GameSystems;
 
-Enemy::Enemy(std::uint8_t type, double speed, double mass, WeaponType weaponType, std::int64_t damage, double attackTime)
-	:PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0.48)
+Enemy::Enemy(EnemyData const& data)
+	:PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0.48), color(data.color)
 {
-	quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {Helpers::packColor(255, 0, 0, 255), Helpers::packColor(255, 0, 0, 0)}, type},
+	quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {color.getPacked(), color.getTransparentPacked()}, data.symbol},
 									QuadPool::eEntity);
 
-	setMass(mass);
-	setMaxVelocity(speed);
+	setMass(data.mass);
+	setMaxVelocity(data.speed);
 
-	weapon.init(weaponType, damage, attackTime, false);
+	weapon.init(data.weaponType, data.damage, data.attackTime, false);
 }
 
 void Enemy::update()
@@ -34,5 +34,17 @@ void Enemy::update()
 void Enemy::updateDraw()
 {
 	auto [x, y] = getPosition();
-	weapon.updateDraw(48.0 + x, y);
+	auto brightness = game.getTileBrightness(x, y);
+	if(brightness <= 0.0)
+	{
+		quadReference.setColor(0);
+		quadReference.setBackgroundColor(0);
+	}
+	else
+	{
+		quadReference.setColor(Helpers::packColor(color.r * brightness, color.g * brightness, color.b * brightness, color.a));
+		quadReference.setBackgroundColor(Helpers::packColor(color.r * brightness, color.g * brightness, color.b * brightness, 0));
+
+		weapon.updateDraw(48.0 + x, y);
+	}
 }

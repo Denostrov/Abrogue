@@ -9,13 +9,29 @@ export enum class WeaponType
 	eDagger
 };
 
+export using PackedColor = std::uint32_t;
+export struct Color
+{
+	constexpr Color() = default;
+	constexpr Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha)
+		:r(red), g(green), b(blue), a(alpha)
+	{}
+
+	constexpr PackedColor getPacked() const { return (std::uint32_t)r << 24 | (std::uint32_t)g << 16 | (std::uint32_t)b << 8 | (std::uint32_t)a; }
+	constexpr PackedColor getTransparentPacked() const { return (std::uint32_t)r << 24 | (std::uint32_t)g << 16 | (std::uint32_t)b << 8; }
+
+	std::uint8_t r{}, g{}, b{}, a{};
+};
+
 export struct EnemyData
 {
 	std::string name;
-	char symbol{};
+	std::uint8_t symbol{};
+	Color color{};
 	double speed{10.0};
 	double mass{10.0};
 	WeaponType weaponType{};
+	Color weaponColor{};
 	std::int64_t damage{};
 	double attackTime{0.25};
 };

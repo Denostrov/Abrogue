@@ -28,7 +28,8 @@ public:
 
 	auto getState() const { return state; }
 	auto& getEnemies() { return enemies; }
-	bool getTileSolid(std::int32_t x, std::int32_t y) { return map.getTileSolid(x, y); }
+	bool getTileSolid(std::int32_t x, std::int32_t y) const { return map.getTileSolid(x, y); }
+	double getTileBrightness(std::int32_t x, std::int32_t y) const { return map.getTileBrightness(x, y); }
 
 private:
 	void resetTickTimer();

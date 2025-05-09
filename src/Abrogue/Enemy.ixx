@@ -7,7 +7,7 @@ export class Enemy : public PhysicsComponent
 {
 public:
 	Enemy() = default;
-	Enemy(std::uint8_t type, double speed, double mass, WeaponType weaponType, std::int64_t damage, double attackTime);
+	Enemy(EnemyData const& data);
 
 	void update();
 	void updateDraw();
@@ -15,4 +15,6 @@ public:
 	QuadPool::Reference quadReference;
 private:
 	Weapon weapon;
+
+	Color color;
 };

@@ -76,7 +76,7 @@ void Game::advanceStep()
 		if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 3.0)
 		{
 			auto const& enemyData = configuration.getSuitableEnemy();
-			enemies.emplace_back(enemyData.symbol, enemyData.speed, enemyData.mass, enemyData.weaponType, enemyData.damage, enemyData.attackTime);
+			enemies.emplace_back(enemyData);
 			lastEnemySpawnTime = currentTick / (double)Constants::ticksPerSecond;
 		}
 
@@ -151,6 +151,8 @@ bool Game::updateDraw(double deltaTime)
 
 		player.updateDraw(deltaTime);
 
+		map.updateDraw(deltaTime);
+
 		for(auto& enemy : enemies)
 		{
 			auto [x, y] = enemy.getPosition();
@@ -158,8 +160,6 @@ bool Game::updateDraw(double deltaTime)
 			enemy.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
 			enemy.updateDraw();
 		}
-
-		map.updateDraw(deltaTime);
 	}
 
 	return renderEngine.drawFrame();

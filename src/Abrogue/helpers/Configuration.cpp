@@ -27,21 +27,39 @@ bool Configuration::load()
 		if(!json.contains(key))
 			return;
 
+		auto const& jsonValue = json[key];
+
 		using ValueType = std::decay_t<decltype(value)>;
 
-		if constexpr(std::is_same_v<ValueType, char>)
+		if constexpr(std::is_same_v<ValueType, std::uint8_t>)
 		{
-			if(!json[key].is_string())
+			if(!jsonValue.is_string())
 				return;
 
-			value = json[key].get<std::string>()[0];
+			value = jsonValue.get<std::string>()[0];
 		}
 		else if constexpr(std::is_same_v<ValueType, std::string>)
 		{
-			if(!json[key].is_string())
+			if(!jsonValue.is_string())
 				return;
 
-			value = json[key].get<ValueType>();
+			value = jsonValue.get<ValueType>();
+		}
+		else if constexpr(std::is_same_v<ValueType, Color>)
+		{
+			if(!jsonValue.is_array() || jsonValue.size() != 4)
+				return;
+
+			for(std::uint64_t i = 0; i < 4; i++)
+			{
+				if(!jsonValue[i].is_number_integer())
+					return;
+			}
+
+			value.r = jsonValue[0].get<std::uint8_t>();
+			value.g = jsonValue[1].get<std::uint8_t>();
+			value.b = jsonValue[2].get<std::uint8_t>();
+			value.a = jsonValue[3].get<std::uint8_t>();
 		}
 		else if constexpr(std::is_integral_v<ValueType>)
 		{
@@ -82,8 +100,10 @@ bool Configuration::load()
 			EnemyData data;
 			readJSONValue(enemyJSON, "name", data.name);
 			readJSONValue(enemyJSON, "symbol", data.symbol);
+			readJSONValue(enemyJSON, "color", data.color);
 			readJSONValue(enemyJSON, "speed", data.speed);
 			readJSONValue(enemyJSON, "mass", data.mass);
+			readJSONValue(enemyJSON, "weaponColor", data.weaponColor);
 			readJSONValue(enemyJSON, "damage", data.damage);
 			readJSONValue(enemyJSON, "attackTime", data.attackTime);
 

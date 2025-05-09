@@ -3,27 +3,33 @@
 	{
 		"name" : "rat",
 		"symbol" : "r",
+		"color" : [192, 192, 192, 255],
 		"speed" : 10,
 		"mass" : 5,
 		"weaponType" : "claw",
+		"weaponColor" : [192, 192, 192, 255],
 		"damage" : 10,
 		"attackTime" : 0.25
 	},
 	{
 		"name" : "jackal",
 		"symbol" : "j",
+		"color" : [128, 64, 0, 255],
 		"speed" : 20,
 		"mass" : 5,
 		"weaponType" : "claw",
+		"weaponColor" : [128, 64, 0, 255],
 		"damage" : 10,
 		"attackTime" : 0.25
 	},
 	{
 		"name" : "ogre",
 		"symbol" : "O",
+		"color" : [192, 0, 0, 255],
 		"speed" : 10,
 		"mass" : 10,
 		"weaponType" : "club",
+		"weaponColor" : [192, 0, 0, 255],
 		"damage" : 30,
 		"attackTime" : 0.3
 	}
