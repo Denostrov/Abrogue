@@ -2,9 +2,11 @@ module Player;
 
 import GameSystems;
 
-Player::Player(double velocity):PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.32, 0.4)
+Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.48, 0.48, 0.32, 0.4)
 {
-	quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {Helpers::packColor(64, 255, 0, 255), Helpers::packColor(64, 255, 0, 0)}, 64},
+	auto [x, y] = getPosition();
+	quadReference = quadPool.insert(QuadData{{(48.0f + x) * QuadData::tileScale.x, y * QuadData::tileScale.y},
+									{Helpers::packColor(64, 255, 0, 255), Helpers::packColor(64, 255, 0, 0)}, 64},
 									QuadPool::eEntity);
 
 	setMaxVelocity(velocity);

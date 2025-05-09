@@ -3,9 +3,11 @@ module Enemy;
 import GameSystems;
 
 Enemy::Enemy(EnemyData const& data)
-	:PhysicsComponent(36.0, 18.0, 0.48, 0.48, 0.48, 0.48), color(data.color)
+	:PhysicsComponent(40.5, 33.5, 0.48, 0.48, 0.48, 0.48), color(data.color)
 {
-	quadReference = quadPool.insert(QuadData{{0.0f, 0.0f}, {color.getPacked(), color.getTransparentPacked()}, data.symbol},
+	auto [x, y] = getPosition();
+	quadReference = quadPool.insert(QuadData{{(48.0f + x) * QuadData::tileScale.x, y * QuadData::tileScale.y},
+									{color.getPacked(), color.getTransparentPacked()}, data.symbol},
 									QuadPool::eEntity);
 
 	setMass(data.mass);

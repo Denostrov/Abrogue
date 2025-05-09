@@ -4,55 +4,7 @@ import GameSystems;
 
 void Map::init()
 {
-	tiles.reserve(Constants::mapWidth * Constants::mapHeight);
-	for(size_t i = 0; i < Constants::mapWidth * Constants::mapHeight; i++)
-		tiles.emplace_back();
-
-	for(size_t i = 0; i < Constants::mapWidth; i++)
-	{
-		getTile(i, 0).type = TileType::eBedrock;
-		getTile(i, Constants::mapHeight - 1).type = TileType::eBedrock;
-	}
-
-	for(size_t i = 0; i < Constants::mapHeight; i++)
-	{
-		getTile(0, i).type = TileType::eBedrock;
-		getTile(Constants::mapWidth - 1, i).type = TileType::eBedrock;
-	}
-
-	auto middleX = Constants::mapWidth / 2;
-	auto middleY = Constants::mapHeight / 2;
-	getTile(middleX, middleY).type = TileType::eWall;
-	getTile(middleX + 1, middleY).type = TileType::eWall;
-	getTile(middleX, middleY + 1).type = TileType::eWall;
-	getTile(middleX + 1, middleY + 1).type = TileType::eWall;
-
-	getTile(middleX + 3, middleY).type = TileType::eWall;
-	getTile(middleX + 4, middleY).type = TileType::eWall;
-	getTile(middleX + 3, middleY + 1).type = TileType::eWall;
-	getTile(middleX + 4, middleY + 1).type = TileType::eWall;
-
-	getTile(middleX + 3, middleY + 3).type = TileType::eWall;
-	getTile(middleX + 4, middleY + 3).type = TileType::eWall;
-	getTile(middleX + 3, middleY + 4).type = TileType::eWall;
-	getTile(middleX + 4, middleY + 4).type = TileType::eWall;
-
-	getTile(middleX + 2, middleY + 4).type = TileType::eDoor;
-
-	getTile(middleX, middleY + 3).type = TileType::eWall;
-	getTile(middleX + 1, middleY + 3).type = TileType::eWall;
-	getTile(middleX, middleY + 4).type = TileType::eWall;
-	getTile(middleX + 1, middleY + 4).type = TileType::eWall;
-
-	getTile(middleX + 6, middleY).type = TileType::eGrass;
-	getTile(middleX + 7, middleY).type = TileType::eGrass;
-	getTile(middleX + 6, middleY + 1).type = TileType::eGrass;
-	getTile(middleX + 7, middleY + 1).type = TileType::eGrass;
-
-	getTile(middleX + 6, middleY + 3).type = TileType::eBush;
-	getTile(middleX + 7, middleY + 3).type = TileType::eBush;
-	getTile(middleX + 6, middleY + 4).type = TileType::eBush;
-	getTile(middleX + 7, middleY + 4).type = TileType::eBush;
+	generateLevel();
 
 	for(size_t i = 0; i < Constants::mapHeight; i++)
 	{
@@ -132,7 +84,7 @@ void Map::updateDraw(double deltaTime)
 			{
 				if(getTileOpaque(j, cellY))
 				{
-					double newEndSlope = (j - playerX) / (cellY + 1 - playerY);
+					double newEndSlope = (j - playerX) / (cellY + 1.0 - playerY);
 					if(startSlope > newEndSlope)
 						self(i + 1, startSlope, newEndSlope);
 
@@ -255,7 +207,7 @@ void Map::updateDraw(double deltaTime)
 			{
 				if(getTileOpaque(cellX, j))
 				{
-					double newEndSlope = (j + 1 - playerY) / (cellX - playerX);
+					double newEndSlope = (j + 1.0 - playerY) / (cellX - playerX);
 					if(startSlope > newEndSlope)
 						self(i + 1, startSlope, newEndSlope);
 
@@ -269,7 +221,7 @@ void Map::updateDraw(double deltaTime)
 						j--;
 					} while(j >= endCellY && getTileOpaque(cellX, j));
 
-					startSlope = (j + 1 - playerY) / (cellX + 1 - playerX);
+					startSlope = (j + 1.0 - playerY) / (cellX + 1.0 - playerX);
 				}
 
 				double distanceY = j - playerY;
@@ -351,7 +303,7 @@ void Map::updateDraw(double deltaTime)
 						j++;
 					} while(j <= endCellX && getTileOpaque(j, cellY));
 
-					startSlope = (j - playerX) / (cellY + 1 - playerY);
+					startSlope = (j - 0.01 - playerX) / (cellY + 0.99 - playerY);
 				}
 
 				double distanceX = j - playerX;
@@ -378,7 +330,7 @@ void Map::updateDraw(double deltaTime)
 			{
 				if(getTileOpaque(cellX, j))
 				{
-					double newEndSlope = (j + 1 - playerY) / (cellX + 1 - playerX);
+					double newEndSlope = (j + 1.0 - playerY) / (cellX + 1.0 - playerX);
 					if(startSlope < newEndSlope)
 						self(i + 1, startSlope, newEndSlope);
 
@@ -392,7 +344,7 @@ void Map::updateDraw(double deltaTime)
 						j--;
 					} while(j >= endCellY && getTileOpaque(cellX, j));
 
-					startSlope = (j + 1 - playerY) / (cellX - playerX);
+					startSlope = (j + 1.0 - playerY) / (cellX - playerX);
 				}
 
 				double distanceY = j - playerY;
@@ -431,7 +383,7 @@ void Map::updateDraw(double deltaTime)
 							return;
 
 						j++;
-					} while(j >= endCellY && getTileOpaque(cellX, j));
+					} while(j <= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j - playerY) / (cellX - playerX);
 				}
@@ -465,4 +417,47 @@ double Map::getTileBrightness(std::int32_t x, std::int32_t y) const
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile brightness out of bounds");
 
 	return tileBrightnessMask[x + Constants::mapWidth * y];
+}
+
+void Map::generateLevel()
+{
+	for(size_t i = 0; i < Constants::mapWidth; i++)
+	{
+		getTile(i, 0).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[i] = true;
+
+		getTile(i, Constants::mapHeight - 1).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[i + (Constants::mapHeight - 1) * Constants::mapWidth] = true;
+	}
+
+	for(size_t i = 0; i < Constants::mapHeight; i++)
+	{
+		getTile(0, i).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[i * Constants::mapWidth] = true;
+
+		getTile(Constants::mapWidth - 1, i).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[Constants::mapWidth - 1 + i * Constants::mapWidth] = true;
+	}
+
+	auto& startingRoom = levelData.rooms[0];
+	startingRoom.originX = 30;
+	startingRoom.originY = 29;
+	startingRoom.width = 20;
+	startingRoom.height = 5;
+	levelData.roomCount = 1;
+	for(std::int32_t i = startingRoom.originY; i < startingRoom.originY + startingRoom.height; i++)
+	{
+		for(std::int32_t j = startingRoom.originX; j < startingRoom.originX + startingRoom.width; j++)
+		{
+			getTile(j, i).type = TileType::eFloor;
+		}
+	}
+	for(std::int32_t i = startingRoom.originY - 1; i < startingRoom.originY + startingRoom.height + 1; i++)
+	{
+		for(std::int32_t j = startingRoom.originX - 1; j < startingRoom.originX + startingRoom.width + 1; j++)
+		{
+			levelData.tilesOccupiedMask[j + i * Constants::mapWidth] = true;
+		}
+	}
+	getTile(40, 34).type = TileType::eExit;
 }
