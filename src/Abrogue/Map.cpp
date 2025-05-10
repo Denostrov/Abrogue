@@ -6,11 +6,11 @@ void Map::init()
 {
 	generateLevel();
 
-	for(size_t i = 0; i < Constants::mapHeight; i++)
+	for(std::int64_t y = 0; y < Constants::mapHeight; y++)
 	{
-		for(size_t j = 0; j < Constants::mapWidth; j++)
+		for(std::int64_t x = 0; x < Constants::mapWidth; x++)
 		{
-			getTile(j, i).quadReference = quadPool.insert(QuadData{{(Constants::mapOffset + j + 0.5f) * QuadData::tileScale.x, (i + 0.5f) * QuadData::tileScale.y},
+			getTile(x, y).quadReference = quadPool.insert(QuadData{{(Constants::mapOffset + x + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y},
 																 {Helpers::packColor(0, 0, 0, 255), Helpers::packColor(0,0,0,255)}, 32}, QuadPool::eMap);
 		}
 	}
@@ -49,7 +49,7 @@ void Map::updateDraw(double deltaTime)
 	tileBrightnessMask[playerCell] = 1.0;
 
 	double visionRange = 8.0;
-	std::uint64_t lookupRange = std::ceil(visionRange);
+	std::int64_t lookupRange = std::ceil(visionRange);
 
 	auto updateVisibleTile = [this, &updateTileProperties, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
 	{
@@ -68,9 +68,9 @@ void Map::updateDraw(double deltaTime)
 
 	//Octants are numbered clockwise from top left corner
 	//Octant 1
-	auto calculateOctant1 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant1 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange; i++)
+		for(auto i = startOffset; i <= lookupRange; i++)
 		{
 			std::int64_t startCellX = std::max((std::int64_t)(playerX - i * startSlope), 0ll);
 			std::int64_t endCellX = std::max((std::int64_t)(playerX - i * endSlope), 0ll);
@@ -80,7 +80,7 @@ void Map::updateDraw(double deltaTime)
 				break;
 
 			double distanceY = cellY - playerY;
-			for(std::int64_t j = startCellX; j <= endCellX; j++)
+			for(auto j = startCellX; j <= endCellX; j++)
 			{
 				if(getTileOpaque(j, cellY))
 				{
@@ -109,19 +109,19 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant1(1, 1.0, 0.0);
 
 	//Octant 2
-	auto calculateOctant2 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant2 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange; i++)
+		for(auto i = startOffset; i <= lookupRange; i++)
 		{
-			std::int64_t startCellX = std::min((std::uint64_t)(playerX - i * startSlope), Constants::mapWidth - 1);
-			std::int64_t endCellX = std::min((std::uint64_t)(playerX - i * endSlope), Constants::mapWidth - 1);
+			std::int64_t startCellX = std::min((std::int64_t)(playerX - i * startSlope), Constants::mapWidth - 1);
+			std::int64_t endCellX = std::min((std::int64_t)(playerX - i * endSlope), Constants::mapWidth - 1);
 
 			std::int64_t cellY = playerY - i;
 			if(cellY < 0)
 				break;
 
 			double distanceY = cellY - playerY;
-			for(std::int64_t j = startCellX; j >= endCellX; j--)
+			for(auto j = startCellX; j >= endCellX; j--)
 			{
 				if(getTileOpaque(j, cellY))
 				{
@@ -150,9 +150,9 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant2(1, -1.0, 0.0);
 
 	//Octant 3
-	auto calculateOctant3 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant3 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange * 2; i++)
+		for(auto i = startOffset; i <= lookupRange * 2; i++)
 		{
 			std::int64_t cellX = playerX + i;
 			if(cellX >= Constants::mapWidth)
@@ -162,7 +162,7 @@ void Map::updateDraw(double deltaTime)
 			std::int64_t endCellY = std::max((std::int64_t)(playerY + i * endSlope), 0ll);
 
 			double distanceX = cellX - playerX;
-			for(std::int64_t j = startCellY; j <= endCellY; j++)
+			for(auto j = startCellY; j <= endCellY; j++)
 			{
 				if(getTileOpaque(cellX, j))
 				{
@@ -191,19 +191,19 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant3(1, -1.0, 0.0);
 
 	//Octant 4
-	auto calculateOctant4 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant4 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange * 2; i++)
+		for(auto i = startOffset; i <= lookupRange * 2; i++)
 		{
 			std::int64_t cellX = playerX + i;
 			if(cellX >= Constants::mapWidth)
 				break;
 
-			std::int64_t startCellY = std::min((std::uint64_t)(playerY + i * startSlope), Constants::mapHeight - 1);
-			std::int64_t endCellY = std::min((std::uint64_t)(playerY + i * endSlope), Constants::mapHeight - 1);
+			std::int64_t startCellY = std::min((std::int64_t)(playerY + i * startSlope), Constants::mapHeight - 1);
+			std::int64_t endCellY = std::min((std::int64_t)(playerY + i * endSlope), Constants::mapHeight - 1);
 
 			double distanceX = cellX - playerX;
-			for(std::int64_t j = startCellY; j >= endCellY; j--)
+			for(auto j = startCellY; j >= endCellY; j--)
 			{
 				if(getTileOpaque(cellX, j))
 				{
@@ -232,19 +232,19 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant4(1, 1.0, 0.0);
 
 	//Octant 5
-	auto calculateOctant5 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant5 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange; i++)
+		for(auto i = startOffset; i <= lookupRange; i++)
 		{
-			std::int64_t startCellX = std::min((std::uint64_t)(playerX + i * startSlope), Constants::mapWidth - 1);
-			std::int64_t endCellX = std::min((std::uint64_t)(playerX + i * endSlope), Constants::mapWidth - 1);
+			std::int64_t startCellX = std::min((std::int64_t)(playerX + i * startSlope), Constants::mapWidth - 1);
+			std::int64_t endCellX = std::min((std::int64_t)(playerX + i * endSlope), Constants::mapWidth - 1);
 
 			std::int64_t cellY = playerY + i;
 			if(cellY >= Constants::mapHeight)
 				break;
 
 			double distanceY = cellY - playerY;
-			for(std::int64_t j = startCellX; j >= endCellX; j--)
+			for(auto j = startCellX; j >= endCellX; j--)
 			{
 				if(getTileOpaque(j, cellY))
 				{
@@ -273,9 +273,9 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant5(1, 1.0, 0.0);
 
 	//Octant 6
-	auto calculateOctant6 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant6 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange; i++)
+		for(auto i = startOffset; i <= lookupRange; i++)
 		{
 			std::int64_t startCellX = std::max((std::int64_t)(playerX + i * startSlope), 0ll);
 			std::int64_t endCellX = std::max((std::int64_t)(playerX + i * endSlope), 0ll);
@@ -285,7 +285,7 @@ void Map::updateDraw(double deltaTime)
 				break;
 
 			double distanceY = cellY - playerY;
-			for(std::int64_t j = startCellX; j <= endCellX; j++)
+			for(auto j = startCellX; j <= endCellX; j++)
 			{
 				if(getTileOpaque(j, cellY))
 				{
@@ -303,7 +303,7 @@ void Map::updateDraw(double deltaTime)
 						j++;
 					} while(j <= endCellX && getTileOpaque(j, cellY));
 
-					startSlope = (j - 0.01 - playerX) / (cellY + 0.99 - playerY);
+					startSlope = (j - playerX) / (cellY + 1.0 - playerY);
 				}
 
 				double distanceX = j - playerX;
@@ -314,19 +314,19 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant6(1, -1.0, 0.0);
 
 	//Octant 7
-	auto calculateOctant7 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant7 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange * 2; i++)
+		for(auto i = startOffset; i <= lookupRange * 2; i++)
 		{
 			std::int64_t cellX = playerX - i;
 			if(cellX < 0)
 				break;
 
-			std::int64_t startCellY = std::min((std::uint64_t)(playerY - i * startSlope), Constants::mapHeight - 1);
-			std::int64_t endCellY = std::min((std::uint64_t)(playerY - i * endSlope), Constants::mapHeight - 1);
+			std::int64_t startCellY = std::min((std::int64_t)(playerY - i * startSlope), Constants::mapHeight - 1);
+			std::int64_t endCellY = std::min((std::int64_t)(playerY - i * endSlope), Constants::mapHeight - 1);
 
 			double distanceX = cellX - playerX;
-			for(std::int64_t j = startCellY; j >= endCellY; j--)
+			for(auto j = startCellY; j >= endCellY; j--)
 			{
 				if(getTileOpaque(cellX, j))
 				{
@@ -355,9 +355,9 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant7(1, -1.0, 0.0);
 
 	//Octant 8
-	auto calculateOctant8 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::uint64_t startOffset, double startSlope, double endSlope) -> void
+	auto calculateOctant8 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
 	{
-		for(std::uint64_t i = startOffset; i <= lookupRange * 2; i++)
+		for(auto i = startOffset; i <= lookupRange * 2; i++)
 		{
 			std::int64_t cellX = playerX - i;
 			if(cellX < 0)
@@ -367,7 +367,7 @@ void Map::updateDraw(double deltaTime)
 			std::int64_t endCellY = std::max((std::int64_t)(playerY - i * endSlope), 0ll);
 
 			double distanceX = cellX - playerX;
-			for(std::int64_t j = startCellY; j <= endCellY; j++)
+			for(auto j = startCellY; j <= endCellY; j++)
 			{
 				if(getTileOpaque(cellX, j))
 				{
@@ -396,7 +396,7 @@ void Map::updateDraw(double deltaTime)
 	calculateOctant8(1, 1.0, 0.0);
 }
 
-bool Map::getTileSolid(std::int32_t x, std::int32_t y) const
+bool Map::getTileSolid(std::int64_t x, std::int64_t y) const
 {
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile solidness out of bounds");
 
@@ -404,15 +404,15 @@ bool Map::getTileSolid(std::int32_t x, std::int32_t y) const
 	return type == TileType::eBedrock || type == TileType::eWall;
 }
 
-bool Map::getTileOpaque(std::int32_t x, std::int32_t y) const
+bool Map::getTileOpaque(std::int64_t x, std::int64_t y) const
 {
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile opaqueness out of bounds");
 
 	auto const& type = getTile(x, y).type;
-	return type == TileType::eBedrock || type == TileType::eWall || type == TileType::eBush || type == TileType::eDoor;
+	return type == TileType::eBedrock || type == TileType::eWall || type == TileType::eBush || type == TileType::eDoor || type == TileType::eExit;
 }
 
-double Map::getTileBrightness(std::int32_t x, std::int32_t y) const
+double Map::getTileBrightness(std::int64_t x, std::int64_t y) const
 {
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile brightness out of bounds");
 
@@ -421,23 +421,56 @@ double Map::getTileBrightness(std::int32_t x, std::int32_t y) const
 
 void Map::generateLevel()
 {
-	for(size_t i = 0; i < Constants::mapWidth; i++)
+	for(std::int64_t x = 0; x < Constants::mapWidth; x++)
 	{
-		getTile(i, 0).type = TileType::eBedrock;
-		levelData.tilesOccupiedMask[i] = true;
+		getTile(x, 0).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[x] = true;
 
-		getTile(i, Constants::mapHeight - 1).type = TileType::eBedrock;
-		levelData.tilesOccupiedMask[i + (Constants::mapHeight - 1) * Constants::mapWidth] = true;
+		getTile(x, Constants::mapHeight - 1).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[x + (Constants::mapHeight - 1) * Constants::mapWidth] = true;
 	}
 
-	for(size_t i = 0; i < Constants::mapHeight; i++)
+	for(std::int64_t y = 0; y < Constants::mapHeight; y++)
 	{
-		getTile(0, i).type = TileType::eBedrock;
-		levelData.tilesOccupiedMask[i * Constants::mapWidth] = true;
+		getTile(0, y).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[y * Constants::mapWidth] = true;
 
-		getTile(Constants::mapWidth - 1, i).type = TileType::eBedrock;
-		levelData.tilesOccupiedMask[Constants::mapWidth - 1 + i * Constants::mapWidth] = true;
+		getTile(Constants::mapWidth - 1, y).type = TileType::eBedrock;
+		levelData.tilesOccupiedMask[Constants::mapWidth - 1 + y * Constants::mapWidth] = true;
 	}
+
+	auto tryPlacingRoom = [this](std::int64_t doorX, std::int64_t doorY, std::int64_t originX, std::int64_t originY, std::int64_t width, std::int64_t height)
+	{
+		for(auto y = originY; y < originY + height; y++)
+		{
+			for(auto x = originX; x < originX + width; x++)
+			{
+				if(x < 0 || x >= Constants::mapWidth || y < 0 || y >= Constants::mapHeight
+				   || levelData.tilesOccupiedMask[x + y * Constants::mapWidth])
+					return;
+			}
+		}
+
+		for(auto y = originY; y < originY + height; y++)
+		{
+			for(auto x = originX; x < originX + width; x++)
+				getTile(x, y).type = TileType::eFloor;
+		}
+
+		for(auto y = originY - 1; y < originY + height + 1; y++)
+		{
+			for(auto x = originX - 1; x < originX + width + 1; x++)
+				levelData.tilesOccupiedMask[x + y * Constants::mapWidth] = true;
+		}
+
+		getTile(doorX, doorY).type = TileType::eDoor;
+
+		levelData.rooms[levelData.roomCount].originX = originX;
+		levelData.rooms[levelData.roomCount].originY = originY;
+		levelData.rooms[levelData.roomCount].width = width;
+		levelData.rooms[levelData.roomCount].height = height;
+		levelData.roomCount++;
+	};
 
 	auto& startingRoom = levelData.rooms[0];
 	startingRoom.originX = 30;
@@ -445,19 +478,70 @@ void Map::generateLevel()
 	startingRoom.width = 20;
 	startingRoom.height = 5;
 	levelData.roomCount = 1;
-	for(std::int32_t i = startingRoom.originY; i < startingRoom.originY + startingRoom.height; i++)
+	for(auto y = startingRoom.originY; y < startingRoom.originY + startingRoom.height; y++)
 	{
-		for(std::int32_t j = startingRoom.originX; j < startingRoom.originX + startingRoom.width; j++)
-		{
-			getTile(j, i).type = TileType::eFloor;
-		}
+		for(auto x = startingRoom.originX; x < startingRoom.originX + startingRoom.width; x++)
+			getTile(x, y).type = TileType::eFloor;
 	}
-	for(std::int32_t i = startingRoom.originY - 1; i < startingRoom.originY + startingRoom.height + 1; i++)
+	for(auto y = startingRoom.originY - 1; y < startingRoom.originY + startingRoom.height + 1; y++)
 	{
-		for(std::int32_t j = startingRoom.originX - 1; j < startingRoom.originX + startingRoom.width + 1; j++)
-		{
-			levelData.tilesOccupiedMask[j + i * Constants::mapWidth] = true;
-		}
+		for(auto x = startingRoom.originX - 1; x < startingRoom.originX + startingRoom.width + 1; x++)
+			levelData.tilesOccupiedMask[x + y * Constants::mapWidth] = true;
 	}
 	getTile(40, 34).type = TileType::eExit;
+
+	for(std::int64_t i = 0; i < 200; i++)
+	{
+	outerLoop:
+		std::int64_t currentWidthSpread = std::llround(18 * (1.0 - i / 200.0)) + 1;
+		std::int64_t currentHeightSpread = std::llround(8 * (1.0 - i / 200.0)) + 1;
+
+		auto randomness = std::random_device();
+		auto const& originRoom = levelData.rooms[randomness() % levelData.roomCount];
+
+		std::int64_t newRoomWidth = 2ll + randomness() % currentWidthSpread;
+		std::int64_t newRoomHeight = 2ll + randomness() % currentHeightSpread;
+
+		std::uint64_t newDirection = randomness() % 4;
+		if(newDirection == 0)
+		{
+			std::int64_t doorX = originRoom.originX + randomness() % originRoom.width;
+			std::int64_t doorY = originRoom.originY - 1;
+
+			std::int64_t newRoomOriginX = doorX - randomness() % newRoomWidth;
+			std::int64_t newRoomOriginY = doorY - newRoomHeight;
+
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+		}
+		else if(newDirection == 1)
+		{
+			std::int64_t doorX = originRoom.originX + originRoom.width;
+			std::int64_t doorY = originRoom.originY + randomness() % originRoom.height;
+
+			std::int64_t newRoomOriginX = doorX + 1;
+			std::int64_t newRoomOriginY = doorY - randomness() % newRoomHeight;
+
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+		}
+		else if(newDirection == 2)
+		{
+			std::int64_t doorX = originRoom.originX + randomness() % originRoom.width;
+			std::int64_t doorY = originRoom.originY + originRoom.height;
+
+			std::int64_t newRoomOriginX = doorX - randomness() % newRoomWidth;
+			std::int64_t newRoomOriginY = doorY + 1;
+
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+		}
+		else if(newDirection == 3)
+		{
+			std::int64_t doorX = originRoom.originX - 1;
+			std::int64_t doorY = originRoom.originY + randomness() % originRoom.height;
+
+			std::int64_t newRoomOriginX = doorX - newRoomWidth;
+			std::int64_t newRoomOriginY = doorY - randomness() % newRoomHeight;
+
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+		}
+	}
 }

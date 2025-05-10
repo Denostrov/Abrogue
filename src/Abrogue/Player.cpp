@@ -2,7 +2,7 @@ module Player;
 
 import GameSystems;
 
-Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.48, 0.48, 0.32, 0.4)
+Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.46, 0.46, 0.32, 0.4)
 {
 	auto [x, y] = getPosition();
 	quadReference = quadPool.insert(QuadData{{(48.0f + x) * QuadData::tileScale.x, y * QuadData::tileScale.y},

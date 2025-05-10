@@ -31,8 +31,8 @@ export class Map
 
 	struct Room
 	{
-		std::int32_t originX{}, originY{};
-		std::uint64_t width{}, height{};
+		std::int64_t originX{}, originY{};
+		std::int64_t width{}, height{};
 	};
 
 	struct LevelData
@@ -40,7 +40,7 @@ export class Map
 		std::array<Room, 64> rooms{};
 		std::uint64_t roomCount{};
 
-		std::array<bool, Constants::mapWidth* Constants::mapHeight> tilesOccupiedMask{};
+		std::array<bool, Constants::mapTileCount> tilesOccupiedMask{};
 	};
 
 public:
@@ -49,12 +49,12 @@ public:
 
 	void updateDraw(double deltaTime);
 
-	bool getTileSolid(std::int32_t x, std::int32_t y) const;
-	bool getTileOpaque(std::int32_t x, std::int32_t y) const;
-	double getTileBrightness(std::int32_t x, std::int32_t y) const;
+	bool getTileSolid(std::int64_t x, std::int64_t y) const;
+	bool getTileOpaque(std::int64_t x, std::int64_t y) const;
+	double getTileBrightness(std::int64_t x, std::int64_t y) const;
 
 private:
-	decltype(auto) getTile(this auto& self, std::int32_t x, std::int32_t y) { return self.tiles[x + Constants::mapWidth * y]; }
+	decltype(auto) getTile(this auto& self, std::int64_t x, std::int64_t y) { return self.tiles[x + y * Constants::mapWidth]; }
 
 	void generateLevel();
 
@@ -68,11 +68,11 @@ private:
 		TileInfo{Helpers::packColor(255, 255, 255, 255), Helpers::packColor(16, 16, 192, 255), 234}
 	};
 
-	std::array<Tile, Constants::mapWidth* Constants::mapHeight> tiles;
+	std::array<Tile, Constants::mapTileCount> tiles;
 	LevelData levelData;
 
-	std::array<std::uint64_t, Constants::mapWidth* Constants::mapHeight> lastVisibleTiles{};
+	std::array<std::uint64_t, Constants::mapTileCount> lastVisibleTiles{};
 	std::uint64_t lastVisibleTilesSize{};
 
-	std::array<double, Constants::mapWidth* Constants::mapHeight> tileBrightnessMask{};
+	std::array<double, Constants::mapTileCount> tileBrightnessMask{};
 };
