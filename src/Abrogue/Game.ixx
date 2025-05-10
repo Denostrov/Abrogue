@@ -34,7 +34,6 @@ public:
 private:
 	void resetTickTimer();
 
-	void initDraw();
 	bool updateDraw(double deltaTime);
 
 	std::uint64_t currentTick{};

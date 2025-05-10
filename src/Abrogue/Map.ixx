@@ -51,6 +51,7 @@ public:
 
 	bool getTileSolid(std::int64_t x, std::int64_t y) const;
 	bool getTileOpaque(std::int64_t x, std::int64_t y) const;
+	bool getTileFloor(std::int64_t x, std::int64_t y) const;
 	double getTileBrightness(std::int64_t x, std::int64_t y) const;
 
 private:

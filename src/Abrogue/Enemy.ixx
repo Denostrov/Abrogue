@@ -10,7 +10,7 @@ public:
 	Enemy(EnemyData const& data);
 
 	void update();
-	void updateDraw();
+	void updateDraw(double deltaTime);
 
 	QuadPool::Reference quadReference;
 private:

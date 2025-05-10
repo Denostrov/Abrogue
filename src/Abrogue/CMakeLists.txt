@@ -22,7 +22,7 @@ add_executable(${PROJECT_NAME}
 	"gui/PlayArea.cpp" 
 	"gui/MainMenu.cpp"
 	"gui/Screen.cpp"
- "Weapon.cpp" "gui/GameOver.cpp")
+ "Weapon.cpp" "gui/GameOver.cpp" "gui/Background.cpp")
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES 
 	${STANDARD_MODULE_PATH} 
 	"helpers/Configuration.ixx" 
@@ -52,7 +52,7 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 	"gui/MainMenu.ixx"
 	"gui/GameOver.ixx"
 	"gui/Screen.ixx"
- "Weapon.ixx")
+ "Weapon.ixx" "gui/Background.ixx")
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})

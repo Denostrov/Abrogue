@@ -30,7 +30,7 @@ void Label::setVisible(bool visible)
 	//Recreate quads
 	for(size_t i = 0; i < size; i++)
 	{
-		quadReferences.emplace_back(quadPool.insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y},
+		quadReferences.emplace_back(quadPool.insert(QuadData{{x + i + 0.5f, y + 0.5f},
 											 {Helpers::packColor(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
 	}
 }
@@ -69,7 +69,7 @@ void Label::setText(std::string_view newText)
 	quadReferences.reserve(size);
 	for(size_t i = quadReferences.size(); i < size; i++)
 	{
-		quadReferences.emplace_back(quadPool.insert(QuadData{{(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y},
+		quadReferences.emplace_back(quadPool.insert(QuadData{{x + i + 0.5f, y + 0.5f},
 													 {Helpers::packColor(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
 	}
 
@@ -89,7 +89,7 @@ void Label::setPosition(std::uint32_t newX, std::uint32_t newY)
 	x = newX;
 	y = newY;
 	for(size_t i = 0; i < size; i++)
-		quadReferences[i].setPosition({(x + i + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y});
+		quadReferences[i].setPosition(x + i + 0.5f, y + 0.5f);
 }
 
 void Label::setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)

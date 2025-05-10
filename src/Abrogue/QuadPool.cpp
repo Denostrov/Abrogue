@@ -44,32 +44,32 @@ QuadPool::Reference& QuadPool::Reference::operator=(QuadPool::Reference&& rhs)
 	return *this;
 }
 
-void QuadPool::Reference::setPosition(glm::vec2 position) const
+void QuadPool::Reference::setPosition(float positionX, float positionY) const
 {
 	logger.extraAssert(index != -1, "Set position of invalid quad reference");
 
-	quadPool.data[layer][index].position = position;
+	quadPool.data[layer][index].setPosition(positionX, positionY);
 }
 
 void QuadPool::Reference::setGlyph(std::uint8_t glyph) const
 {
 	logger.extraAssert(index != -1, "Set glyph of invalid quad reference");
 
-	quadPool.data[layer][index].glyph = glyph;
+	quadPool.data[layer][index].setGlyph(glyph);
 }
 
 void QuadPool::Reference::setColor(uint32_t packedColor) const
 {
 	logger.extraAssert(index != -1, "Set color of invalid quad reference");
 
-	quadPool.data[layer][index].colors[0] = packedColor;
+	quadPool.data[layer][index].setColor(packedColor);
 }
 
 void QuadPool::Reference::setBackgroundColor(uint32_t packedColor) const
 {
 	logger.extraAssert(index != -1, "Set background color of invalid quad reference");
 
-	quadPool.data[layer][index].colors[1] = packedColor;
+	quadPool.data[layer][index].setBackgroundColor(packedColor);
 }
 
 QuadPool::Reference QuadPool::insert(QuadData const& newData, Layer layer)

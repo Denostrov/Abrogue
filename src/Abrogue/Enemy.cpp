@@ -6,7 +6,7 @@ Enemy::Enemy(EnemyData const& data)
 	:PhysicsComponent(40.5, 33.5, 0.48, 0.48, 0.48, 0.48), color(data.color)
 {
 	auto [x, y] = getPosition();
-	quadReference = quadPool.insert(QuadData{{(48.0f + x) * QuadData::tileScale.x, y * QuadData::tileScale.y},
+	quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
 									{color.getPacked(), color.getTransparentPacked()}, data.symbol},
 									QuadPool::eEntity);
 
@@ -33,9 +33,12 @@ void Enemy::update()
 	weapon.update(x, y);
 }
 
-void Enemy::updateDraw()
+void Enemy::updateDraw(double deltaTime)
 {
 	auto [x, y] = getPosition();
+	auto [vx, vy] = getVelocity();
+	quadReference.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
+
 	auto brightness = game.getTileBrightness(x, y);
 	if(brightness <= 0.0)
 	{

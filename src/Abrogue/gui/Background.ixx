@@ -1,0 +1,21 @@
+export module Background;
+
+export import QuadPool;
+
+//Class for fading background behind popup menus
+export class Background
+{
+public:
+	Background() = default;
+
+	//Update fading animation
+	void updateDraw(double deltaTime);
+
+	void setVisible(bool visible);
+
+private:
+	static constexpr double fadeTime{2.0};
+	double animationTime{};
+
+	QuadPool::Reference quad;
+};

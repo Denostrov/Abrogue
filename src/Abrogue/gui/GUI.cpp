@@ -48,6 +48,11 @@ void GUI::triggerGameOver()
 	setCurrentScreen(gameOver);
 }
 
+void GUI::updateDraw(double deltaTime)
+{
+	currentScreen->updateDraw(deltaTime);
+}
+
 void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
 {
 	currentScreen->updateMouseMoved(x, y);

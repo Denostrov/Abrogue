@@ -90,7 +90,7 @@ void Game::startGame()
 	map.init();
 	player = Player(10.0);
 
-	initDraw();
+	gui.startGame();
 
 	state = eRunning;
 
@@ -130,36 +130,18 @@ void Game::resetTickTimer()
 	lastEnemySpawnTime = 0.0;
 }
 
-void Game::initDraw()
-{
-	gui.startGame();
-
-	float guiOffset = 48.0f;
-
-	for(auto const& enemy : enemies)
-	{
-		auto [x, y] = enemy.getPosition();
-		enemy.quadReference.setPosition({(guiOffset + x) * QuadData::tileScale.x, y * QuadData::tileScale.y});
-	}
-}
-
 bool Game::updateDraw(double deltaTime)
 {
+	gui.updateDraw(deltaTime);
+
 	if(state == eRunning)
 	{
-		float guiOffset = 48.0f;
-
 		player.updateDraw(deltaTime);
 
 		map.updateDraw(deltaTime);
 
 		for(auto& enemy : enemies)
-		{
-			auto [x, y] = enemy.getPosition();
-			auto [vx, vy] = enemy.getVelocity();
-			enemy.quadReference.setPosition({(guiOffset + x + vx * deltaTime) * QuadData::tileScale.x, (y + vy * deltaTime) * QuadData::tileScale.y});
-			enemy.updateDraw();
-		}
+			enemy.updateDraw(deltaTime);
 	}
 
 	return renderEngine.drawFrame();

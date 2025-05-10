@@ -31,7 +31,7 @@ void Weapon::update(double positionX, double positionY)
 
 		if(drawDebugInfo)
 		{
-			auto quadData = QuadData{{(48.0 + weaponX) * QuadData::tileScale.x, weaponY * QuadData::tileScale.y}, {Helpers::packColor(255, 0, 0, 255), Helpers::packColor(255, 0, 0, 0)}, 249};
+			auto quadData = QuadData{{Constants::mapOffset + weaponX, weaponY}, {Helpers::packColor(255, 0, 0, 255), Helpers::packColor(255, 0, 0, 0)}, 249};
 			damageReference = quadPool.insert(quadData, QuadPool::ePopup);
 		}
 
@@ -74,7 +74,7 @@ void Weapon::updateDraw(double positionX, double positionY)
 
 	double attackPeak = attackTime / 2.0;
 	double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak + drawOffset;
-	weaponReference.setPosition({(positionX + weaponOffset * attackAngleCos) * QuadData::tileScale.x, (positionY + weaponOffset * attackAngleSin * 0.5) * QuadData::tileScale.y});
+	weaponReference.setPosition(positionX + weaponOffset * attackAngleCos, positionY + weaponOffset * attackAngleSin * 0.5);
 }
 
 void Weapon::startAttack(double positionX, double positionY, double targetPositionX, double targetPositionY)

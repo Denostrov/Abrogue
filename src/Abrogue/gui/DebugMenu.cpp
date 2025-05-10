@@ -12,19 +12,17 @@ void DebugMenu::init()
 	pressableButtons = labels;
 }
 
+void DebugMenu::updateDraw(double deltaTime)
+{
+	background.updateDraw(deltaTime);
+}
+
 void DebugMenu::setVisible(bool visible)
 {
 	for(auto& label : labels)
 		label.setVisible(visible);
 	
-	if(visible)
-	{
-		QuadData quadData{{16.0f / 9.0f / 2.0f, 0.5f}, {Helpers::packColor(0, 0, 0, 0), Helpers::packColor(0, 0, 0, 240)}, ' '};
-		quadData.setScale(128.0f, 36.0f);
-		backgroundQuad = quadPool.insert(quadData, QuadPool::ePopupBackground);
-	}
-	else
-		backgroundQuad = QuadPool::Reference();
+	background.setVisible(visible);
 }
 
 void DebugMenu::resetToDefault()

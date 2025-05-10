@@ -10,7 +10,7 @@ void Map::init()
 	{
 		for(std::int64_t x = 0; x < Constants::mapWidth; x++)
 		{
-			getTile(x, y).quadReference = quadPool.insert(QuadData{{(Constants::mapOffset + x + 0.5f) * QuadData::tileScale.x, (y + 0.5f) * QuadData::tileScale.y},
+			getTile(x, y).quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x + 0.5f, y + 0.5f},
 																 {Helpers::packColor(0, 0, 0, 255), Helpers::packColor(0,0,0,255)}, 32}, QuadPool::eMap);
 		}
 	}
@@ -398,18 +398,26 @@ void Map::updateDraw(double deltaTime)
 
 bool Map::getTileSolid(std::int64_t x, std::int64_t y) const
 {
-	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile solidness out of bounds");
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile solid out of bounds");
 
-	auto const& type = getTile(x, y).type;
+	auto type = getTile(x, y).type;
 	return type == TileType::eBedrock || type == TileType::eWall;
 }
 
 bool Map::getTileOpaque(std::int64_t x, std::int64_t y) const
 {
-	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile opaqueness out of bounds");
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile opaque out of bounds");
 
-	auto const& type = getTile(x, y).type;
+	auto type = getTile(x, y).type;
 	return type == TileType::eBedrock || type == TileType::eWall || type == TileType::eBush || type == TileType::eDoor || type == TileType::eExit;
+}
+
+bool Map::getTileFloor(std::int64_t x, std::int64_t y) const
+{
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile a floor out of bounds");
+
+	auto type = getTile(x, y).type;
+	return type == TileType::eFloor || type == TileType::eGrass || type == TileType::eBush;
 }
 
 double Map::getTileBrightness(std::int64_t x, std::int64_t y) const
@@ -479,7 +487,7 @@ void Map::generateLevel()
 				if(x < 2)
 					break;
 
-				if(!getTileSolid(x - 1, y) && !getTileSolid(x + 1, y))
+				if(getTileFloor(x - 1, y) && getTileFloor(x + 1, y))
 				{
 					getTile(x, y).type = TileType::eDoor;
 					break;
@@ -495,7 +503,7 @@ void Map::generateLevel()
 				if(x >= Constants::mapWidth - 2)
 					break;
 
-				if(!getTileSolid(x - 1, y) && !getTileSolid(x + 1, y))
+				if(getTileFloor(x - 1, y) && getTileFloor(x + 1, y))
 				{
 					getTile(x, y).type = TileType::eDoor;
 					break;
@@ -511,7 +519,7 @@ void Map::generateLevel()
 				if(y < 2)
 					break;
 
-				if(!getTileSolid(x, y - 1) && !getTileSolid(x, y + 1))
+				if(getTileFloor(x, y - 1) && getTileFloor(x, y + 1))
 				{
 					getTile(x, y).type = TileType::eDoor;
 					break;
@@ -527,7 +535,7 @@ void Map::generateLevel()
 				if(y >= Constants::mapHeight - 2)
 					break;
 
-				if(!getTileSolid(x, y - 1) && !getTileSolid(x, y + 1))
+				if(getTileFloor(x, y - 1) && getTileFloor(x, y + 1))
 				{
 					getTile(x, y).type = TileType::eDoor;
 					break;

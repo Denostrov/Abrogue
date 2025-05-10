@@ -11,19 +11,17 @@ void Menu::init()
 	pressableButtons = buttons;
 }
 
+void Menu::updateDraw(double deltaTime)
+{
+	background.updateDraw(deltaTime);
+}
+
 void Menu::setVisible(bool visible)
 {
 	for(auto& button : buttons)
 		button.setVisible(visible);
 
-	if(visible)
-	{
-		QuadData backgroundQuad{{0.8889f, 0.5f}, {Helpers::packColor(0, 0, 0, 0), Helpers::packColor(0, 0, 0, 240)}, ' '};
-		backgroundQuad.setScale(128.0f, 36.0f);
-		background = quadPool.insert(backgroundQuad, QuadPool::ePopupBackground);
-	}
-	else
-		background = QuadPool::Reference();
+	background.setVisible(visible);
 }
 
 void Menu::onButtonPressed(size_t index)

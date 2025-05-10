@@ -1,6 +1,7 @@
 export module DebugMenu;
 
 export import Screen;
+export import Background;
 
 //Class for debug options menu
 export class DebugMenu : public Screen
@@ -20,6 +21,7 @@ public:
 	//Initialize labels
 	void init();
 
+	void updateDraw(double deltaTime) final;
 	void setVisible(bool visible) final;
 
 	void resetToDefault();
@@ -31,5 +33,5 @@ private:
 
 	std::array<Label, COUNT> labels;
 
-	QuadPool::Reference backgroundQuad;
+	Background background;
 };

@@ -5,7 +5,7 @@ import GameSystems;
 Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4)
 {
 	auto [x, y] = getPosition();
-	quadReference = quadPool.insert(QuadData{{(48.0f + x) * QuadData::tileScale.x, y * QuadData::tileScale.y},
+	quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
 									{Helpers::packColor(64, 255, 0, 255), Helpers::packColor(64, 255, 0, 0)}, 64},
 									QuadPool::eEntity);
 
@@ -37,13 +37,16 @@ void Player::updateDraw(double deltaTime)
 	auto [vx, vy] = getVelocity();
 	double drawPositionX = guiOffset + x + vx * deltaTime;
 	double drawPositionY = y + vy * deltaTime;
-	quadReference.setPosition({drawPositionX * QuadData::tileScale.x, drawPositionY * QuadData::tileScale.y});
+	quadReference.setPosition(drawPositionX, drawPositionY);
 
 	weapon.updateDraw(drawPositionX, drawPositionY);
 }
 
 void Player::takeDamage(std::int64_t damage)
 {
+	if(health == 0)
+		return;
+
 	std::int64_t newHealth = health - damage;
 	if(newHealth < 0)
 		newHealth = 0;

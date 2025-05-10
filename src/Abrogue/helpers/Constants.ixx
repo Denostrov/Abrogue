@@ -59,7 +59,9 @@ public:
 	static constexpr size_t mapTileCount{mapWidth * mapHeight};
 	static constexpr std::int64_t mapOffset{screenWidth - mapWidth};
 
-	static constexpr double tileAspectRatio{0.5};
+	static constexpr float tileAspectRatio{0.5f};
+	static constexpr float tileScaleX{tileAspectRatio / Constants::screenHeight};
+	static constexpr float tileScaleY{1.0f / Constants::screenHeight};
 
 	static constexpr std::uint32_t labelBackgroundColor{Helpers::packColor(255, 255, 255, 0)};
 	static constexpr std::uint32_t labelHoveredColor{Helpers::packColor(8, 8, 8, 255)};

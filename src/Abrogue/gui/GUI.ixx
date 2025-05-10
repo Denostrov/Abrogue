@@ -18,6 +18,8 @@ public:
 	void quitToMainMenu();
 	void triggerGameOver();
 
+	void updateDraw(double deltaTime);
+
 	void onMouseMoved(std::uint32_t x, std::uint32_t y);
 	void onMousePressed(std::uint32_t x, std::uint32_t y);
 
