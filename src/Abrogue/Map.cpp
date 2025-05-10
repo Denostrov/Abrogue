@@ -439,7 +439,7 @@ void Map::generateLevel()
 		levelData.tilesOccupiedMask[Constants::mapWidth - 1 + y * Constants::mapWidth] = true;
 	}
 
-	auto tryPlacingRoom = [this](std::int64_t doorX, std::int64_t doorY, std::int64_t originX, std::int64_t originY, std::int64_t width, std::int64_t height)
+	auto tryPlacingRoom = [this](std::int64_t doorX, std::int64_t doorY, std::int64_t originX, std::int64_t originY, std::int64_t width, std::int64_t height, std::uint64_t originDirection)
 	{
 		for(auto y = originY; y < originY + height; y++)
 		{
@@ -470,6 +470,70 @@ void Map::generateLevel()
 		levelData.rooms[levelData.roomCount].width = width;
 		levelData.rooms[levelData.roomCount].height = height;
 		levelData.roomCount++;
+
+		if(originDirection != 1)
+		{
+			for(auto y = originY; y < originY + height; y++)
+			{
+				int64_t x = originX - 1;
+				if(x < 2)
+					break;
+
+				if(!getTileSolid(x - 1, y) && !getTileSolid(x + 1, y))
+				{
+					getTile(x, y).type = TileType::eDoor;
+					break;
+				}
+			}
+		}
+
+		if(originDirection != 3)
+		{
+			for(auto y = originY; y < originY + height; y++)
+			{
+				int64_t x = originX + width;
+				if(x >= Constants::mapWidth - 2)
+					break;
+
+				if(!getTileSolid(x - 1, y) && !getTileSolid(x + 1, y))
+				{
+					getTile(x, y).type = TileType::eDoor;
+					break;
+				}
+			}
+		}
+
+		if(originDirection != 2)
+		{
+			for(auto x = originX; x < originX + width; x++)
+			{
+				int64_t y = originY - 1;
+				if(y < 2)
+					break;
+
+				if(!getTileSolid(x, y - 1) && !getTileSolid(x, y + 1))
+				{
+					getTile(x, y).type = TileType::eDoor;
+					break;
+				}
+			}
+		}
+
+		if(originDirection != 0)
+		{
+			for(auto x = originX; x < originX + width; x++)
+			{
+				int64_t y = originY + height;
+				if(y >= Constants::mapHeight - 2)
+					break;
+
+				if(!getTileSolid(x, y - 1) && !getTileSolid(x, y + 1))
+				{
+					getTile(x, y).type = TileType::eDoor;
+					break;
+				}
+			}
+		}
 	};
 
 	auto& startingRoom = levelData.rooms[0];
@@ -511,7 +575,7 @@ void Map::generateLevel()
 			std::int64_t newRoomOriginX = doorX - randomness() % newRoomWidth;
 			std::int64_t newRoomOriginY = doorY - newRoomHeight;
 
-			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight, newDirection);
 		}
 		else if(newDirection == 1)
 		{
@@ -521,7 +585,7 @@ void Map::generateLevel()
 			std::int64_t newRoomOriginX = doorX + 1;
 			std::int64_t newRoomOriginY = doorY - randomness() % newRoomHeight;
 
-			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight, newDirection);
 		}
 		else if(newDirection == 2)
 		{
@@ -531,7 +595,7 @@ void Map::generateLevel()
 			std::int64_t newRoomOriginX = doorX - randomness() % newRoomWidth;
 			std::int64_t newRoomOriginY = doorY + 1;
 
-			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight, newDirection);
 		}
 		else if(newDirection == 3)
 		{
@@ -541,7 +605,7 @@ void Map::generateLevel()
 			std::int64_t newRoomOriginX = doorX - newRoomWidth;
 			std::int64_t newRoomOriginY = doorY - randomness() % newRoomHeight;
 
-			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight);
+			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight, newDirection);
 		}
 	}
 }
