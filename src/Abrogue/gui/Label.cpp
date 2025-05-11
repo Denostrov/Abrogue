@@ -66,7 +66,6 @@ void Label::setText(std::string_view newText)
 	size = text.size();
 
 	//Create remaining quads when new text is longer
-	quadReferences.reserve(size);
 	for(size_t i = quadReferences.size(); i < size; i++)
 	{
 		quadReferences.emplace_back(quadPool.insert(QuadData{{x + i + 0.5f, y + 0.5f},
