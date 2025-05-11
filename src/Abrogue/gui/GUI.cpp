@@ -44,9 +44,11 @@ void GUI::quitToMainMenu()
 
 void GUI::triggerGameOver()
 {
-	currentScreen->setVisible(currentScreen != &playArea);
-
-	popupBackground.setVisible(currentScreen == &playArea);
+	//Show background if not already visible and hide popups
+	if(currentScreen == &playArea)
+		popupBackground.setVisible(true);
+	else
+		currentScreen->setVisible(false);
 
 	gameOver.setVisible(true);
 	setCurrentScreen(gameOver);
@@ -65,21 +67,14 @@ void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 
 void GUI::onMousePressed(std::int64_t x, std::int64_t y)
 {
-	if(currentScreen == &playArea && !playArea.getPaused() && x >= 48)
-	{
-		player.onMousePressed(x - 48, y);
-	}
+	if(currentScreen == &playArea && !playArea.getPaused() && x >= Constants::mapOffset)
+		player.onMousePressed(x - Constants::mapOffset, y);
+
 	currentScreen->updateMousePressed(x, y);
 }
 
 void GUI::togglePause()
 {
-	if(currentScreen == &gameOver)
-	{
-		quitToMainMenu();
-		return;
-	}
-
 	if(currentScreen != &playArea)
 		return;
 
@@ -89,20 +84,17 @@ void GUI::togglePause()
 
 void GUI::toggleMenu()
 {
-	if(currentScreen == &mainMenu || currentScreen == &gameOver)
+	if(currentScreen == &gameOver)
+	{
+		quitToMainMenu();
+		return;
+	}
+
+	if(currentScreen == &mainMenu)
 		return;
 
-	if(currentScreen == &playArea)
-	{
-		playArea.setPaused(true);
-
-		menu.setVisible(true);
-		setCurrentScreen(menu);
-		popupBackground.setVisible(true);
-
-		playArea.setTabButtonPressed(PlayArea::ButtonType::eMenu);
-	}
-	else
+	//Close a popup if its the current screen
+	if(currentScreen != &playArea)
 	{
 		playArea.setPaused(previouslyPaused);
 
@@ -111,7 +103,17 @@ void GUI::toggleMenu()
 		popupBackground.setVisible(false);
 
 		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
+		return;
 	}
+
+	//Show options menu
+	playArea.setPaused(true);
+
+	menu.setVisible(true);
+	setCurrentScreen(menu);
+	popupBackground.setVisible(true);
+
+	playArea.setTabButtonPressed(PlayArea::ButtonType::eMenu);
 }
 
 void GUI::toggleDebugOptions()
@@ -119,17 +121,8 @@ void GUI::toggleDebugOptions()
 	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
 		return;
 
-	if(currentScreen == &playArea)
-	{
-		playArea.setPaused(true);
-
-		debugMenu.setVisible(true);
-		setCurrentScreen(debugMenu);
-		popupBackground.setVisible(true);
-
-		playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
-	}
-	else
+	//Close debug menu if its already open or switch to it if another popup is open
+	if(currentScreen != &playArea)
 	{
 		currentScreen->setVisible(false);
 		if(currentScreen == &debugMenu)
@@ -147,7 +140,18 @@ void GUI::toggleDebugOptions()
 
 			playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
 		}
+		return;
 	}
+
+	//Show debug options
+	playArea.setPaused(true);
+
+	debugMenu.setVisible(true);
+	setCurrentScreen(debugMenu);
+	popupBackground.setVisible(true);
+
+	playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
+
 }
 
 void GUI::toggleDiscoveries()
@@ -155,17 +159,8 @@ void GUI::toggleDiscoveries()
 	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
 		return;
 
-	if(currentScreen == &playArea)
-	{
-		playArea.setPaused(true);
-
-		discoveries.setVisible(true);
-		setCurrentScreen(discoveries);
-		popupBackground.setVisible(true);
-
-		playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
-	}
-	else
+	//Close discoveries menu if its already open or switch to it if another popup is open
+	if(currentScreen != &playArea)
 	{
 		currentScreen->setVisible(false);
 		if(currentScreen == &discoveries)
@@ -182,7 +177,17 @@ void GUI::toggleDiscoveries()
 			setCurrentScreen(discoveries);
 			playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 		}
+		return;
 	}
+
+	//Show discoveries menu
+	playArea.setPaused(true);
+
+	discoveries.setVisible(true);
+	setCurrentScreen(discoveries);
+	popupBackground.setVisible(true);
+
+	playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 }
 
 void GUI::toggleStopTime()
@@ -204,11 +209,13 @@ void GUI::toggleStepTime()
 void GUI::setCurrentScreen(Screen& newScreen)
 {
 	currentScreen = &newScreen;
+
+	//Update mouse position for the newly shown screen
 	auto [x, y] = inputHandler.getMousePosition();
 	onMouseMoved(x, y);
 }
 
-void GUI::setFPS(std::uint32_t fps)
+void GUI::setFPS(std::int64_t fps)
 {
 	std::array<char, 16> fpsString{"FPS:"};
 	std::to_chars(fpsString.data() + 4, fpsString.data() + 14, fps);

@@ -118,6 +118,14 @@ void Game::setSpeedMultiplier(double speed)
 	lastUpdateTime = SDL_GetTicksNS();
 }
 
+void Game::setPlayerMovement(std::int64_t movementX, std::int64_t movementY)
+{
+	if(state != Game::eRunning && state != Game::ePaused)
+		return;
+
+	player.setMovement(movementX, movementY);
+}
+
 void Game::quitToMainMenu()
 {
 	state = eNotStarted;

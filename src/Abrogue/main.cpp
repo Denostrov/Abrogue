@@ -46,7 +46,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 		default: break;
 	}
 
-	if(game.getState() == Game::eFinished)
+	if(game.getShouldExit())
 		return SDL_APP_SUCCESS;
 
 	return SDL_APP_CONTINUE;

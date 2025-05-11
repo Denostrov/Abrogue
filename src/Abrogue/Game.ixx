@@ -23,10 +23,11 @@ public:
 
 	void setPaused(bool paused);
 	void setSpeedMultiplier(double speed);
+	void setPlayerMovement(std::int64_t movementX, std::int64_t movementY);
 
 	void quitToMainMenu();
 
-	auto getState() const { return state; }
+	auto getShouldExit() const { return state == eFinished; }
 	auto& getEnemies() { return enemies; }
 	bool getTileSolid(std::int32_t x, std::int32_t y) const { return map.getTileSolid(x, y); }
 	double getTileBrightness(std::int32_t x, std::int32_t y) const { return map.getTileBrightness(x, y); }

@@ -44,22 +44,12 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 		else if(scancode == SDL_SCANCODE_KP_8)
 			gui.toggleStepTime();
 		else if(scancode == SDL_SCANCODE_W || scancode == SDL_SCANCODE_A || scancode == SDL_SCANCODE_S || scancode == SDL_SCANCODE_D)
-		{
-			if(game.getState() != Game::eRunning)
-				return;
-
-			player.setMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
-		}
+			game.setPlayerMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
 	}
 	else
 	{
 		if(scancode == SDL_SCANCODE_W || scancode == SDL_SCANCODE_A || scancode == SDL_SCANCODE_S || scancode == SDL_SCANCODE_D)
-		{
-			if(game.getState() != Game::eRunning)
-				return;
-
-			player.setMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
-		}
+			game.setPlayerMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
 	}
 }
 

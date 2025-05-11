@@ -23,7 +23,7 @@ public:
 	void onMouseMoved(std::int64_t x, std::int64_t y);
 	void onMousePressed(std::int64_t x, std::int64_t y);
 
-	void setFPS(std::uint32_t fps);
+	void setFPS(std::int64_t fps);
 	void setPlayerHealth(double percentage);
 
 	void togglePause();
