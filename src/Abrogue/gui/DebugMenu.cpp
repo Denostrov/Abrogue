@@ -12,21 +12,15 @@ void DebugMenu::init()
 	pressableButtons = labels;
 }
 
-void DebugMenu::updateDraw(double deltaTime)
-{
-	background.updateDraw(deltaTime);
-}
-
 void DebugMenu::setVisible(bool visible)
 {
 	for(auto& label : labels)
 		label.setVisible(visible);
-	
-	background.setVisible(visible);
 }
 
 void DebugMenu::resetToDefault()
 {
+	//Reset buttons to unpressed state
 	if(labels[eStopTime].getPressed())
 		onButtonPressed((size_t)eStopTime);
 
@@ -40,17 +34,16 @@ void DebugMenu::onButtonPressed(std::size_t index)
 
 	if(type == eStopTime)
 	{
-		game.setSpeedMultiplier(labels[eStopTime].getPressed() ? 1.0 : 0.0);
 		labels[eStopTime].togglePressed();
+		game.setSpeedMultiplier(labels[eStopTime].getPressed() ? 0.0 : 1.0);
 	}
-	else if(type == eStepTime)
+	else if(type == eStepTime && labels[eStopTime].getPressed())
 	{
-		if(labels[eStopTime].getPressed())
-			game.advanceStep();
+		game.advanceStep();
 	}
 	else if(type == eShowDamage)
 	{
-		Weapon::setDrawDebug(!labels[eShowDamage].getPressed());
 		labels[eShowDamage].togglePressed();
+		Weapon::setDrawDebug(labels[eShowDamage].getPressed());
 	}
 }

@@ -18,13 +18,12 @@ export class DebugMenu : public Screen
 
 public:
 	DebugMenu() = default;
-	//Initialize labels
 	void init();
 
-	void updateDraw(double deltaTime) final;
 	void setVisible(bool visible) final;
 
 	void resetToDefault();
+
 	void toggleStopTime() { onButtonPressed(ButtonType::eStopTime); }
 	void toggleStepTime() { onButtonPressed(ButtonType::eStepTime); }
 
@@ -32,6 +31,4 @@ private:
 	void onButtonPressed(std::size_t index) final;
 
 	std::array<Label, COUNT> labels;
-
-	Background background;
 };

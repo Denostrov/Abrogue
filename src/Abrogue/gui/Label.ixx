@@ -8,9 +8,9 @@ export class Label
 public:
 	Label() = default;
 
-	void init(std::string_view text, std::uint32_t x, std::uint32_t y, QuadPool::Layer drawLayer, bool visible = false);
+	void init(std::string_view text, std::int64_t x, std::int64_t y, QuadPool::Layer drawLayer, bool visible = false);
 
-	[[nodiscard]] bool checkCollision(std::uint32_t checkX, std::uint32_t checkY) const
+	[[nodiscard]] bool checkCollision(std::int64_t checkX, std::int64_t checkY) const
 	{
 		return x <= checkX && checkX < x + size && y <= checkY && checkY < y + 1;
 	}
@@ -24,7 +24,7 @@ public:
 	void setPressed(bool pressed);
 
 	void setText(std::string_view text);
-	void setPosition(std::uint32_t newX, std::uint32_t newY);
+	void setPosition(std::int64_t newX, std::int64_t newY);
 	void setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor);
 	void setPressedBackgroundColor(std::uint32_t color, std::uint32_t hoverColor);
 	void setProgress(double percentage);
@@ -39,7 +39,7 @@ private:
 	std::string text;
 	QuadPool::Layer layer{};
 
-	std::uint32_t x{}, y{};
+	std::int64_t x{}, y{};
 	std::size_t size{};
 	double progress{1.0};
 

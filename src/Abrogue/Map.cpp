@@ -99,6 +99,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j <= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j - playerX) / (cellY - playerY);
+					if(startSlope <= endSlope)
+					{
+						double distanceX = j - playerX;
+						updateVisibleTile(j, cellY, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceX = j - playerX;
@@ -140,6 +146,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j >= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j + 1 - playerX) / (cellY - playerY);
+					if(startSlope >= endSlope)
+					{
+						double distanceX = j - playerX;
+						updateVisibleTile(j, cellY, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceX = j - playerX;
@@ -181,6 +193,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j <= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j - playerY) / (cellX + 1 - playerX);
+					if(startSlope >= endSlope)
+					{
+						double distanceY = j - playerY;
+						updateVisibleTile(cellX, j, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceY = j - playerY;
@@ -222,6 +240,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j >= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j + 1.0 - playerY) / (cellX + 1.0 - playerX);
+					if(startSlope <= endSlope)
+					{
+						double distanceY = j - playerY;
+						updateVisibleTile(cellX, j, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceY = j - playerY;
@@ -263,6 +287,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j >= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j + 1 - playerX) / (cellY + 1 - playerY);
+					if(startSlope <= endSlope)
+					{
+						double distanceX = j - playerX;
+						updateVisibleTile(j, cellY, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceX = j - playerX;
@@ -304,6 +334,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j <= endCellX && getTileOpaque(j, cellY));
 
 					startSlope = (j - playerX) / (cellY + 1.0 - playerY);
+					if(startSlope >= endSlope)
+					{
+						double distanceX = j - playerX;
+						updateVisibleTile(j, cellY, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceX = j - playerX;
@@ -345,6 +381,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j >= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j + 1.0 - playerY) / (cellX - playerX);
+					if(startSlope >= endSlope)
+					{
+						double distanceY = j - playerY;
+						updateVisibleTile(cellX, j, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceY = j - playerY;
@@ -386,6 +428,12 @@ void Map::updateDraw(double deltaTime)
 					} while(j <= endCellY && getTileOpaque(cellX, j));
 
 					startSlope = (j - playerY) / (cellX - playerX);
+					if(startSlope <= endSlope)
+					{
+						double distanceY = j - playerY;
+						updateVisibleTile(cellX, j, distanceX, distanceY);
+						return;
+					}
 				}
 
 				double distanceY = j - playerY;
@@ -471,7 +519,8 @@ void Map::generateLevel()
 				levelData.tilesOccupiedMask[x + y * Constants::mapWidth] = true;
 		}
 
-		getTile(doorX, doorY).type = TileType::eDoor;
+		std::uint64_t value = std::random_device()() % 2;
+		getTile(doorX, doorY).type = value == 0 ? TileType::eDoor : TileType::eFloor;
 
 		levelData.rooms[levelData.roomCount].originX = originX;
 		levelData.rooms[levelData.roomCount].originY = originY;
@@ -489,7 +538,8 @@ void Map::generateLevel()
 
 				if(getTileFloor(x - 1, y) && getTileFloor(x + 1, y))
 				{
-					getTile(x, y).type = TileType::eDoor;
+					std::uint64_t value = std::random_device()() % 2;
+					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
 					break;
 				}
 			}
@@ -505,7 +555,8 @@ void Map::generateLevel()
 
 				if(getTileFloor(x - 1, y) && getTileFloor(x + 1, y))
 				{
-					getTile(x, y).type = TileType::eDoor;
+					std::uint64_t value = std::random_device()() % 2;
+					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
 					break;
 				}
 			}
@@ -521,7 +572,8 @@ void Map::generateLevel()
 
 				if(getTileFloor(x, y - 1) && getTileFloor(x, y + 1))
 				{
-					getTile(x, y).type = TileType::eDoor;
+					std::uint64_t value = std::random_device()() % 2;
+					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
 					break;
 				}
 			}
@@ -537,7 +589,8 @@ void Map::generateLevel()
 
 				if(getTileFloor(x, y - 1) && getTileFloor(x, y + 1))
 				{
-					getTile(x, y).type = TileType::eDoor;
+					std::uint64_t value = std::random_device()() % 2;
+					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
 					break;
 				}
 			}

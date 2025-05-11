@@ -48,6 +48,8 @@ bool Game::update()
 		}
 	}
 
+	gui.updateDraw((currentTime - lastUpdateTime) / 1000000000.0);
+
 	if(!updateDraw((currentTime - lastUpdateTime) * speedMultiplier / 1000000000.0))
 		return false;
 
@@ -132,8 +134,6 @@ void Game::resetTickTimer()
 
 bool Game::updateDraw(double deltaTime)
 {
-	gui.updateDraw(deltaTime);
-
 	if(state == eRunning)
 	{
 		player.updateDraw(deltaTime);

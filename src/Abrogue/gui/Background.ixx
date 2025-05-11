@@ -8,7 +8,6 @@ export class Background
 public:
 	Background() = default;
 
-	//Update fading animation
 	void updateDraw(double deltaTime);
 
 	void setVisible(bool visible);

@@ -7,11 +7,11 @@ export import Discoveries;
 export import DebugMenu;
 export import GameOver;
 
+//Class for handling buttons and menus
 export class GUI
 {
 public:
 	GUI() = default;
-
 	void init();
 
 	void startGame();
@@ -20,8 +20,8 @@ public:
 
 	void updateDraw(double deltaTime);
 
-	void onMouseMoved(std::uint32_t x, std::uint32_t y);
-	void onMousePressed(std::uint32_t x, std::uint32_t y);
+	void onMouseMoved(std::int64_t x, std::int64_t y);
+	void onMousePressed(std::int64_t x, std::int64_t y);
 
 	void setFPS(std::uint32_t fps);
 	void setPlayerHealth(double percentage);
@@ -46,6 +46,8 @@ private:
 	Discoveries discoveries;
 	DebugMenu debugMenu;
 	GameOver gameOver;
+
+	Background popupBackground;
 
 	Label fpsLabel;
 };

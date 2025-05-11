@@ -2,7 +2,7 @@ module Label;
 
 import GameSystems;
 
-void Label::init(std::string_view text, std::uint32_t x, std::uint32_t y, QuadPool::Layer drawLayer, bool visible)
+void Label::init(std::string_view text, std::int64_t x, std::int64_t y, QuadPool::Layer drawLayer, bool visible)
 {
 	layer = drawLayer;
 	setPosition(x, y);
@@ -84,7 +84,7 @@ void Label::setText(std::string_view newText)
 	quadReferences.erase(quadReferences.begin() + size, quadReferences.end());
 }
 
-void Label::setPosition(std::uint32_t newX, std::uint32_t newY)
+void Label::setPosition(std::int64_t newX, std::int64_t newY)
 {
 	x = newX;
 	y = newY;

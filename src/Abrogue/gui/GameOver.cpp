@@ -8,15 +8,8 @@ void GameOver::init()
 	pressSpaceLabel.init("Press [SPACE] to quit", 52, 16, QuadPool::ePopup);
 }
 
-void GameOver::updateDraw(double deltaTime)
-{
-	background.updateDraw(deltaTime);
-}
-
 void GameOver::setVisible(bool visible)
 {
 	gameOverLabel.setVisible(visible);
 	pressSpaceLabel.setVisible(visible);
-
-	background.setVisible(visible);
 }

@@ -56,6 +56,8 @@ public:
 		Reference(Reference&& rhs) { *this = std::move(rhs); }
 		Reference& operator=(Reference&& rhs);
 
+		operator bool() { return index != -1; }
+
 		void setPosition(float positionX, float positionY) const;
 		void setGlyph(std::uint8_t glyph) const;
 		void setColor(uint32_t packedColor) const;

@@ -27,22 +27,26 @@ void GUI::startGame()
 
 void GUI::quitToMainMenu()
 {
+	//Restore default GUI state
 	playArea.setPaused(false);
 	debugMenu.resetToDefault();
+	popupBackground.setVisible(false);
 
+	//Hide all visible screens
+	currentScreen->setVisible(false);
 	playArea.setVisible(false);
-	menu.setVisible(false);
-	gameOver.setVisible(false);
 
 	mainMenu.setVisible(true);
 	setCurrentScreen(mainMenu);
+
 	game.quitToMainMenu();
 }
 
 void GUI::triggerGameOver()
 {
-	if(currentScreen != &playArea)
-		currentScreen->setVisible(false);
+	currentScreen->setVisible(currentScreen != &playArea);
+
+	popupBackground.setVisible(currentScreen == &playArea);
 
 	gameOver.setVisible(true);
 	setCurrentScreen(gameOver);
@@ -51,14 +55,15 @@ void GUI::triggerGameOver()
 void GUI::updateDraw(double deltaTime)
 {
 	currentScreen->updateDraw(deltaTime);
+	popupBackground.updateDraw(deltaTime);
 }
 
-void GUI::onMouseMoved(std::uint32_t x, std::uint32_t y)
+void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 {
 	currentScreen->updateMouseMoved(x, y);
 }
 
-void GUI::onMousePressed(std::uint32_t x, std::uint32_t y)
+void GUI::onMousePressed(std::int64_t x, std::int64_t y)
 {
 	if(currentScreen == &playArea && !playArea.getPaused() && x >= 48)
 	{
@@ -90,15 +95,21 @@ void GUI::toggleMenu()
 	if(currentScreen == &playArea)
 	{
 		playArea.setPaused(true);
+
 		menu.setVisible(true);
 		setCurrentScreen(menu);
+		popupBackground.setVisible(true);
+
 		playArea.setTabButtonPressed(PlayArea::ButtonType::eMenu);
 	}
 	else
 	{
+		playArea.setPaused(previouslyPaused);
+
 		currentScreen->setVisible(false);
 		setCurrentScreen(playArea);
-		playArea.setPaused(previouslyPaused);
+		popupBackground.setVisible(false);
+
 		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
 	}
 }
@@ -111,8 +122,11 @@ void GUI::toggleDebugOptions()
 	if(currentScreen == &playArea)
 	{
 		playArea.setPaused(true);
+
 		debugMenu.setVisible(true);
 		setCurrentScreen(debugMenu);
+		popupBackground.setVisible(true);
+
 		playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
 	}
 	else
@@ -121,13 +135,16 @@ void GUI::toggleDebugOptions()
 		if(currentScreen == &debugMenu)
 		{
 			setCurrentScreen(playArea);
+			popupBackground.setVisible(false);
+
 			playArea.setPaused(previouslyPaused);
 			playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
 		}
 		else
 		{
-			debugMenu.setVisible(true);
 			setCurrentScreen(debugMenu);
+			debugMenu.setVisible(true);
+
 			playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
 		}
 	}
@@ -141,8 +158,11 @@ void GUI::toggleDiscoveries()
 	if(currentScreen == &playArea)
 	{
 		playArea.setPaused(true);
+
 		discoveries.setVisible(true);
 		setCurrentScreen(discoveries);
+		popupBackground.setVisible(true);
+
 		playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 	}
 	else
@@ -151,6 +171,8 @@ void GUI::toggleDiscoveries()
 		if(currentScreen == &discoveries)
 		{
 			setCurrentScreen(playArea);
+			popupBackground.setVisible(false);
+
 			playArea.setPaused(previouslyPaused);
 			playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
 		}

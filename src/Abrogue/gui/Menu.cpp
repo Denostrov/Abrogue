@@ -11,17 +11,10 @@ void Menu::init()
 	pressableButtons = buttons;
 }
 
-void Menu::updateDraw(double deltaTime)
-{
-	background.updateDraw(deltaTime);
-}
-
 void Menu::setVisible(bool visible)
 {
 	for(auto& button : buttons)
 		button.setVisible(visible);
-
-	background.setVisible(visible);
 }
 
 void Menu::onButtonPressed(size_t index)
