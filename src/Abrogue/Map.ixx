@@ -60,13 +60,13 @@ private:
 	void generateLevel();
 
 	static constexpr std::array<TileInfo, (size_t)TileType::COUNT> tilesInfo{
-		TileInfo{Helpers::packColor(96, 96, 96, 255), Helpers::packColor(8, 8, 8, 255), 250},
-		TileInfo{Helpers::packColor(0, 255, 0, 255), Helpers::packColor(8, 8, 8, 255), 34},
-		TileInfo{Helpers::packColor(0, 255, 0, 255), Helpers::packColor(8, 8, 8, 255), 237},
-		TileInfo{Helpers::packColor(255, 255, 255, 255), Helpers::packColor(32, 32, 32, 255), 35},
-		TileInfo{Helpers::packColor(255, 255, 255, 255), Helpers::packColor(16, 16, 16, 255), 35},
-		TileInfo{Helpers::packColor(255, 128, 0, 255), Helpers::packColor(192, 64, 0, 255), 43},
-		TileInfo{Helpers::packColor(255, 255, 255, 255), Helpers::packColor(16, 16, 192, 255), 234}
+		TileInfo{Color::pack(96, 96, 96, 255), Color::pack(8, 8, 8, 255), 250},
+		TileInfo{Color::pack(0, 255, 0, 255), Color::pack(8, 8, 8, 255), 34},
+		TileInfo{Color::pack(0, 255, 0, 255), Color::pack(8, 8, 8, 255), 237},
+		TileInfo{Color::pack(255, 255, 255, 255), Color::pack(32, 32, 32, 255), 35},
+		TileInfo{Color::pack(255, 255, 255, 255), Color::pack(16, 16, 16, 255), 35},
+		TileInfo{Color::pack(255, 128, 0, 255), Color::pack(192, 64, 0, 255), 43},
+		TileInfo{Color::pack(255, 255, 255, 255), Color::pack(16, 16, 192, 255), 234}
 	};
 
 	std::array<Tile, Constants::mapTileCount> tiles;

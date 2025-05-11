@@ -31,7 +31,7 @@ void Weapon::update(double positionX, double positionY)
 
 		if(drawDebugInfo)
 		{
-			auto quadData = QuadData{{Constants::mapOffset + weaponX, weaponY}, {Helpers::packColor(255, 0, 0, 255), Helpers::packColor(255, 0, 0, 0)}, 249};
+			auto quadData = QuadData{{Constants::mapOffset + weaponX, weaponY}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)}, 249};
 			damageReference = quadPool.insert(quadData, QuadPool::ePopup);
 		}
 
@@ -81,7 +81,7 @@ void Weapon::startAttack(double positionX, double positionY, double targetPositi
 {
 	attackTimer = attackTime;
 	auto weaponGlyph = type == WeaponType::eDagger ? 24u : type == WeaponType::eClub ? 20u : 94u;
-	QuadData weaponData{{positionX, positionY}, {Helpers::packColor(255, 255, 0, 255), Helpers::packColor(255, 255, 0, 0)}, weaponGlyph};
+	QuadData weaponData{{positionX, positionY}, {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)}, weaponGlyph};
 
 	double distanceX = (targetPositionX - positionX);
 	double distanceY = (targetPositionY - positionY) * 2.0;

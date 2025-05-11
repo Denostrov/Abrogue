@@ -6,7 +6,7 @@ Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4
 {
 	auto [x, y] = getPosition();
 	quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
-									{Helpers::packColor(64, 255, 0, 255), Helpers::packColor(64, 255, 0, 0)}, 64},
+									{Color::pack(64, 255, 0, 255), Color::pack(64, 255, 0, 0)}, 64},
 									QuadPool::eEntity);
 
 	setMaxVelocity(velocity);

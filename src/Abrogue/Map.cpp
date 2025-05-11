@@ -11,7 +11,7 @@ void Map::init()
 		for(std::int64_t x = 0; x < Constants::mapWidth; x++)
 		{
 			getTile(x, y).quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x + 0.5f, y + 0.5f},
-																 {Helpers::packColor(0, 0, 0, 255), Helpers::packColor(0,0,0,255)}, 32}, QuadPool::eMap);
+																 {Color::pack(0, 0, 0, 255), Color::pack(0,0,0,255)}, 32}, QuadPool::eMap);
 		}
 	}
 }
@@ -21,12 +21,20 @@ void Map::updateDraw(double deltaTime)
 	auto updateTileProperties = [](Tile const& tile, double brightness)
 	{
 		auto const& tileInfo = tilesInfo[(size_t)tile.type];
-		auto [r, g, b, a] = Helpers::unpackColor(tileInfo.color);
-		auto [bgR, bgG, bgB, bgA] = Helpers::unpackColor(tileInfo.backgroundColor);
+
+		Color color = tileInfo.color;
+		Color backgroundColor = tileInfo.backgroundColor;
+
+		color.r *= brightness;
+		color.g *= brightness;
+		color.b *= brightness;
+		backgroundColor.r *= brightness;
+		backgroundColor.g *= brightness;
+		backgroundColor.b *= brightness;
 
 		tile.quadReference.setGlyph(tileInfo.glyph);
-		tile.quadReference.setColor(Helpers::packColor(r * brightness, g * brightness, b * brightness, a));
-		tile.quadReference.setBackgroundColor(Helpers::packColor(bgR * brightness, bgG * brightness, bgB * brightness, bgA));
+		tile.quadReference.setColor(color.getPacked());
+		tile.quadReference.setBackgroundColor(backgroundColor.getPacked());
 	};
 
 	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)

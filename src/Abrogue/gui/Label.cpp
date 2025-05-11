@@ -31,7 +31,7 @@ void Label::setVisible(bool visible)
 	for(size_t i = 0; i < size; i++)
 	{
 		quadReferences.emplace_back(quadPool.insert(QuadData{{x + i + 0.5f, y + 0.5f},
-											 {Helpers::packColor(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
+											 {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
 	}
 }
 
@@ -70,7 +70,7 @@ void Label::setText(std::string_view newText)
 	for(size_t i = quadReferences.size(); i < size; i++)
 	{
 		quadReferences.emplace_back(quadPool.insert(QuadData{{x + i + 0.5f, y + 0.5f},
-													 {Helpers::packColor(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
+													 {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (uint32_t)text[i]}, layer));
 	}
 
 	//Set existing quad parameters
@@ -92,7 +92,7 @@ void Label::setPosition(std::int64_t newX, std::int64_t newY)
 		quadReferences[i].setPosition(x + i + 0.5f, y + 0.5f);
 }
 
-void Label::setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)
+void Label::setBackgroundColor(PackedColor color, PackedColor hoverColor)
 {
 	backgroundColor = color;
 	hoveredBackgroundColor = hoverColor;
@@ -101,7 +101,7 @@ void Label::setBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)
 		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
 }
 
-void Label::setPressedBackgroundColor(std::uint32_t color, std::uint32_t hoverColor)
+void Label::setPressedBackgroundColor(PackedColor color, PackedColor hoverColor)
 {
 	pressedBackgroundColor = color;
 	hoveredPressedBackgroundColor = hoverColor;
@@ -118,10 +118,14 @@ void Label::setProgress(double percentage)
 		quadReferences[i].setBackgroundColor(getBackgroundColor(i));
 }
 
-std::uint32_t Label::getBackgroundColor(std::size_t index) const
+PackedColor Label::getBackgroundColor(std::int64_t index) const
 {
-	auto [r, g, b, a] = Helpers::unpackColor(isPressed ? (isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor)
-											 : (isHovered ? hoveredBackgroundColor : backgroundColor));
+	Color color = isPressed ? (isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor)
+		: (isHovered ? hoveredBackgroundColor : backgroundColor);
+
 	double colorCoefficient = std::clamp((progress - (double)index / size) * size, 0.0, 1.0);
-	return Helpers::packColor(r * colorCoefficient, g * colorCoefficient, b * colorCoefficient, a);
+	color.r *= colorCoefficient;
+	color.g *= colorCoefficient;
+	color.b *= colorCoefficient;
+	return color.getPacked();
 }

@@ -1,6 +1,6 @@
 export module Constants;
 
-export import std;
+export import Helpers;
 
 #ifdef NDEBUG
 export inline constexpr bool isDebugBuild{false};
@@ -13,19 +13,6 @@ export inline constexpr bool useExtraAsserts{true};
 #else
 export inline constexpr bool useExtraAsserts{false};
 #endif
-
-export class Helpers
-{
-public:
-	static constexpr std::uint32_t packColor(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha)
-	{
-		return (std::uint32_t)red << 24 | (std::uint32_t)green << 16 | (std::uint32_t)blue << 8 | (std::uint32_t)alpha;
-	}
-	static constexpr std::tuple<std::uint8_t, std::uint8_t, std::uint8_t, std::uint8_t> unpackColor(std::uint32_t color)
-	{
-		return {(color >> 24) & 0xFF, (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF};
-	}
-};
 
 export class Constants
 {
@@ -63,12 +50,12 @@ public:
 	static constexpr float tileScaleX{tileAspectRatio / Constants::screenHeight};
 	static constexpr float tileScaleY{1.0f / Constants::screenHeight};
 
-	static constexpr std::uint32_t labelBackgroundColor{Helpers::packColor(255, 255, 255, 0)};
-	static constexpr std::uint32_t labelHoveredColor{Helpers::packColor(8, 8, 8, 255)};
-	static constexpr std::uint32_t labelPressedColor{Helpers::packColor(16, 16, 16, 255)};
-	static constexpr std::uint32_t labelHoveredPressedColor{Helpers::packColor(24, 24, 24, 255)};
-	static constexpr std::uint32_t healthBackgroundColor{Helpers::packColor(128, 0, 0, 255)};
-	static constexpr std::uint32_t healthHoverColor{Helpers::packColor(160, 0, 0, 255)};
-	static constexpr std::uint32_t nutritionBackgroundColor{Helpers::packColor(16, 16, 128, 255)};
-	static constexpr std::uint32_t nutritionHoverColor{Helpers::packColor(32, 32, 160, 255)};
+	static constexpr PackedColor labelBackgroundColor{Color::pack(255, 255, 255, 0)};
+	static constexpr PackedColor labelHoveredColor{Color::pack(8, 8, 8, 255)};
+	static constexpr PackedColor labelPressedColor{Color::pack(16, 16, 16, 255)};
+	static constexpr PackedColor labelHoveredPressedColor{Color::pack(24, 24, 24, 255)};
+	static constexpr PackedColor healthBackgroundColor{Color::pack(128, 0, 0, 255)};
+	static constexpr PackedColor healthHoverColor{Color::pack(160, 0, 0, 255)};
+	static constexpr PackedColor nutritionBackgroundColor{Color::pack(16, 16, 128, 255)};
+	static constexpr PackedColor nutritionHoverColor{Color::pack(32, 32, 160, 255)};
 };

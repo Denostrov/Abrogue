@@ -47,9 +47,9 @@ void Enemy::updateDraw(double deltaTime)
 	}
 	else
 	{
-		quadReference.setColor(Helpers::packColor(color.r * brightness, color.g * brightness, color.b * brightness, color.a));
-		quadReference.setBackgroundColor(Helpers::packColor(color.r * brightness, color.g * brightness, color.b * brightness, 0));
+		quadReference.setColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, color.a));
+		quadReference.setBackgroundColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, 0));
 
-		weapon.updateDraw(48.0 + x, y);
+		weapon.updateDraw(Constants::mapOffset + x, y);
 	}
 }
