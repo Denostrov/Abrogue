@@ -219,9 +219,12 @@ void GUI::setCurrentScreen(Screen& newScreen)
 
 void GUI::setFPS(std::int64_t fps)
 {
-	std::array<char, 16> fpsString{"FPS:"};
-	std::to_chars(fpsString.data() + 4, fpsString.data() + 14, fps);
-	fpsLabel.setText(fpsString.data());
+	std::array<char, 16> buf{};
+	std::to_chars(buf.data(), buf.data() + 15, fps);
+
+	FixedVector<char, 16> fpsString{"FPS:"sv};
+	fpsString.append(buf.data());
+	fpsLabel.setText(fpsString);
 }
 
 void GUI::setPlayerHealth(double percentage)
