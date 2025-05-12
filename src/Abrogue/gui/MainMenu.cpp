@@ -2,10 +2,12 @@ module MainMenu;
 
 import GameSystems;
 
+using namespace std::literals;
+
 void MainMenu::init()
 {
-	buttons[eStartGame].init("New game", 120, 30, QuadPool::eMap);
-	buttons[eQuitToDesktop].init("Quit to desktop", 113, 31, QuadPool::eMap);
+	buttons[eStartGame].init("New game"sv, 120, 30, QuadPool::eMap);
+	buttons[eQuitToDesktop].init("Quit to desktop"sv, 113, 31, QuadPool::eMap);
 
 	pressableButtons = buttons;
 }

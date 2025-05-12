@@ -5,7 +5,10 @@ export import InputHandler;
 export import GUI;
 export import Player;
 export import Game;
+export import Random;
 
+export inline Random mapRandom;
+export inline Random visualRandom;
 export inline QuadPool quadPool;
 export inline Logger logger;
 export inline Configuration configuration;

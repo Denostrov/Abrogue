@@ -2,12 +2,14 @@ module DebugMenu;
 
 import GameSystems;
 
+using namespace std::literals;
+
 void DebugMenu::init()
 {
-	labels[eTitle].init("Debug Options", 56, 6, QuadPool::ePopup);
-	labels[eStopTime].init("Stop time[Num7]", 40, 8, QuadPool::ePopup);
-	labels[eStepTime].init("Step forward[Num8]", 38, 10, QuadPool::ePopup);
-	labels[eShowDamage].init("Show damage", 70, 8, QuadPool::ePopup);
+	labels[eTitle].init("Debug Options"sv, 56, 6, QuadPool::ePopup);
+	labels[eStopTime].init("Stop time[Num7]"sv, 40, 8, QuadPool::ePopup);
+	labels[eStepTime].init("Step forward[Num8]"sv, 38, 10, QuadPool::ePopup);
+	labels[eShowDamage].init("Show damage"sv, 70, 8, QuadPool::ePopup);
 
 	pressableButtons = labels;
 }

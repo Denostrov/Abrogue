@@ -52,7 +52,7 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 	"gui/MainMenu.ixx"
 	"gui/GameOver.ixx"
 	"gui/Screen.ixx"
- "Weapon.ixx" "gui/Background.ixx" "helpers/Helpers.ixx" "helpers/FixedVector.ixx")
+ "Weapon.ixx" "gui/Background.ixx" "helpers/Helpers.ixx" "helpers/FixedVector.ixx" "helpers/Random.ixx")
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})

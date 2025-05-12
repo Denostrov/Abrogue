@@ -14,21 +14,23 @@ export inline constexpr bool useExtraAsserts{true};
 export inline constexpr bool useExtraAsserts{false};
 #endif
 
+using namespace std::literals;
+
 export class Constants
 {
 public:
-	static constexpr std::string_view configFileName{"config"};
-	static constexpr std::string_view dataFileName{"data"};
-	static constexpr std::string_view infoLogFileName{"infoLog"};
-	static constexpr std::string_view errorLogFileName{"errorLog"};
+	static constexpr std::string_view configFileName{"config.json"sv};
+	static constexpr std::string_view dataFileName{"data.json"sv};
+	static constexpr std::string_view infoLogFileName{"infoLog"sv};
+	static constexpr std::string_view errorLogFileName{"errorLog"sv};
 
-	static constexpr std::string_view appName{"Abrogue"};
-	static constexpr std::string_view appVersion{"0.1"};
-	static constexpr std::string_view appIdentifier{"org.strovstiksoft.abrogue"};
-	static constexpr std::string_view appCreator{"Strovstik Software Inc."};
-	static constexpr std::string_view appCopyright{"Copyright (c) 2025 Strovstik Software Inc."};
-	static constexpr std::string_view appURL{"https://github.com/Denostrov"};
-	static constexpr std::string_view appType{"game"};
+	static constexpr std::string_view appName{"Abrogue"sv};
+	static constexpr std::string_view appVersion{"0.1"sv};
+	static constexpr std::string_view appIdentifier{"org.strovstiksoft.abrogue"sv};
+	static constexpr std::string_view appCreator{"Strovstik Software Inc."sv};
+	static constexpr std::string_view appCopyright{"Copyright (c) 2025 Strovstik Software Inc."sv};
+	static constexpr std::string_view appURL{"https://github.com/Denostrov"sv};
+	static constexpr std::string_view appType{"game"sv};
 
 	static constexpr std::uint32_t vkAppMajorVersion{0};
 	static constexpr std::uint32_t vkAppMinorVersion{1};

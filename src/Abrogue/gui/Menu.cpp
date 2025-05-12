@@ -2,11 +2,13 @@ module Menu;
 
 import GameSystems;
 
+using namespace std::literals;
+
 void Menu::init()
 {
-	buttons[eResume].init("Resume", 60, 15, QuadPool::ePopup);
-	buttons[eAbandonGame].init("Abandon game", 57, 16, QuadPool::ePopup);
-	buttons[eSaveAndQuit].init("Save and quit", 57, 17, QuadPool::ePopup);
+	buttons[eResume].init("Resume"sv, 60, 15, QuadPool::ePopup);
+	buttons[eAbandonGame].init("Abandon game"sv, 57, 16, QuadPool::ePopup);
+	buttons[eSaveAndQuit].init("Save and quit"sv, 57, 17, QuadPool::ePopup);
 
 	pressableButtons = buttons;
 }

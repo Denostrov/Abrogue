@@ -13,6 +13,7 @@ public:
 		eNutrition,
 		eSearch,
 		eInventory,
+		eDepth,
 		//Tab buttons
 		eDebug,
 		eDiscoveries,
@@ -21,7 +22,6 @@ public:
 	};
 
 	PlayArea() = default;
-
 	void init();
 
 	void setVisible(bool visible) final;

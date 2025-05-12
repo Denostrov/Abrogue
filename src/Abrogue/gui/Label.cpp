@@ -122,6 +122,7 @@ PackedColor Label::getBackgroundColor(std::int64_t index) const
 	Color color = isPressed ? (isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor)
 		: (isHovered ? hoveredBackgroundColor : backgroundColor);
 
+	//Adjust colors to form a gradient from left to right depending on progress
 	double colorCoefficient = std::clamp((progress - (double)index / size) * size, 0.0, 1.0);
 	color.r *= colorCoefficient;
 	color.g *= colorCoefficient;

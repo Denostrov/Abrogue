@@ -2,6 +2,8 @@ module GUI;
 
 import GameSystems;
 
+using namespace std::literals;
+
 void GUI::init()
 {
 	mainMenu.init();
@@ -11,7 +13,7 @@ void GUI::init()
 	debugMenu.init();
 	gameOver.init();
 
-	fpsLabel.init("FPS:", 0, 0, QuadPool::eMap, true);
+	fpsLabel.init("FPS:"sv, 0, 0, QuadPool::eMap, true);
 
 	mainMenu.setVisible(true);
 	setCurrentScreen(mainMenu);
@@ -210,7 +212,7 @@ void GUI::setCurrentScreen(Screen& newScreen)
 {
 	currentScreen = &newScreen;
 
-	//Update mouse position for the newly shown screen
+	//Refresh mouse position for the newly shown screen
 	auto [x, y] = inputHandler.getMousePosition();
 	onMouseMoved(x, y);
 }

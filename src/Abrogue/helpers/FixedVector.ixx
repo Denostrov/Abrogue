@@ -2,6 +2,9 @@ export module FixedVector;
 
 export import std;
 
+export template<class T>
+concept IsCharArray = std::same_as<typename T::value_type, char>;
+
 export template<class T, std::size_t N>
 class FixedVector
 {
@@ -11,8 +14,27 @@ class FixedVector
 public:
 	using iterator = decltype(data)::iterator;
 	using const_iterator = decltype(data)::const_iterator;
+	using value_type = T;
 
 	constexpr FixedVector() = default;
+	constexpr FixedVector(std::string_view str) requires std::same_as<value_type, char>
+	{
+		*this = str;
+	}
+
+	constexpr FixedVector<T, N>& operator=(std::string_view str) requires std::same_as<value_type, char>
+	{
+		currentSize = str.size();
+		for(std::uint64_t i = 0; i < str.size(); i++)
+			data[i] = str[i];
+
+		return *this;
+	}
+
+	constexpr operator std::string_view() const requires std::same_as<value_type, char>
+	{
+		return std::string_view(data.data(), currentSize);
+	}
 
 	constexpr void erase(const_iterator first, const_iterator last)
 	{
@@ -46,6 +68,14 @@ public:
 	{
 		return N;
 	}
+	constexpr auto empty() const
+	{
+		return currentSize == 0;
+	}
+	constexpr auto isFull() const
+	{
+		return currentSize == data.size();
+	}
 
 	template<class... Args>
 	constexpr void emplace_back(Args&&... args)
@@ -61,3 +91,23 @@ public:
 		return std::forward<Self>(self).data[index];
 	}
 };
+
+export template<std::size_t N>
+constexpr bool operator==(FixedVector<char, N> const& lhs, std::string_view rhs)
+{
+	if(lhs.size() != rhs.size())
+		return false;
+
+	for(std::size_t i = 0; i < rhs.size(); i++)
+	{
+		if(lhs[i] != rhs[i])
+			return false;
+	}
+	return true;
+}
+
+export template<std::size_t N>
+constexpr bool operator!=(FixedVector<char, N> const& lhs, std::string_view rhs)
+{
+	return !(lhs == rhs);
+}

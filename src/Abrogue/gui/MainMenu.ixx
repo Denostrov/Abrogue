@@ -2,9 +2,11 @@ export module MainMenu;
 
 export import Screen;
 
+//Class for main menu screen
 export class MainMenu : public Screen
 {
 public:
+	//Enum for pressable buttons
 	enum ButtonType
 	{
 		eStartGame,
@@ -13,7 +15,6 @@ public:
 	};
 
 	MainMenu() = default;
-
 	void init();
 
 	void setVisible(bool visible) final;

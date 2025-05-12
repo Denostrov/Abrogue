@@ -3,9 +3,11 @@ export module Menu;
 export import Screen;
 export import Background;
 
+//Class for pause menu
 export class Menu : public Screen
 {
 public:
+	//Enum for pressable buttons
 	enum ButtonType
 	{
 		eResume,
@@ -15,10 +17,7 @@ public:
 	};
 
 	Menu() = default;
-
 	void init();
-
-	auto& getButtons() { return buttons; }
 
 	void setVisible(bool visible) final;
 

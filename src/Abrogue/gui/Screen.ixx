@@ -2,6 +2,7 @@ export module Screen;
 
 export import Label;
 
+//Base class for GUI screens
 export class Screen
 {
 public:

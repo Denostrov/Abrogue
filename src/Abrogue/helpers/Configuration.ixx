@@ -1,7 +1,9 @@
 export module Configuration;
 
 export import Helpers;
+export import FixedVector;
 
+//Enum for visual types of weapons
 export enum class WeaponType
 {
 	eClaw,
@@ -9,9 +11,10 @@ export enum class WeaponType
 	eDagger
 };
 
+//Struct for defining an enemy type
 export struct EnemyData
 {
-	std::string name;
+	FixedVector<char, 16> name;
 	std::uint8_t symbol{};
 	Color color{};
 	double speed{10.0};
@@ -22,21 +25,23 @@ export struct EnemyData
 	double attackTime{0.25};
 };
 
+//Class for saving and loading configuration options
 export class Configuration
 {
 public:
-	bool load();
+	[[nodiscard]] bool load();
 
-	auto getWindowWidth() const { return windowWidth; }
-	auto getWindowHeight() const { return windowHeight; }
+	[[nodiscard]] auto getWindowWidth() const { return windowWidth; }
+	[[nodiscard]] auto getWindowHeight() const { return windowHeight; }
 
-	EnemyData const& getSuitableEnemy();
+	[[nodiscard]] optCRef<EnemyData> getSuitableEnemy();
 
 private:
-	bool saveToFile();
+	bool saveOptionsToFile();
 
-	std::uint32_t windowWidth{800};
-	std::uint32_t windowHeight{450};
+	std::int64_t windowWidth{800};
+	std::int64_t windowHeight{450};
 
-	std::vector<EnemyData> enemyData;
+	FixedVector<EnemyData, 128> enemyData;
 };
+

@@ -77,8 +77,9 @@ void Game::advanceStep()
 
 		if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 3.0)
 		{
-			auto const& enemyData = configuration.getSuitableEnemy();
-			enemies.emplace_back(enemyData);
+			auto enemyDataOpt = configuration.getSuitableEnemy();
+			if(enemyDataOpt)
+				enemies.emplace_back(*enemyDataOpt);
 			lastEnemySpawnTime = currentTick / (double)Constants::ticksPerSecond;
 		}
 
@@ -97,6 +98,9 @@ void Game::startGame()
 	state = eRunning;
 
 	lastUpdateTime = SDL_GetTicksNS();
+	mapRandom.seed(lastUpdateTime);
+	visualRandom.seed(lastUpdateTime);
+
 	resetTickTimer();
 }
 
