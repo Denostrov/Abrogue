@@ -1,6 +1,7 @@
 module Enemy;
 
-import GameSystems;
+import Player;
+import Game;
 
 Enemy::Enemy(EnemyData const& data)
 	:PhysicsComponent(40.5, 33.5, 0.48, 0.48, 0.48, 0.48), color(data.color)

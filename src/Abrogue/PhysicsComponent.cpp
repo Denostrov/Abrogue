@@ -1,6 +1,6 @@
 module PhysicsComponent;
 
-import GameSystems;
+import Game;
 
 PhysicsComponent::PhysicsComponent(double x, double y, double leftScaleX, double rightScaleX, double topScaleY, double bottomScaleY)
 	:x(x), y(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)

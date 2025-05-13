@@ -3,7 +3,8 @@
 
 #include <SDL3/SDL_messagebox.h>
 
-import GameSystems;
+import Game;
+import InputHandler;
 
 SDL_AppResult SDL_AppInit(void** appstate, int argc, char** argv)
 {

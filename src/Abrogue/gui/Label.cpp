@@ -11,6 +11,11 @@ void Label::init(std::string_view text, std::int64_t x, std::int64_t y, QuadPool
 	setVisible(visible);
 }
 
+bool Label::checkCollision(std::int64_t checkX, std::int64_t checkY) const
+{
+	return x <= checkX && checkX < x + size && y <= checkY && checkY < y + 1;
+}
+
 void Label::setVisible(bool visible)
 {
 	if(isVisible == visible)
@@ -123,9 +128,7 @@ PackedColor Label::getBackgroundColor(std::int64_t index) const
 		: (isHovered ? hoveredBackgroundColor : backgroundColor);
 
 	//Adjust colors to form a gradient from left to right depending on progress
-	double colorCoefficient = std::clamp((progress - (double)index / size) * size, 0.0, 1.0);
-	color.r *= colorCoefficient;
-	color.g *= colorCoefficient;
-	color.b *= colorCoefficient;
+	double colorCoefficient = std::clamp(progress * size - index, 0.0, 1.0);
+	color.multiplyRGB(colorCoefficient);
 	return color.getPacked();
 }

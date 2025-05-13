@@ -4,7 +4,9 @@ module;
 
 module InputHandler;
 
-import GameSystems;
+import RenderEngine;
+import GUI;
+import Game;
 
 std::pair<float, float> InputHandler::getMousePosition() const
 {

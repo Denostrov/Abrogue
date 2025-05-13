@@ -1,6 +1,7 @@
 module Menu;
 
-import GameSystems;
+import GUI;
+import Game;
 
 using namespace std::literals;
 
@@ -26,5 +27,5 @@ void Menu::onButtonPressed(size_t index)
 	if(type == ButtonType::eResume)
 		gui.toggleMenu();
 	else if(type == ButtonType::eAbandonGame || type == ButtonType::eSaveAndQuit)
-		gui.quitToMainMenu();
+		game.quitToMainMenu();
 }

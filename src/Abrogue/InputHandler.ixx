@@ -22,3 +22,5 @@ public:
 private:
 	std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
 };
+
+export inline InputHandler inputHandler;

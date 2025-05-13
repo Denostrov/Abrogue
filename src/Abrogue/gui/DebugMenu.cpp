@@ -1,6 +1,6 @@
 module DebugMenu;
 
-import GameSystems;
+import Game;
 
 using namespace std::literals;
 

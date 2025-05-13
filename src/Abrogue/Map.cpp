@@ -1,6 +1,7 @@
 module Map;
 
-import GameSystems;
+import Player;
+import Logger;
 
 void Map::init()
 {

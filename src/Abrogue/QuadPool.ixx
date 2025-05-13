@@ -72,6 +72,8 @@ public:
 		friend class QuadPool;
 	};
 
+	QuadPool() = default;
+	~QuadPool();
 	void prepare();
 
 	[[nodiscard]] Reference insert(QuadData const& newData, Layer layer);
@@ -88,4 +90,4 @@ private:
 	size_t size{};
 };
 
-
+export inline QuadPool quadPool;

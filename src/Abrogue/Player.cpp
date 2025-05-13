@@ -1,6 +1,6 @@
 module Player;
 
-import GameSystems;
+import GUI;
 
 Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4)
 {

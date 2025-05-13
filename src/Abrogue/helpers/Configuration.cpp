@@ -4,7 +4,9 @@ module;
 
 module Configuration;
 
-import GameSystems;
+import Constants;
+import Logger;
+import Random;
 
 using namespace std::literals;
 

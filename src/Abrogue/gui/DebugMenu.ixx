@@ -1,12 +1,10 @@
 export module DebugMenu;
 
 export import Screen;
-export import Background;
 
 //Class for debug options menu
 export class DebugMenu : public Screen
 {
-	//Enum for labels
 	enum ButtonType
 	{
 		eTitle,

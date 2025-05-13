@@ -1,6 +1,7 @@
 module MainMenu;
 
-import GameSystems;
+import Game;
+import GUI;
 
 using namespace std::literals;
 

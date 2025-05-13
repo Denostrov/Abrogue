@@ -45,3 +45,4 @@ private:
 	FixedVector<EnemyData, 128> enemyData;
 };
 
+export inline Configuration configuration;

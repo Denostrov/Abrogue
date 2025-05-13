@@ -26,11 +26,11 @@ public:
 	void setFPS(std::int64_t fps);
 	void setPlayerHealth(double percentage);
 
-	void togglePause();
 	void toggleMenu();
 	void toggleDebugOptions();
 	void toggleDiscoveries();
 
+	void togglePause();
 	void toggleStopTime();
 	void toggleStepTime();
 
@@ -48,6 +48,7 @@ private:
 	GameOver gameOver;
 
 	Background popupBackground;
-
 	Label fpsLabel;
 };
+
+export inline GUI gui;

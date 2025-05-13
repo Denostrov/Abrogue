@@ -23,6 +23,18 @@ export struct Color
 		return (std::uint32_t)red << 24 | (std::uint32_t)green << 16 | (std::uint32_t)blue << 8 | (std::uint32_t)alpha;
 	}
 
+	constexpr void multiplyRGB(double coefficient)
+	{
+		r = std::clamp(r * coefficient, 0.0, 255.0);
+		g = std::clamp(g * coefficient, 0.0, 255.0);
+		b = std::clamp(b * coefficient, 0.0, 255.0);
+	}
+	constexpr void multiplyRGBA(double coefficient)
+	{
+		multiplyRGB(coefficient);
+		a = std::clamp(a * coefficient, 0.0, 255.0);
+	}
+
 	constexpr PackedColor getPacked() const { return pack(r, g, b, a); }
 	constexpr PackedColor getTransparentPacked() const { return pack(r, g, b, 0); }
 

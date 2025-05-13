@@ -25,3 +25,5 @@ public:
 
 	QuadPool::Reference quadReference;
 };
+
+export inline Player player;

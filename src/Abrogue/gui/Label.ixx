@@ -10,10 +10,7 @@ public:
 	Label() = default;
 	void init(std::string_view text, std::int64_t x, std::int64_t y, QuadPool::Layer drawLayer, bool visible = false);
 
-	[[nodiscard]] bool checkCollision(std::int64_t checkX, std::int64_t checkY) const
-	{
-		return x <= checkX && checkX < x + size && y <= checkY && checkY < y + 1;
-	}
+	[[nodiscard]] bool checkCollision(std::int64_t checkX, std::int64_t checkY) const;
 
 	void togglePressed() { setPressed(!isPressed); }
 
@@ -35,18 +32,17 @@ private:
 	bool isVisible{};
 	bool isHovered{};
 	bool isPressed{};
-
-	std::string text;
-	QuadPool::Layer layer{};
+	double progress{1.0};
 
 	std::int64_t x{}, y{};
 	std::size_t size{};
-	double progress{1.0};
 
 	PackedColor backgroundColor{Constants::labelBackgroundColor};
 	PackedColor hoveredBackgroundColor{Constants::labelHoveredColor};
 	PackedColor pressedBackgroundColor{Constants::labelPressedColor};
 	PackedColor hoveredPressedBackgroundColor{Constants::labelHoveredPressedColor};
 
+	QuadPool::Layer layer{};
+	FixedVector<char, 128> text;
 	FixedVector<QuadPool::Reference, 128> quadReferences;
 };

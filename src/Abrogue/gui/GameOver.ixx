@@ -1,7 +1,6 @@
 export module GameOver;
 
 export import Screen;
-export import Background;
 
 //Class for game over screen
 export class GameOver : public Screen

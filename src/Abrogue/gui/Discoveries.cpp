@@ -1,7 +1,5 @@
 module Discoveries;
 
-import GameSystems;
-
 using namespace std::literals;
 
 void Discoveries::init()

@@ -39,8 +39,8 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 	"QuadPool.ixx" 
 	"Player.ixx" 
 	"Map.ixx" 
-	"GameSystems.ixx"
-	"GameEvents.ixx"
+	
+	
 	"InputHandler.ixx"
 
 	"gui/Label.ixx" 

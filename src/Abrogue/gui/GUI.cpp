@@ -1,6 +1,8 @@
 module GUI;
 
-import GameSystems;
+import Game;
+import Player;
+import InputHandler;
 
 using namespace std::literals;
 
@@ -38,10 +40,9 @@ void GUI::quitToMainMenu()
 	currentScreen->setVisible(false);
 	playArea.setVisible(false);
 
+	//Show main menu
 	mainMenu.setVisible(true);
 	setCurrentScreen(mainMenu);
-
-	game.quitToMainMenu();
 }
 
 void GUI::triggerGameOver()
@@ -69,6 +70,7 @@ void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 
 void GUI::onMousePressed(std::int64_t x, std::int64_t y)
 {
+	//Handle player actions when pressing on the map
 	if(currentScreen == &playArea && !playArea.getPaused() && x >= Constants::mapOffset)
 		player.onMousePressed(x - Constants::mapOffset, y);
 
@@ -86,14 +88,15 @@ void GUI::togglePause()
 
 void GUI::toggleMenu()
 {
-	if(currentScreen == &gameOver)
-	{
-		quitToMainMenu();
-		return;
-	}
-
 	if(currentScreen == &mainMenu)
 		return;
+
+	//Pressing escape after game over to return to main menu
+	if(currentScreen == &gameOver)
+	{
+		game.quitToMainMenu();
+		return;
+	}
 
 	//Close a popup if its the current screen
 	if(currentScreen != &playArea)
@@ -142,6 +145,7 @@ void GUI::toggleDebugOptions()
 
 			playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
 		}
+
 		return;
 	}
 
@@ -179,6 +183,7 @@ void GUI::toggleDiscoveries()
 			setCurrentScreen(discoveries);
 			playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 		}
+
 		return;
 	}
 
@@ -219,12 +224,10 @@ void GUI::setCurrentScreen(Screen& newScreen)
 
 void GUI::setFPS(std::int64_t fps)
 {
-	std::array<char, 16> buf{};
-	std::to_chars(buf.data(), buf.data() + 15, fps);
+	std::array<char, 32> buf{"FPS:"};
+	std::to_chars(buf.data() + 4, buf.data() + 15, fps);
 
-	FixedVector<char, 16> fpsString{"FPS:"sv};
-	fpsString.append(buf.data());
-	fpsLabel.setText(fpsString);
+	fpsLabel.setText(buf.data());
 }
 
 void GUI::setPlayerHealth(double percentage)

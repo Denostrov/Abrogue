@@ -1,7 +1,5 @@
 module Background;
 
-import GameSystems;
-
 void Background::updateDraw(double deltaTime)
 {
 	if(!quad) 

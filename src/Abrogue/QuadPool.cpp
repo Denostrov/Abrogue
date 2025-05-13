@@ -4,7 +4,7 @@ module;
 
 module QuadPool;
 
-import GameSystems;
+import Logger;
 
 QuadPool::Reference::~Reference()
 {
@@ -83,6 +83,15 @@ QuadPool::Reference QuadPool::insert(QuadData const& newData, Layer layer)
 	size++;
 
 	return result;
+}
+
+QuadPool::~QuadPool()
+{
+	for(auto const& referencePool : references)
+	{
+		for(auto reference : referencePool)
+			reference->index = -1;
+	}
 }
 
 void QuadPool::prepare()

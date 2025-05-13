@@ -1,6 +1,7 @@
 module Weapon;
 
-import GameSystems;
+import Game;
+import Player;
 
 void Weapon::init(WeaponType newType, std::int64_t newDamage, double newAttackTime, bool friendly)
 {

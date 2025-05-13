@@ -172,4 +172,4 @@ private:
 	SwapchainResources oldSwapchainResources;
 };
 
-
+export inline RenderEngine renderEngine;

@@ -45,3 +45,5 @@ bool Logger::checkVulkanError(Value& value, Result result, std::string_view succ
 	value = std::move(result.value);
 	return false;
 }
+
+export inline Logger logger;

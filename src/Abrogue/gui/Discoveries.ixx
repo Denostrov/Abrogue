@@ -1,7 +1,6 @@
 export module Discoveries;
 
 export import Screen;
-export import Background;
 
 //Class for discovered items menu
 export class Discoveries : public Screen

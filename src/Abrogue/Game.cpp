@@ -4,7 +4,11 @@ module;
 
 module Game;
 
-import GameSystems;
+import Logger;
+import RenderEngine;
+import GUI;
+import Player;
+import Random;
 
 bool Game::init()
 {
@@ -93,9 +97,9 @@ void Game::startGame()
 	map.init();
 	player = Player(10.0);
 
-	gui.startGame();
-
 	state = eRunning;
+
+	gui.startGame();
 
 	lastUpdateTime = SDL_GetTicksNS();
 	mapRandom.seed(lastUpdateTime);
@@ -132,6 +136,8 @@ void Game::setPlayerMovement(std::int64_t movementX, std::int64_t movementY)
 
 void Game::quitToMainMenu()
 {
+	gui.quitToMainMenu();
+
 	state = eNotStarted;
 	map = Map();
 	player = Player();

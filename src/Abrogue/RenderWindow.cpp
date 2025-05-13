@@ -6,7 +6,9 @@ module;
 
 module RenderWindow;
 
-import GameSystems;
+import Constants;
+import Logger;
+import Configuration;
 
 using namespace std::literals;
 

@@ -50,3 +50,5 @@ private:
 	std::vector<Enemy> enemies;
 	double lastEnemySpawnTime{};
 };
+
+export inline Game game;

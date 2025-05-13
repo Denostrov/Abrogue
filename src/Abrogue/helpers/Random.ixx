@@ -60,3 +60,6 @@ private:
 
 	std::uint64_t state[4]{};
 };
+
+export inline Random mapRandom;
+export inline Random visualRandom;
