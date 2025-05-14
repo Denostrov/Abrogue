@@ -14,9 +14,9 @@ public:
 	GUI() = default;
 	void init();
 
-	void startGame();
-	void quitToMainMenu();
-	void triggerGameOver();
+	void showPlayArea();
+	void showMainMenu();
+	void showGameOver();
 
 	void updateDraw(double deltaTime);
 

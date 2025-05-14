@@ -7,7 +7,7 @@ export class Weapon
 {
 public:
 	Weapon() = default;
-	void init(WeaponType newType, std::int64_t newDamage, double newAttackTime, bool friendly);
+	void init(WeaponType newType, Color newColor, std::int64_t newDamage, double newAttackTime, bool friendly);
 
 	bool getIsAttacking() const { return attackTimer > 0.0; }
 
@@ -22,7 +22,8 @@ private:
 	inline static bool drawDebugInfo{};
 
 	WeaponType type;
-	std::uint64_t damage{};
+	Color color;
+	std::int64_t damage{};
 	double attackTime{};
 	double drawOffset{};
 	bool isFriendly{};

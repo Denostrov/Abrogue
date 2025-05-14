@@ -16,13 +16,14 @@ export inline constexpr bool useExtraAsserts{false};
 
 using namespace std::literals;
 
+//Class for storing used constant values
 export class Constants
 {
 public:
 	static constexpr std::string_view configFileName{"config.json"sv};
 	static constexpr std::string_view dataFileName{"data.json"sv};
-	static constexpr std::string_view infoLogFileName{"infoLog"sv};
-	static constexpr std::string_view errorLogFileName{"errorLog"sv};
+	static constexpr std::string_view infoLogFileName{"infoLog.txt"sv};
+	static constexpr std::string_view errorLogFileName{"errorLog.txt"sv};
 
 	static constexpr std::string_view appName{"Abrogue"sv};
 	static constexpr std::string_view appVersion{"0.1"sv};

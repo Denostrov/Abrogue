@@ -2,6 +2,7 @@ export module Random;
 
 export import std;
 
+//xoshiro256** random number generator
 export class Random
 {
 	class SplitMix64

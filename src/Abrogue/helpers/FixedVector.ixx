@@ -5,6 +5,7 @@ export import std;
 export template<class T>
 concept IsCharArray = std::same_as<typename T::value_type, char>;
 
+//Class for storing a dynamically sized array with fixed capacity on the stack
 export template<class T, std::size_t N>
 class FixedVector
 {

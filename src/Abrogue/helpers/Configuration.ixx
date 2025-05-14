@@ -1,7 +1,14 @@
+module;
+
+#include <json.hpp>
+
 export module Configuration;
 
 export import Helpers;
 export import FixedVector;
+export import Logger;
+
+using namespace std::literals;
 
 //Enum for visual types of weapons
 export enum class WeaponType
@@ -37,7 +44,13 @@ public:
 	[[nodiscard]] optCRef<EnemyData> getSuitableEnemy();
 
 private:
+	nlohmann::json openJSONFile(std::string_view fileName);
+	template<class Value>
+	void readJSONValue(nlohmann::json const& json, std::string_view key, Value& value);
+
+	bool loadOptions();
 	bool saveOptionsToFile();
+	void loadData();
 
 	std::int64_t windowWidth{800};
 	std::int64_t windowHeight{450};
@@ -46,3 +59,90 @@ private:
 };
 
 export inline Configuration configuration;
+
+template<class Value>
+void Configuration::readJSONValue(nlohmann::json const& json, std::string_view key, Value& value)
+{
+	if(!json.contains(key))
+	{
+		logger.logInfo("Requested key not found in JSON"sv);
+		return;
+	}
+
+	auto const& jsonValue = json[key];
+
+	using ValueType = std::decay_t<decltype(value)>;
+
+	if constexpr(std::is_same_v<ValueType, std::uint8_t>)
+	{
+		if(!jsonValue.is_string() || jsonValue.size() != 1)
+		{
+			logger.logInfo("Requested JSON value was not a char"sv);
+			return;
+		}
+
+		value = jsonValue.get<std::string>()[0];
+	}
+	else if constexpr(IsCharArray<ValueType>)
+	{
+		if(!jsonValue.is_string())
+		{
+			logger.logInfo("Requested JSON value was not a string"sv);
+			return;
+		}
+
+		auto str = jsonValue.get<std::string>();
+		if(str.size() > value.capacity())
+		{
+			logger.logInfo("Requested JSON string is too big for storage"sv);
+			str.resize(value.capacity());
+		}
+
+		value = str;
+	}
+	else if constexpr(std::is_same_v<ValueType, Color>)
+	{
+		if(!jsonValue.is_array() || jsonValue.size() != 4)
+		{
+			logger.logInfo("Requested JSON value was not a color array"sv);
+			return;
+		}
+
+		for(std::uint64_t i = 0; i < 4; i++)
+		{
+			if(!jsonValue[i].is_number_integer())
+			{
+				logger.logInfo("Requested JSON value inside a color array was not an integer"sv);
+				return;
+			}
+		}
+
+		value.r = jsonValue[0].get<std::uint8_t>();
+		value.g = jsonValue[1].get<std::uint8_t>();
+		value.b = jsonValue[2].get<std::uint8_t>();
+		value.a = jsonValue[3].get<std::uint8_t>();
+	}
+	else if constexpr(std::is_integral_v<ValueType>)
+	{
+		if(!json[key].is_number_integer())
+		{
+			logger.logInfo("Requested JSON value was not an integer"sv);
+			return;
+		}
+
+		value = json[key].get<ValueType>();
+	}
+	else if constexpr(std::is_floating_point_v<ValueType>)
+	{
+		if(!json[key].is_number())
+		{
+			logger.logInfo("Requested JSON value was not a number"sv);
+		}
+
+		value = json[key].get<ValueType>();
+	}
+	else
+	{
+		logger.logInfo("Requested JSON value of unknown type"sv);
+	}
+}

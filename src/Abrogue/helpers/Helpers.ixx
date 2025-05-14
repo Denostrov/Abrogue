@@ -7,6 +7,7 @@ using optRef = std::optional<std::reference_wrapper<T>>;
 export template<class T>
 using optCRef = std::optional<std::reference_wrapper<T const>>;
 
+//Classes for storing and manipulating RGBA colors
 export using PackedColor = std::uint32_t;
 export struct Color
 {

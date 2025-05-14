@@ -12,7 +12,7 @@ Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4
 	setMaxVelocity(velocity);
 	setHealth(100);
 
-	weapon.init(WeaponType::eDagger, 1, 0.25, true);
+	weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 0.25, true);
 }
 
 void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
@@ -70,7 +70,7 @@ void Player::setHealth(std::int64_t newHealth)
 	gui.setPlayerHealth(health / 100.0);
 	if(health == 0)
 	{
-		gui.triggerGameOver();
+		gui.showGameOver();
 		setMovementX(0);
 		setMovementY(0);
 	}

@@ -29,9 +29,20 @@
 		"speed" : 10,
 		"mass" : 10,
 		"weaponType" : "club",
-		"weaponColor" : [192, 0, 0, 255],
+		"weaponColor" : [255, 255, 0, 255],
 		"damage" : 30,
 		"attackTime" : 0.3
+	},
+	{
+		"name" : "goblin",
+		"symbol" : "g",
+		"color" : [128, 64, 0, 255],
+		"speed" : 10,
+		"mass" : 5,
+		"weaponType" : "dagger",
+		"weaponColor" : [255, 255, 0, 255],
+		"damage" : 20,
+		"attackTime" : 0.25
 	}
 	]
 }

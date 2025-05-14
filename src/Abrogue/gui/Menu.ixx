@@ -7,7 +7,6 @@ export import Background;
 export class Menu : public Screen
 {
 public:
-	//Enum for pressable buttons
 	enum ButtonType
 	{
 		eResume,

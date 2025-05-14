@@ -99,7 +99,7 @@ void Game::startGame()
 
 	state = eRunning;
 
-	gui.startGame();
+	gui.showPlayArea();
 
 	lastUpdateTime = SDL_GetTicksNS();
 	mapRandom.seed(lastUpdateTime);
@@ -136,7 +136,7 @@ void Game::setPlayerMovement(std::int64_t movementX, std::int64_t movementY)
 
 void Game::quitToMainMenu()
 {
-	gui.quitToMainMenu();
+	gui.showMainMenu();
 
 	state = eNotStarted;
 	map = Map();

@@ -3,12 +3,13 @@ module Weapon;
 import Game;
 import Player;
 
-void Weapon::init(WeaponType newType, std::int64_t newDamage, double newAttackTime, bool friendly)
+void Weapon::init(WeaponType newType, Color newColor, std::int64_t newDamage, double newAttackTime, bool friendly)
 {
-	isFriendly = friendly;
 	type = newType;
+	color = newColor;
 	damage = newDamage;
 	attackTime = newAttackTime;
+	isFriendly = friendly;
 
 	if(type == WeaponType::eClaw)
 		drawOffset = 0.2;
@@ -82,7 +83,7 @@ void Weapon::startAttack(double positionX, double positionY, double targetPositi
 {
 	attackTimer = attackTime;
 	auto weaponGlyph = type == WeaponType::eDagger ? 24u : type == WeaponType::eClub ? 20u : 94u;
-	QuadData weaponData{{positionX, positionY}, {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)}, weaponGlyph};
+	QuadData weaponData{{positionX, positionY}, {color.getPacked(), color.getTransparentPacked()}, weaponGlyph};
 
 	double distanceX = (targetPositionX - positionX);
 	double distanceY = (targetPositionY - positionY) * 2.0;

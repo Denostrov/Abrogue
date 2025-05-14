@@ -8,128 +8,80 @@ import Constants;
 import Logger;
 import Random;
 
-using namespace std::literals;
-
-template<class Value>
-void readJSONValue(nlohmann::json const& json, std::string_view key, Value& value)
-{
-	if(!json.contains(key))
-	{
-		logger.logInfo("Requested key not found in JSON"sv);
-		return;
-	}
-
-	auto const& jsonValue = json[key];
-
-	using ValueType = std::decay_t<decltype(value)>;
-
-	if constexpr(std::is_same_v<ValueType, std::uint8_t>)
-	{
-		if(!jsonValue.is_string() || jsonValue.size() != 1)
-		{
-			logger.logInfo("Requested JSON value was not a char"sv);
-			return;
-		}
-
-		value = jsonValue.get<std::string>()[0];
-	}
-	else if constexpr(IsCharArray<ValueType>)
-	{
-		if(!jsonValue.is_string())
-		{
-			logger.logInfo("Requested JSON value was not a string"sv);
-			return;
-		}
-
-		auto str = jsonValue.get<std::string>();
-		if(str.size() > value.capacity())
-		{
-			logger.logInfo("Requested JSON string is too big for storage"sv);
-			str.resize(value.capacity());
-		}
-
-		value = str;
-	}
-	else if constexpr(std::is_same_v<ValueType, Color>)
-	{
-		if(!jsonValue.is_array() || jsonValue.size() != 4)
-		{
-			logger.logInfo("Requested JSON value was not a color array"sv);
-			return;
-		}
-
-		for(std::uint64_t i = 0; i < 4; i++)
-		{
-			if(!jsonValue[i].is_number_integer())
-			{
-				logger.logInfo("Requested JSON value inside a color array was not an integer"sv);
-				return;
-			}
-		}
-
-		value.r = jsonValue[0].get<std::uint8_t>();
-		value.g = jsonValue[1].get<std::uint8_t>();
-		value.b = jsonValue[2].get<std::uint8_t>();
-		value.a = jsonValue[3].get<std::uint8_t>();
-	}
-	else if constexpr(std::is_integral_v<ValueType>)
-	{
-		if(!json[key].is_number_integer())
-		{
-			logger.logInfo("Requested JSON value was not an integer"sv);
-			return;
-		}
-
-		value = json[key].get<ValueType>();
-	}
-	else if constexpr(std::is_floating_point_v<ValueType>)
-	{
-		if(!json[key].is_number())
-		{
-			logger.logInfo("Requested JSON value was not a number"sv);
-		}
-
-		value = json[key].get<ValueType>();
-	}
-	else
-	{
-		logger.logInfo("Requested JSON value of unknown type"sv);
-	}
-}
-
-
 bool Configuration::load()
 {
-	auto openJSONFile = [](std::string_view fileName)
-	{
-		nlohmann::json result;
+	if(!loadOptions())
+		return false;
 
-		auto configFile = std::ifstream(fileName.data(), std::ios::in | std::ios::binary);
-		if(!configFile)
-			return result;
+	loadData();
 
-		result = nlohmann::json::parse(configFile, nullptr, false);
+	return true;
+}
+
+optCRef<EnemyData> Configuration::getSuitableEnemy()
+{
+	return enemyData[mapRandom.generate() % enemyData.size()];
+}
+
+nlohmann::json Configuration::openJSONFile(std::string_view fileName)
+{
+	nlohmann::json result;
+
+	auto configFile = std::ifstream(fileName.data(), std::ios::in | std::ios::binary);
+	if(!configFile)
 		return result;
-	};
 
+	result = nlohmann::json::parse(configFile, nullptr, false);
+	return result;
+}
+
+bool Configuration::loadOptions()
+{
+	//Try opening configuration file
 	auto configJSON = openJSONFile(Constants::configFileName);
 	if(configJSON.is_discarded() || !configJSON.is_object())
 	{
+		//If couldn't open, create a new one with default values
 		bool saveResult = saveOptionsToFile();
 		if(!saveResult)
 			return false;
 
+		//If still can't open, give up
 		configJSON = openJSONFile(Constants::configFileName);
 		if(configJSON.is_discarded() || !configJSON.is_object())
+		{
+			logger.logError("Couldn't open created config file, check if game folder needs admin permissions"sv);
 			return false;
+		}
 	}
 
 	readJSONValue(configJSON, "windowWidth"sv, windowWidth);
 	readJSONValue(configJSON, "windowHeight"sv, windowHeight);
+	return true;
+}
 
+bool Configuration::saveOptionsToFile()
+{
+	nlohmann::json configJSON;
+	configJSON["windowWidth"] = windowWidth;
+	configJSON["windowHeight"] = windowHeight;
+
+	std::ofstream configFile(Constants::configFileName.data(), std::ios::out | std::ios::binary);
+	if(!configFile)
+	{
+		logger.logError("Couldn't create config file, check if game folder needs admin permissions"sv);
+		return false;
+	}
+
+	configFile << std::setw(4) << configJSON << std::endl;
+	return true;
+}
+
+void Configuration::loadData()
+{
 	auto dataJSON = openJSONFile(Constants::dataFileName);
 	if(dataJSON.is_discarded() || !dataJSON.is_object())
-		dataJSON = nlohmann::json::parse(R"({})", nullptr, false);
+		return;
 
 	if(dataJSON.contains("enemies") && dataJSON["enemies"].is_array())
 	{
@@ -158,28 +110,4 @@ bool Configuration::load()
 			enemyData.emplace_back(data);
 		}
 	}
-
-	return true;
-}
-
-optCRef<EnemyData> Configuration::getSuitableEnemy()
-{
-	return enemyData[mapRandom.generate() % enemyData.size()];
-}
-
-bool Configuration::saveOptionsToFile()
-{
-	nlohmann::json configJSON;
-	configJSON["windowWidth"] = windowWidth;
-	configJSON["windowHeight"] = windowHeight;
-
-	std::ofstream configFile(Constants::configFileName.data(), std::ios::out | std::ios::binary);
-	if(!configFile)
-	{
-		logger.logError("Couldn't create config file, check if game folder needs admin permissions"sv);
-		return false;
-	}
-
-	configFile << std::setw(4) << configJSON << std::endl;
-	return true;
 }

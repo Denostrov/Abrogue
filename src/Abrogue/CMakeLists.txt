@@ -71,5 +71,5 @@ if(WIN32)
 endif()
 
 if(MSVC)
-	target_link_options(${PROJECT_NAME} PRIVATE /STACK:8388608)
+	target_link_options(${PROJECT_NAME} PRIVATE /STACK:16777216)
 endif()

@@ -21,7 +21,7 @@ void GUI::init()
 	setCurrentScreen(mainMenu);
 }
 
-void GUI::startGame()
+void GUI::showPlayArea()
 {
 	mainMenu.setVisible(false);
 
@@ -29,7 +29,7 @@ void GUI::startGame()
 	setCurrentScreen(playArea);
 }
 
-void GUI::quitToMainMenu()
+void GUI::showMainMenu()
 {
 	//Restore default GUI state
 	playArea.setPaused(false);
@@ -45,7 +45,7 @@ void GUI::quitToMainMenu()
 	setCurrentScreen(mainMenu);
 }
 
-void GUI::triggerGameOver()
+void GUI::showGameOver()
 {
 	//Show background if not already visible and hide popups
 	if(currentScreen == &playArea)

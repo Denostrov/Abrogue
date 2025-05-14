@@ -18,3 +18,14 @@ private:
 
 	Color color;
 };
+
+export class EnemyHandler
+{
+public:
+	EnemyHandler() = default;
+
+private:
+	FixedVector<Enemy, 4096> enemies;
+};
+
+export inline EnemyHandler enemyHandler;

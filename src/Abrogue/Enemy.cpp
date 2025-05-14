@@ -14,7 +14,7 @@ Enemy::Enemy(EnemyData const& data)
 	setMass(data.mass);
 	setMaxVelocity(data.speed);
 
-	weapon.init(data.weaponType, data.damage, data.attackTime, false);
+	weapon.init(data.weaponType, data.weaponColor, data.damage, data.attackTime, false);
 }
 
 void Enemy::update()
