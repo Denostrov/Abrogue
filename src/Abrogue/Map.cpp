@@ -2,6 +2,7 @@ module Map;
 
 import Player;
 import Logger;
+import Random;
 
 void Map::init()
 {
@@ -451,6 +452,11 @@ void Map::updateDraw(double deltaTime)
 		}
 	};
 	calculateOctant8(1, 1.0, 0.0);
+}
+
+Map::Room const& Map::getRandomRoom() const
+{
+	return levelData.rooms[mapRandom.generate() % levelData.roomCount];
 }
 
 bool Map::getTileSolid(std::int64_t x, std::int64_t y) const

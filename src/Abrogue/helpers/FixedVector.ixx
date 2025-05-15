@@ -37,11 +37,25 @@ public:
 		return std::string_view(data.data(), currentSize);
 	}
 
+	constexpr void erase(const_iterator first)
+	{
+		std::size_t eraseIndex = first - data.begin();
+		data[eraseIndex] = T();
+
+		for(auto i = eraseIndex; i < currentSize - 1; i++)
+			data[i] = std::move(data[i + 1]);
+
+		currentSize--;
+	}
 	constexpr void erase(const_iterator first, const_iterator last)
 	{
 		std::size_t distance = last - first;
-		for(auto i = currentSize - distance; i < currentSize; i++)
+		std::size_t eraseBegin = first - data.begin();
+		for(auto i = eraseBegin; i < eraseBegin + distance; i++)
 			data[i] = T();
+
+		for(auto i = eraseBegin; i < currentSize - distance; i++)
+			data[i] = std::move(data[i + distance]);
 
 		currentSize -= distance;
 	}

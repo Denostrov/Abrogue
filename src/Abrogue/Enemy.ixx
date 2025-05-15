@@ -7,7 +7,7 @@ export class Enemy : public PhysicsComponent
 {
 public:
 	Enemy() = default;
-	Enemy(EnemyData const& data);
+	Enemy(EnemyData const& data, double positionX, double positionY);
 
 	void update();
 	void updateDraw(double deltaTime);
@@ -24,8 +24,16 @@ export class EnemyHandler
 public:
 	EnemyHandler() = default;
 
+	void update();
+	void updateDraw(double deltaTime);
+
+	void inflictDamage(double damageX, double damageY);
+
 private:
+	double currentTime{};
+
 	FixedVector<Enemy, 4096> enemies;
+	double lastEnemySpawnTime{};
 };
 
 export inline EnemyHandler enemyHandler;

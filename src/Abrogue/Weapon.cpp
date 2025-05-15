@@ -39,16 +39,7 @@ void Weapon::update(double positionX, double positionY)
 
 		if(isFriendly)
 		{
-			auto& enemies = game.getEnemies();
-			for(size_t i = 0; i < enemies.size(); i++)
-			{
-				auto [enemyX, enemyY] = enemies[i].getPosition();
-				if(weaponX > enemyX - 0.6 && weaponX < enemyX + 0.6 && weaponY > enemyY - 0.6 && weaponY < enemyY + 0.6)
-				{
-					enemies.erase(enemies.begin() + i);
-					i--;
-				}
-			}
+			enemyHandler.inflictDamage(weaponX, weaponY);
 		}
 		else
 		{

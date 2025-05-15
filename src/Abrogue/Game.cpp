@@ -79,16 +79,7 @@ void Game::advanceStep()
 
 		player.update();
 
-		if(currentTick / (double)Constants::ticksPerSecond > lastEnemySpawnTime + 3.0)
-		{
-			auto enemyDataOpt = configuration.getSuitableEnemy();
-			if(enemyDataOpt)
-				enemies.emplace_back(*enemyDataOpt);
-			lastEnemySpawnTime = currentTick / (double)Constants::ticksPerSecond;
-		}
-
-		for(auto& enemy : enemies)
-			enemy.update();
+		enemyHandler.update();
 	}
 }
 
@@ -141,13 +132,12 @@ void Game::quitToMainMenu()
 	state = eNotStarted;
 	map = Map();
 	player = Player();
-	enemies.clear();
+	enemyHandler = EnemyHandler();
 }
 
 void Game::resetTickTimer()
 {
 	currentTick = 0;
-	lastEnemySpawnTime = 0.0;
 }
 
 bool Game::updateDraw(double deltaTime)
@@ -158,8 +148,7 @@ bool Game::updateDraw(double deltaTime)
 
 		map.updateDraw(deltaTime);
 
-		for(auto& enemy : enemies)
-			enemy.updateDraw(deltaTime);
+		enemyHandler.updateDraw(deltaTime);
 	}
 
 	return renderEngine.drawFrame();
