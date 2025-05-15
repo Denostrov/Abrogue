@@ -1,7 +1,6 @@
 export module Game;
 
-export import Enemy;
-export import Map;
+export import std;
 
 export class Game
 {
@@ -27,9 +26,6 @@ public:
 	void setPlayerMovement(std::int64_t movementX, std::int64_t movementY);
 
 	auto getShouldExit() const { return state == eFinished; }
-	auto const& getRandomRoom() const { return map.getRandomRoom(); }
-	bool getTileSolid(std::int32_t x, std::int32_t y) const { return map.getTileSolid(x, y); }
-	double getTileBrightness(std::int32_t x, std::int32_t y) const { return map.getTileBrightness(x, y); }
 
 private:
 	void resetTickTimer();
@@ -44,8 +40,6 @@ private:
 	std::uint64_t lastFPSLogTime{};
 
 	State state{};
-
-	Map map;
 };
 
 export inline Game game;

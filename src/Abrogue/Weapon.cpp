@@ -2,6 +2,7 @@ module Weapon;
 
 import Game;
 import Player;
+import Enemy;
 
 void Weapon::init(WeaponType newType, Color newColor, std::int64_t newDamage, double newAttackTime, bool friendly)
 {

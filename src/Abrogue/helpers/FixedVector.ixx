@@ -92,6 +92,17 @@ public:
 		return currentSize == data.size();
 	}
 
+	template<class Self>
+	constexpr decltype(auto) front(this Self&& self)
+	{
+		return std::forward<Self>(self).data[0];
+	}
+	template<class Self>
+	constexpr decltype(auto) back(this Self&& self)
+	{
+		return std::forward<Self>(self).data[self.currentSize - 1];
+	}
+
 	template<class... Args>
 	constexpr void emplace_back(Args&&... args)
 	{

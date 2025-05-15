@@ -9,6 +9,8 @@ import RenderEngine;
 import GUI;
 import Player;
 import Random;
+import Enemy;
+import Map;
 
 bool Game::init()
 {
@@ -85,16 +87,16 @@ void Game::advanceStep()
 
 void Game::startGame()
 {
+	lastUpdateTime = SDL_GetTicksNS();
+	mapRandom.seed(lastUpdateTime);
+	visualRandom.seed(lastUpdateTime);
+
 	map.init();
 	player = Player(10.0);
 
 	state = eRunning;
 
 	gui.showPlayArea();
-
-	lastUpdateTime = SDL_GetTicksNS();
-	mapRandom.seed(lastUpdateTime);
-	visualRandom.seed(lastUpdateTime);
 
 	resetTickTimer();
 }

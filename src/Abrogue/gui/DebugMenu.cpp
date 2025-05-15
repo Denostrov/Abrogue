@@ -1,6 +1,7 @@
 module DebugMenu;
 
 import Game;
+import Weapon;
 
 using namespace std::literals;
 

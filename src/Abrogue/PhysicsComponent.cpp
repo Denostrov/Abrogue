@@ -1,6 +1,6 @@
 module PhysicsComponent;
 
-import Game;
+import Map;
 
 PhysicsComponent::PhysicsComponent(double x, double y, double leftScaleX, double rightScaleX, double topScaleY, double bottomScaleY)
 	:x(x), y(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)
@@ -129,7 +129,7 @@ void PhysicsComponent::update()
 					return;
 
 				//Record collision info if tile is solid
-				if(game.getTileSolid(startTile.first, startTile.second))
+				if(map.getTileSolid(startTile.first, startTile.second))
 				{
 					minCollision.type = Collision::eVertical;
 					minCollision.positionX = startTile.first + (directionX == -1) - offsetX * 1.001;
@@ -146,7 +146,7 @@ void PhysicsComponent::update()
 				if(distanceY >= minCollision.distance)
 					return;
 
-				if(game.getTileSolid(startTile.first, startTile.second))
+				if(map.getTileSolid(startTile.first, startTile.second))
 				{
 					minCollision.type = Collision::eHorizontal;
 					minCollision.positionX = startTile.first + 0.5;

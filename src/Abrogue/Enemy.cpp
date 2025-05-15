@@ -1,7 +1,7 @@
 module Enemy;
 
 import Player;
-import Game;
+import Map;
 import Random;
 
 Enemy::Enemy(EnemyData const& data, double positionX, double positionY)
@@ -23,21 +23,21 @@ void Enemy::update()
 	auto [playerX, playerY] = player.getPosition();
 	auto [x, y] = getPosition();
 
-	if(x < playerX - 1.5 || (x > playerX && x < playerX + 1.0))
-		setMovementX(1);
-	else if(x > playerX + 1.5 || (x < playerX && x > playerX - 1.0))
-		setMovementX(-1);
-	else
-		setMovementX(0);
+	double distanceX = playerX - x;
+	double distanceY = playerY - y;
+	double totalDistance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
+	if(totalDistance > 1.5)
+	{
+		setMovementX(x < playerX - 0.5 ? 1 : x > playerX + 0.5 ? -1 : 0);
+		setMovementY(y < playerY - 0.5 ? 1 : y > playerY + 0.5 ? -1 : 0);
+	}
+	else if (totalDistance < 1.0)
+	{
+		setMovementX(x < playerX ? -1 : x >= playerX ? 1 : 0);
+		setMovementY(y < playerY ? -1 : y >= playerY ? 1 : 0);
+	}
 
-	if(y < playerY - 1.0 || (y > playerY && y < playerY + 0.5))
-		setMovementY(1);
-	else if(y > playerY + 1.0 || (y < playerY && y > playerY - 0.5))
-		setMovementY(-1);
-	else
-		setMovementY(0);
-
-	if(std::abs(playerX - x) < 2.0 && std::abs(playerY - y) < 1.0 && !weapon.getIsAttacking())
+	if(totalDistance < 1.5 && !weapon.getIsAttacking())
 		weapon.startAttack(x, y, playerX, playerY);
 
 	PhysicsComponent::update();
@@ -52,7 +52,7 @@ void Enemy::updateDraw(double deltaTime)
 	auto [vx, vy] = getVelocity();
 	quadReference.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
 
-	auto brightness = game.getTileBrightness(x, y);
+	auto brightness = map.getTileBrightness(x, y);
 	if(brightness <= 0.0)
 	{
 		quadReference.setColor(0);
@@ -75,7 +75,7 @@ void EnemyHandler::update()
 	{
 		if(auto enemyDataOpt = configuration.getSuitableEnemy())
 		{
-			auto const& spawnRoom = game.getRandomRoom();
+			auto const& spawnRoom = map.getRandomRoom();
 			std::int64_t spawnX = spawnRoom.originX + mapRandom.generate() % spawnRoom.width;
 			std::int64_t spawnY = spawnRoom.originY + mapRandom.generate() % spawnRoom.height;
 

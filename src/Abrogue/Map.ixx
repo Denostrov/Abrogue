@@ -1,6 +1,8 @@
 export module Map;
 
 export import QuadPool;
+export import Item;
+export import FixedVector;
 
 export class Map
 {
@@ -47,6 +49,7 @@ public:
 	Map() = default;
 	void init();
 
+	void update();
 	void updateDraw(double deltaTime);
 
 	Room const& getRandomRoom() const;
@@ -78,4 +81,8 @@ private:
 	std::uint64_t lastVisibleTilesSize{};
 
 	std::array<double, Constants::mapTileCount> tileBrightnessMask{};
+
+	FixedVector<Item, 256> items;
 };
+
+export inline Map map;

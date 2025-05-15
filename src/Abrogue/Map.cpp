@@ -18,6 +18,12 @@ void Map::init()
 	}
 }
 
+void Map::update()
+{
+	for(auto& item : items)
+		item.update();
+}
+
 void Map::updateDraw(double deltaTime)
 {
 	auto updateTileProperties = [](Tile const& tile, double brightness)
@@ -452,6 +458,9 @@ void Map::updateDraw(double deltaTime)
 		}
 	};
 	calculateOctant8(1, 1.0, 0.0);
+
+	for(auto& item : items)
+		item.updateDraw(deltaTime);
 }
 
 Map::Room const& Map::getRandomRoom() const
@@ -684,4 +693,20 @@ void Map::generateLevel()
 			tryPlacingRoom(doorX, doorY, newRoomOriginX, newRoomOriginY, newRoomWidth, newRoomHeight, newDirection);
 		}
 	}
+
+	for(std::int64_t i = 0; i < 20; i++)
+	{
+		auto const& room = getRandomRoom();
+		std::int64_t spawnX = room.originX + mapRandom.generate() % room.width;
+		std::int64_t spawnY = room.originY + mapRandom.generate() % room.height;
+
+		std::int64_t itemTypeVal = mapRandom.generate() % 10;
+		Item::Type itemType = itemTypeVal == 0 ? Item::Type::eFood : Item::Type::eGold;
+		items.emplace_back(itemType, spawnX + 0.5, spawnY + 0.5);
+	}
+
+	auto const& room = getRandomRoom();
+	std::int64_t spawnX = room.originX + mapRandom.generate() % room.width;
+	std::int64_t spawnY = room.originY + mapRandom.generate() % room.height;
+	items.emplace_back(Item::Type::eAmulet, spawnX + 0.5, spawnY + 0.5);
 }
