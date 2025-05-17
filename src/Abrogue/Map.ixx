@@ -52,12 +52,15 @@ public:
 	void update();
 	void updateDraw(double deltaTime);
 
-	Room const& getRandomRoom() const;
+	[[nodiscard]] std::optional<Item> pickupItem(std::int64_t x, std::int64_t y, bool onlyGold);
 
-	bool getTileSolid(std::int64_t x, std::int64_t y) const;
-	bool getTileOpaque(std::int64_t x, std::int64_t y) const;
-	bool getTileFloor(std::int64_t x, std::int64_t y) const;
-	double getTileBrightness(std::int64_t x, std::int64_t y) const;
+	[[nodiscard]] std::int64_t getDepth() const { return 1; }
+	[[nodiscard]] Room const& getRandomRoom() const;
+
+	[[nodiscard]] bool getTileSolid(std::int64_t x, std::int64_t y) const;
+	[[nodiscard]] bool getTileOpaque(std::int64_t x, std::int64_t y) const;
+	[[nodiscard]] bool getTileFloor(std::int64_t x, std::int64_t y) const;
+	[[nodiscard]] double getTileBrightness(std::int64_t x, std::int64_t y) const;
 
 private:
 	decltype(auto) getTile(this auto& self, std::int64_t x, std::int64_t y) { return self.tiles[x + y * Constants::mapWidth]; }

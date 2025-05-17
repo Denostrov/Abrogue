@@ -3,6 +3,7 @@ export module Player;
 export import PhysicsComponent;
 export import QuadPool;
 export import Weapon;
+export import Item;
 
 export class Player : public PhysicsComponent
 {
@@ -22,6 +23,12 @@ public:
 
 	Weapon weapon;
 	std::int64_t health{};
+	std::int64_t gold{};
+
+	std::int64_t lastTileX{}, lastTileY{};
+
+	FixedVector<Item, 20> inventory;
+	bool hasAmulet{};
 
 	QuadPool::Reference quadReference;
 };

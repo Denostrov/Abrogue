@@ -1,6 +1,7 @@
 export module PlayArea;
 
 export import Screen;
+export import Item;
 
 export class PlayArea : public Screen
 {
@@ -11,9 +12,12 @@ public:
 		ePause,
 		eHealth,
 		eNutrition,
-		eSearch,
+		eGold,
 		eInventory,
+		eInventorySlotFirst = eInventory + 1,
+		eInventorySlotLast = eInventorySlotFirst + 19,
 		eDepth,
+		eSearch,
 		//Tab buttons
 		eDebug,
 		eDiscoveries,
@@ -23,6 +27,8 @@ public:
 
 	PlayArea() = default;
 	void init();
+
+	void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 
 	void setVisible(bool visible) final;
 

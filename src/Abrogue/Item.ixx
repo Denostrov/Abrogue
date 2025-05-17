@@ -2,6 +2,7 @@ export module Item;
 
 export import QuadPool;
 export import PhysicsComponent;
+export import FixedVector;
 
 export class Item: public PhysicsComponent
 {
@@ -19,6 +20,11 @@ public:
 
 	void update();
 	void updateDraw(double deltaTime);
+
+	Type getType() const { return type; }
+	FixedVector<char, 32> getName() const;
+
+	void setVisible(bool visible);
 
 private:
 	static constexpr std::array<std::uint32_t, (size_t)Type::COUNT> typeGlyphs{42, 59, 157};

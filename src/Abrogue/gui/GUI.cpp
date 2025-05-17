@@ -45,7 +45,7 @@ void GUI::showMainMenu()
 	setCurrentScreen(mainMenu);
 }
 
-void GUI::showGameOver()
+void GUI::showGameOver(bool winner)
 {
 	//Show background if not already visible and hide popups
 	if(currentScreen == &playArea)
@@ -53,6 +53,7 @@ void GUI::showGameOver()
 	else
 		currentScreen->setVisible(false);
 
+	gameOver.setWinner(winner);
 	gameOver.setVisible(true);
 	setCurrentScreen(gameOver);
 }
@@ -61,6 +62,11 @@ void GUI::updateDraw(double deltaTime)
 {
 	currentScreen->updateDraw(deltaTime);
 	popupBackground.updateDraw(deltaTime);
+}
+
+void GUI::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold)
+{
+	playArea.updateInventory(inventory, gold);
 }
 
 void GUI::onMouseMoved(std::int64_t x, std::int64_t y)

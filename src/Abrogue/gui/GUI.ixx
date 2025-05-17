@@ -16,9 +16,11 @@ public:
 
 	void showPlayArea();
 	void showMainMenu();
-	void showGameOver();
+	void showGameOver(bool winner);
 
 	void updateDraw(double deltaTime);
+
+	void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 
 	void onMouseMoved(std::int64_t x, std::int64_t y);
 	void onMousePressed(std::int64_t x, std::int64_t y);

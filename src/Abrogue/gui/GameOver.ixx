@@ -11,6 +11,8 @@ public:
 
 	void setVisible(bool visible) final;
 
+	void setWinner(bool winner);
+
 private:
 	Label gameOverLabel;
 	Label pressSpaceLabel;

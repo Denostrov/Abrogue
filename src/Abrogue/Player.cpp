@@ -1,6 +1,7 @@
 module Player;
 
 import GUI;
+import Map;
 
 Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4)
 {
@@ -27,6 +28,30 @@ void Player::update()
 
 	auto [positionX, positionY] = getPosition();
 	weapon.update(positionX, positionY);
+
+	if((std::int64_t)positionX != lastTileX || (std::int64_t)positionY != lastTileY)
+	{
+		lastTileX = (std::int64_t)positionX;
+		lastTileY = (std::int64_t)positionY;
+
+		if(auto itemOpt = map.pickupItem(lastTileX, lastTileY, inventory.isFull()))
+		{
+			if(itemOpt->getType() == Item::Type::eGold)
+				gold++;
+			else
+			{
+				if(itemOpt->getType() == Item::Type::eAmulet)
+					hasAmulet = true;
+
+				inventory.emplace_back(std::move(*itemOpt));
+			}
+
+			gui.updateInventory(inventory, gold);
+		}
+
+		if(hasAmulet && lastTileX == 40 && lastTileY == 33)
+			gui.showGameOver(true);
+	}
 }
 
 void Player::updateDraw(double deltaTime)
@@ -70,7 +95,7 @@ void Player::setHealth(std::int64_t newHealth)
 	gui.setPlayerHealth(health / 100.0);
 	if(health == 0)
 	{
-		gui.showGameOver();
+		gui.showGameOver(false);
 		setMovementX(0);
 		setMovementY(0);
 	}

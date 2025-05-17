@@ -2,6 +2,8 @@ module Item;
 
 import Map;
 
+using namespace std::literals;
+
 Item::Item(Type newType, double x, double y)
 	:PhysicsComponent(x, y, 0.48, 0.48, 0.48, 0.48)
 {
@@ -34,4 +36,26 @@ void Item::updateDraw(double deltaTime)
 		quad.setColor(itemColor.getPacked());
 		quad.setBackgroundColor(itemColor.getTransparentPacked());
 	}
+}
+
+FixedVector<char, 32> Item::getName() const
+{
+	FixedVector<char, 32> result;
+	if(type == Type::eFood)
+		result.append("Food"sv);
+	else if(type == Type::eAmulet)
+		result.append("Amulet of Yendor"sv);
+
+	return result;
+}
+
+void Item::setVisible(bool visible)
+{
+	if(visible)
+	{
+		auto [x, y] = getPosition();
+		quad = quadPool.insert(QuadData{{Constants::mapOffset + x, y}, {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)}, typeGlyphs[(size_t)type]}, QuadPool::eItem);
+	}
+	else
+		quad = QuadPool::Reference{};
 }

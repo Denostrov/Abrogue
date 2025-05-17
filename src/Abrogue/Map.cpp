@@ -463,6 +463,26 @@ void Map::updateDraw(double deltaTime)
 		item.updateDraw(deltaTime);
 }
 
+std::optional<Item> Map::pickupItem(std::int64_t x, std::int64_t y, bool onlyGold)
+{
+	for(std::size_t i = 0; i < items.size(); i++)
+	{
+		auto [itemX, itemY] = items[i].getPosition();
+		if((std::int64_t)itemX != x || (std::int64_t)itemY != y)
+			continue;
+
+		if(items[i].getType() != Item::Type::eGold && onlyGold)
+			continue;
+
+		items[i].setVisible(false);
+		std::optional<Item> result(std::move(items[i]));
+		items.erase(items.begin() + i);
+		return result;
+	}
+
+	return std::optional<Item>();
+}
+
 Map::Room const& Map::getRandomRoom() const
 {
 	return levelData.rooms[mapRandom.generate() % levelData.roomCount];
@@ -473,7 +493,7 @@ bool Map::getTileSolid(std::int64_t x, std::int64_t y) const
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile solid out of bounds");
 
 	auto type = getTile(x, y).type;
-	return type == TileType::eBedrock || type == TileType::eWall;
+	return type == TileType::eBedrock || type == TileType::eWall || type == TileType::eExit;
 }
 
 bool Map::getTileOpaque(std::int64_t x, std::int64_t y) const
