@@ -11,6 +11,7 @@ export class DebugMenu : public Screen
 		eStopTime,
 		eStepTime,
 		eShowDamage,
+		eShowViewcone,
 		COUNT
 	};
 

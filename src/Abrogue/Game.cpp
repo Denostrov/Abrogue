@@ -91,8 +91,8 @@ void Game::startGame()
 	mapRandom.seed(lastUpdateTime);
 	visualRandom.seed(lastUpdateTime);
 
-	map.init();
 	player = Player(10.0);
+	map.init();
 
 	state = eRunning;
 

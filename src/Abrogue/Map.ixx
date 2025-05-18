@@ -3,6 +3,7 @@ export module Map;
 export import QuadPool;
 export import Item;
 export import FixedVector;
+export import DebugLine;
 
 export enum class Direction
 {
@@ -80,10 +81,13 @@ public:
 	[[nodiscard]] bool getTileFloor(std::int64_t x, std::int64_t y) const;
 	[[nodiscard]] double getTileBrightness(std::int64_t x, std::int64_t y) const;
 
+	static void setDrawDebugViewcone(bool draw) { drawDebugViewcone = draw; }
+
 private:
 	decltype(auto) getTile(this auto& self, std::int64_t x, std::int64_t y) { return self.tiles[x + y * Constants::mapWidth]; }
 
 	void generateLevel();
+	void updateVisibility(double deltaTime);
 
 	static constexpr std::array<TileInfo, (size_t)TileType::COUNT> tilesInfo{
 		TileInfo{Color::pack(96, 96, 96, 255), Color::pack(8, 8, 8, 255), 250},
@@ -94,6 +98,9 @@ private:
 		TileInfo{Color::pack(255, 128, 0, 255), Color::pack(192, 64, 0, 255), 43},
 		TileInfo{Color::pack(255, 255, 255, 255), Color::pack(16, 16, 192, 255), 234}
 	};
+
+	inline static bool drawDebugViewcone{};
+	FixedVector<DebugLine, 256> debugLines;
 
 	std::array<Tile, Constants::mapTileCount> tiles;
 	LevelData levelData;

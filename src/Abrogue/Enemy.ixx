@@ -38,6 +38,7 @@ public:
 	void updateDraw(double deltaTime);
 
 	void inflictDamage(double damageX, double damageY);
+	void populateLevel();
 
 private:
 	double currentTime{};

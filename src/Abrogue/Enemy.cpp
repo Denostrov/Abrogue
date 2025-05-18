@@ -29,21 +29,27 @@ void Enemy::update(double playerX, double playerY, std::int64_t stealthRange)
 	if(state == State::eHunting)
 	{
 		if(totalDistance > stealthRange || map.getTileBrightness(x, y) <= 0.0)
+		{
 			state = State::eWandering;
-
-		if(totalDistance > 1.5)
-		{
-			setMovementX(x < playerX - 0.5 ? 1 : x > playerX + 0.5 ? -1 : 0);
-			setMovementY(y < playerY - 0.5 ? 1 : y > playerY + 0.5 ? -1 : 0);
+			setMovementX(0);
+			setMovementY(0);
 		}
-		else if(totalDistance < 1.0)
+		else
 		{
-			setMovementX(x < playerX ? -1 : x >= playerX ? 1 : 0);
-			setMovementY(y < playerY ? -1 : y >= playerY ? 1 : 0);
-		}
+			if(totalDistance > 1.5)
+			{
+				setMovementX(x < playerX - 0.5 ? 1 : x > playerX + 0.5 ? -1 : 0);
+				setMovementY(y < playerY - 0.5 ? 1 : y > playerY + 0.5 ? -1 : 0);
+			}
+			else if(totalDistance < 1.0)
+			{
+				setMovementX(x < playerX ? -1 : x >= playerX ? 1 : 0);
+				setMovementY(y < playerY ? -1 : y >= playerY ? 1 : 0);
+			}
 
-		if(totalDistance < 1.5 && !weapon.getIsAttacking())
-			weapon.startAttack(x, y, playerX, playerY);
+			if(totalDistance < 1.5 && !weapon.getIsAttacking())
+				weapon.startAttack(x, y, playerX, playerY);
+		}
 	}
 	else
 	{
@@ -91,7 +97,7 @@ void EnemyHandler::update()
 {
 	currentTime += Constants::tickDuration;
 
-	if(currentTime - lastEnemySpawnTime > 10.0)
+	if(currentTime - lastEnemySpawnTime > 60.0)
 	{
 		if(auto enemyDataOpt = configuration.getSuitableEnemy())
 		{
@@ -126,6 +132,27 @@ void EnemyHandler::inflictDamage(double damageX, double damageY)
 		{
 			enemies.erase(enemies.begin() + i);
 			i--;
+		}
+	}
+}
+
+void EnemyHandler::populateLevel()
+{
+	for(std::int64_t i = 0; i < 20; i++)
+	{
+		if(auto enemyDataOpt = configuration.getSuitableEnemy())
+		{
+			auto const& spawnRoom = map.getRandomRoom();
+			std::int64_t spawnX = spawnRoom.originX + mapRandom.generate() % spawnRoom.width;
+			std::int64_t spawnY = spawnRoom.originY + mapRandom.generate() % spawnRoom.height;
+
+			if(map.getTileBrightness(spawnX, spawnY) > 0.0)
+			{
+				i--;
+				continue;
+			}
+
+			enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5);
 		}
 	}
 }
