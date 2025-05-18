@@ -64,11 +64,6 @@ void GUI::updateDraw(double deltaTime)
 	popupBackground.updateDraw(deltaTime);
 }
 
-void GUI::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold)
-{
-	playArea.updateInventory(inventory, gold);
-}
-
 void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 {
 	currentScreen->updateMouseMoved(x, y);
@@ -83,16 +78,7 @@ void GUI::onMousePressed(std::int64_t x, std::int64_t y)
 	currentScreen->updateMousePressed(x, y);
 }
 
-void GUI::togglePause()
-{
-	if(currentScreen != &playArea)
-		return;
-
-	previouslyPaused = !playArea.getPaused();
-	playArea.setPaused(previouslyPaused);
-}
-
-void GUI::toggleMenu()
+void GUI::onMenuHotkeyPressed()
 {
 	if(currentScreen == &mainMenu)
 		return;
@@ -127,7 +113,7 @@ void GUI::toggleMenu()
 	playArea.setTabButtonPressed(PlayArea::ButtonType::eMenu);
 }
 
-void GUI::toggleDebugOptions()
+void GUI::onDebugHotkeyPressed()
 {
 	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
 		return;
@@ -166,7 +152,7 @@ void GUI::toggleDebugOptions()
 
 }
 
-void GUI::toggleDiscoveries()
+void GUI::onDiscoveriesHotkeyPressed()
 {
 	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
 		return;
@@ -203,7 +189,16 @@ void GUI::toggleDiscoveries()
 	playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
 }
 
-void GUI::toggleStopTime()
+void GUI::onPauseHotkeyPressed()
+{
+	if(currentScreen != &playArea)
+		return;
+
+	previouslyPaused = !playArea.getPaused();
+	playArea.setPaused(previouslyPaused);
+}
+
+void GUI::onStopTimeHotkeyPressed()
 {
 	if(currentScreen == &mainMenu || currentScreen == &gameOver)
 		return;
@@ -211,7 +206,7 @@ void GUI::toggleStopTime()
 	debugMenu.toggleStopTime();
 }
 
-void GUI::toggleStepTime()
+void GUI::onStepTimeHotkeyPressed()
 {
 	if(currentScreen == &mainMenu || currentScreen == &gameOver)
 		return;
@@ -239,4 +234,9 @@ void GUI::setFPS(std::int64_t fps)
 void GUI::setPlayerHealth(double percentage)
 {
 	playArea.setPlayerHealth(percentage);
+}
+
+void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold)
+{
+	playArea.updateInventory(inventory, gold);
 }

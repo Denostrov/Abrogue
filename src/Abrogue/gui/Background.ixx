@@ -12,8 +12,8 @@ public:
 	void setVisible(bool visible);
 
 private:
-	static constexpr double fadeTime{2.0};
-	double animationTime{};
+	static constexpr double fadeTime{2.0};	//Time until end of animation
+	double animationTime{};					//Current animation time
 
-	QuadPool::Reference quad;
+	QuadPool::Reference quad;	//Semi transparent rectangle that covers the whole screen
 };

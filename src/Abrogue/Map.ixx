@@ -4,6 +4,19 @@ export import QuadPool;
 export import Item;
 export import FixedVector;
 
+export enum class Direction
+{
+	eNone = 0,
+	eUp = 1,
+	eTopRight = 2,
+	eRight = 4,
+	eDownRight = 8,
+	eDown = 16,
+	eDownLeft = 32,
+	eLeft = 64,
+	eTopLeft = 128
+};
+
 export class Map
 {
 	enum class TileType
@@ -43,6 +56,11 @@ export class Map
 		std::uint64_t roomCount{};
 
 		std::array<bool, Constants::mapTileCount> tilesOccupiedMask{};
+	};
+
+	struct DistanceFieldTile
+	{
+		std::int64_t kingDistance{};
 	};
 
 public:

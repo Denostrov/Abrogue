@@ -46,7 +46,7 @@ void Player::update()
 				inventory.emplace_back(std::move(*itemOpt));
 			}
 
-			gui.updateInventory(inventory, gold);
+			gui.setInventory(inventory, gold);
 		}
 
 		if(hasAmulet && lastTileX == 40 && lastTileY == 33)

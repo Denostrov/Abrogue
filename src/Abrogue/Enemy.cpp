@@ -5,7 +5,7 @@ import Map;
 import Random;
 
 Enemy::Enemy(EnemyData const& data, double positionX, double positionY)
-	:PhysicsComponent(positionX, positionY, 0.48, 0.48, 0.48, 0.48), color(data.color)
+	:PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color)
 {
 	auto [x, y] = getPosition();
 	quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
@@ -18,27 +18,47 @@ Enemy::Enemy(EnemyData const& data, double positionX, double positionY)
 	weapon.init(data.weaponType, data.weaponColor, data.damage, data.attackTime, false);
 }
 
-void Enemy::update()
+void Enemy::update(double playerX, double playerY, std::int64_t stealthRange)
 {
-	auto [playerX, playerY] = player.getPosition();
 	auto [x, y] = getPosition();
 
 	double distanceX = playerX - x;
 	double distanceY = playerY - y;
 	double totalDistance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
-	if(totalDistance > 1.5)
-	{
-		setMovementX(x < playerX - 0.5 ? 1 : x > playerX + 0.5 ? -1 : 0);
-		setMovementY(y < playerY - 0.5 ? 1 : y > playerY + 0.5 ? -1 : 0);
-	}
-	else if (totalDistance < 1.0)
-	{
-		setMovementX(x < playerX ? -1 : x >= playerX ? 1 : 0);
-		setMovementY(y < playerY ? -1 : y >= playerY ? 1 : 0);
-	}
 
-	if(totalDistance < 1.5 && !weapon.getIsAttacking())
-		weapon.startAttack(x, y, playerX, playerY);
+	if(state == State::eHunting)
+	{
+		if(totalDistance > stealthRange || map.getTileBrightness(x, y) <= 0.0)
+			state = State::eWandering;
+
+		if(totalDistance > 1.5)
+		{
+			setMovementX(x < playerX - 0.5 ? 1 : x > playerX + 0.5 ? -1 : 0);
+			setMovementY(y < playerY - 0.5 ? 1 : y > playerY + 0.5 ? -1 : 0);
+		}
+		else if(totalDistance < 1.0)
+		{
+			setMovementX(x < playerX ? -1 : x >= playerX ? 1 : 0);
+			setMovementY(y < playerY ? -1 : y >= playerY ? 1 : 0);
+		}
+
+		if(totalDistance < 1.5 && !weapon.getIsAttacking())
+			weapon.startAttack(x, y, playerX, playerY);
+	}
+	else
+	{
+		if(totalDistance < stealthRange && map.getTileBrightness(x, y) > 0.0)
+		{
+			std::int64_t timerWhole = stealthTimer;
+			stealthTimer += Constants::tickDuration;
+			if((std::int64_t)stealthTimer > timerWhole)
+			{
+				std::uint64_t detectRoll = mapRandom.generate() % 2;
+				if(detectRoll)
+					state = State::eHunting;
+			}
+		}
+	}
 
 	PhysicsComponent::update();
 
@@ -85,8 +105,10 @@ void EnemyHandler::update()
 		lastEnemySpawnTime = currentTime;
 	}
 
+	auto [playerX, playerY] = player.getPosition();
+	auto stealthRange = player.getStealthRange();
 	for(auto& enemy : enemies)
-		enemy.update();
+		enemy.update(playerX, playerY, stealthRange);
 }
 
 void EnemyHandler::updateDraw(double deltaTime)

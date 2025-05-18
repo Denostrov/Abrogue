@@ -20,28 +20,27 @@ public:
 
 	void updateDraw(double deltaTime);
 
-	void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
-
 	void onMouseMoved(std::int64_t x, std::int64_t y);
 	void onMousePressed(std::int64_t x, std::int64_t y);
 
+	void onMenuHotkeyPressed();
+	void onDebugHotkeyPressed();
+	void onDiscoveriesHotkeyPressed();
+	void onPauseHotkeyPressed();
+	void onStopTimeHotkeyPressed();
+	void onStepTimeHotkeyPressed();
+
 	void setFPS(std::int64_t fps);
 	void setPlayerHealth(double percentage);
-
-	void toggleMenu();
-	void toggleDebugOptions();
-	void toggleDiscoveries();
-
-	void togglePause();
-	void toggleStopTime();
-	void toggleStepTime();
+	void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 
 private:
 	void setCurrentScreen(Screen& newScreen);
 
-	Screen* currentScreen{};
-	bool previouslyPaused{};
+	Screen* currentScreen{};	//Screen that's currently active and receiving input
+	bool previouslyPaused{};	//Pause state before the popup screen was shown
 
+	//Available screens
 	MainMenu mainMenu;
 	PlayArea playArea;
 	Menu menu;

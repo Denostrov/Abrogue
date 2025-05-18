@@ -36,15 +36,15 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 	if(pressed)
 	{
 		if(scancode == SDL_SCANCODE_SPACE)
-			gui.togglePause();
+			gui.onPauseHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_ESCAPE)
-			gui.toggleMenu();
+			gui.onMenuHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_F3)
-			gui.toggleDebugOptions();
+			gui.onDebugHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_KP_7)
-			gui.toggleStopTime();
+			gui.onStopTimeHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_KP_8)
-			gui.toggleStepTime();
+			gui.onStepTimeHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_W || scancode == SDL_SCANCODE_A || scancode == SDL_SCANCODE_S || scancode == SDL_SCANCODE_D)
 			game.setPlayerMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
 	}
@@ -57,5 +57,6 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 
 void InputHandler::onShiftButtonPressed(SDL_Scancode scancode)
 {
-	if(scancode == SDL_SCANCODE_D) gui.toggleDiscoveries();
+	if(scancode == SDL_SCANCODE_D) 
+		gui.onDiscoveriesHotkeyPressed();
 }

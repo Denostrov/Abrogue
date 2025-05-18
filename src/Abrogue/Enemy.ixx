@@ -5,18 +5,28 @@ export import Weapon;
 
 export class Enemy : public PhysicsComponent
 {
+	enum class State
+	{
+		eSleeping,
+		eWandering,
+		eHunting
+	};
+
 public:
 	Enemy() = default;
 	Enemy(EnemyData const& data, double positionX, double positionY);
 
-	void update();
+	void update(double playerX, double playerY, std::int64_t stealthRange);
 	void updateDraw(double deltaTime);
 
 	QuadPool::Reference quadReference;
 private:
+	State state;
 	Weapon weapon;
 
 	Color color;
+
+	double stealthTimer{};
 };
 
 export class EnemyHandler
