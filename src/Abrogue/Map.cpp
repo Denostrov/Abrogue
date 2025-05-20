@@ -770,19 +770,12 @@ void Map::updateVisibilityDebug(double deltaTime)
 		updateTileProperties(tiles[lastVisibleTiles[i]], 0.25);
 		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
 	}
+	lastVisibleTilesSize = 0;
 
 	auto [playerX, playerY] = player.getPosition();
 	auto [playerVx, playerVy] = player.getVelocity();
 	playerX += playerVx * deltaTime;
 	playerY += playerVy * deltaTime;
-
-	std::int64_t playerCellX = playerX;
-	std::int64_t playerCellY = playerY;
-	std::uint64_t playerCell = playerCellX + playerCellY * Constants::mapWidth;
-	updateTileProperties(tiles[playerCell], 1.0);
-	lastVisibleTiles[0] = playerCell;
-	lastVisibleTilesSize = 1;
-	tileBrightnessMask[playerCell] = 1.0;
 
 	double visionRange = 40.0;
 	std::int64_t lookupRange = std::ceil(visionRange);
@@ -802,420 +795,607 @@ void Map::updateVisibilityDebug(double deltaTime)
 		tileBrightnessMask[x + y * Constants::mapWidth] = lightStrength;
 	};
 
-	//Octants are numbered clockwise from top left corner
-	//Octant 1
-	auto calculateOctant1 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	double startSlope{};
+	std::int64_t startCellX{(std::int64_t)playerX}, startCellY{(std::int64_t)playerY};
+	while(true)
 	{
-		for(auto i = startOffset; i <= lookupRange; i++)
+		double distanceX = startCellX + 0.5 - playerX;
+		double distanceY = startCellY + 0.5 - playerY;
+		updateVisibleTile(startCellX, startCellY, distanceX, distanceY);
+
+		if(getTileOpaque(startCellX, startCellY))
 		{
-			std::int64_t startCellX = std::max((std::int64_t)(playerX - i * startSlope), 0ll);
-			std::int64_t endCellX = std::max((std::int64_t)(playerX - i * endSlope), 0ll);
+			startCellY--;
+			startSlope = (startCellY + 1 - playerY) / (startCellX + 1 - playerX);
+			debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, startCellY + 1);
+			break;
+		}
+		startCellX--;
+	}
 
-			std::int64_t cellY = playerY - i;
-			if(cellY < 0)
+	double endSlope{};
+	std::int64_t endCellX{(std::int64_t)playerX}, endCellY{(std::int64_t)playerY};
+	while(true)
+	{
+		double distanceX = endCellX + 0.5 - playerX;
+		double distanceY = endCellY + 0.5 - playerY;
+		updateVisibleTile(endCellX, endCellY, distanceX, distanceY);
+
+		if(getTileOpaque(endCellX, endCellY))
+		{
+			endCellY--;
+			endSlope = (endCellY + 1 - playerY) / (endCellX - playerX);
+			debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endCellX, endCellY + 1);
+			break;
+		}
+		endCellX++;
+	}
+
+	std::int64_t currentStartCellX{};
+	if(getTileOpaque(startCellX, startCellY))
+	{
+		do
+		{
+			double distanceX = startCellX + 0.5 - playerX;
+			double distanceY = startCellY + 0.5 - playerY;
+			updateVisibleTile(startCellX, startCellY, distanceX, distanceY);
+
+			if(startCellX == endCellX)
 				break;
+			startCellX++;
 
-			double distanceY = cellY - playerY;
-			for(auto j = startCellX; j <= endCellX; j++)
+		} while(getTileOpaque(startCellX, startCellY));
+
+		updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
+		currentStartCellX = startCellX + 1;
+
+		startCellY--;
+	}
+	else
+	{
+		currentStartCellX = startCellX + 1;
+		updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
+
+		auto startCoefficientX = std::sqrt(1.0 + startSlope * startSlope);
+		auto startCoefficientY = std::sqrt(1.0 + 1.0 / (startSlope * startSlope));
+		std::int64_t startStepsX{}, startStepsY{};
+		while(true)
+		{
+			double distanceX{startCoefficientX * (1 + startStepsX)}, distanceY{startCoefficientY * 1};
+			if(distanceX <= distanceY)
 			{
-				if(getTileOpaque(j, cellY))
+				startStepsX++;
+
+				startCellX--;
+				updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
+				if(getTileOpaque(startCellX, startCellY))
 				{
-					double newEndSlope = (j - playerX) / (cellY + 1.0 - playerY);
-					if(startSlope > newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
-
-					do
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						if(j == endCellX)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * endSlope, playerY - i);
-							return;
-						}
-
-						j++;
-					} while(j <= endCellX && getTileOpaque(j, cellY));
-
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
-					startSlope = (j - playerX) / (cellY - playerY);
-					if(startSlope <= endSlope)
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						return;
-					}
+					startCellY--;
+					endSlope = (startCellY + 1 - playerY) / (startCellX - playerX);
+					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, startCellY + 1);
+					break;
 				}
-
-				double distanceX = j - playerX;
-				updateVisibleTile(j, cellY, distanceX, distanceY);
+			}
+			else
+			{
+				startCellY--;
+				break;
 			}
 		}
-	};
-	calculateOctant1(1, 1.0, 0.0);
+	}
 
-	//Octant 2
-	auto calculateOctant2 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	std::int64_t currentCellY{startCellY + 1};
+	for(auto i = currentStartCellX; i <= endCellX; i++)
 	{
-		for(auto i = startOffset; i <= lookupRange; i++)
+		if(getTileOpaque(i, currentCellY))
 		{
-			std::int64_t startCellX = std::min((std::int64_t)(playerX - i * startSlope), Constants::mapWidth - 1);
-			std::int64_t endCellX = std::min((std::int64_t)(playerX - i * endSlope), Constants::mapWidth - 1);
-
-			std::int64_t cellY = playerY - i;
-			if(cellY < 0)
-				break;
-
-			double distanceY = cellY - playerY;
-			for(auto j = startCellX; j >= endCellX; j--)
+			do
 			{
-				if(getTileOpaque(j, cellY))
-				{
-					double newEndSlope = (j + 1 - playerX) / (cellY + 1 - playerY);
-					if(startSlope < newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
+				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
 
-					do
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						if(j == endCellX)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * endSlope, playerY - i);
-							return;
-						}
+				if(i == endCellX)
+					break;
+				i++;
 
-						j--;
-					} while(j >= endCellX && getTileOpaque(j, cellY));
+			} while(getTileOpaque(i, currentCellY));
 
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
-					startSlope = (j + 1 - playerX) / (cellY - playerY);
-					if(startSlope >= endSlope)
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						return;
-					}
-				}
-
-				double distanceX = j - playerX;
-				updateVisibleTile(j, cellY, distanceX, distanceY);
-			}
+			updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
 		}
-	};
-	calculateOctant2(1, -1.0, 0.0);
-
-	//Octant 3
-	auto calculateOctant3 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
-	{
-		for(auto i = startOffset; i <= lookupRange * 2; i++)
+		else
 		{
-			std::int64_t cellX = playerX + i;
-			if(cellX >= Constants::mapWidth)
-				break;
-
-			std::int64_t startCellY = std::max((std::int64_t)(playerY + i * startSlope), 0ll);
-			std::int64_t endCellY = std::max((std::int64_t)(playerY + i * endSlope), 0ll);
-
-			double distanceX = cellX - playerX;
-			for(auto j = startCellY; j <= endCellY; j++)
-			{
-				if(getTileOpaque(cellX, j))
-				{
-					double newEndSlope = (j - playerY) / (cellX - playerX);
-					if(startSlope < newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
-
-					do
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						if(j == endCellY)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * endSlope);
-							return;
-						}
-
-						j++;
-					} while(j <= endCellY && getTileOpaque(cellX, j));
-
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
-					startSlope = (j - playerY) / (cellX + 1 - playerX);
-					if(startSlope >= endSlope)
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						return;
-					}
-				}
-
-				double distanceY = j - playerY;
-				updateVisibleTile(cellX, j, distanceX, distanceY);
-			}
+			updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
 		}
-	};
-	calculateOctant3(1, -1.0, 0.0);
+	}
 
-	//Octant 4
-	auto calculateOctant4 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
-	{
-		for(auto i = startOffset; i <= lookupRange * 2; i++)
-		{
-			std::int64_t cellX = playerX + i;
-			if(cellX >= Constants::mapWidth)
-				break;
+	//auto calculateTopHalf = [](double startX, double startY)
+	//{
+	//	double startSlopePosX{}, startSlopePosY{};
+	//	double startSlope{-0.01};
 
-			std::int64_t startCellY = std::min((std::int64_t)(playerY + i * startSlope), Constants::mapHeight - 1);
-			std::int64_t endCellY = std::min((std::int64_t)(playerY + i * endSlope), Constants::mapHeight - 1);
+	//	auto startCoefficientX = std::sqrt(1.0 + startSlope * startSlope);
+	//	auto startCoefficientY = std::sqrt(1.0 + 1.0 / (startSlope * startSlope));
 
-			double distanceX = cellX - playerX;
-			for(auto j = startCellY; j >= endCellY; j--)
-			{
-				if(getTileOpaque(cellX, j))
-				{
-					double newEndSlope = (j + 1.0 - playerY) / (cellX - playerX);
-					if(startSlope > newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
+	//	std::int64_t currentStartTileX{startX}, currentStartTileY{startY};
 
-					do
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						if(j == endCellY)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * endSlope);
-							return;
-						}
+	//	double startInitialX{std::abs(startX - currentStartTileX) * startCoefficientX};
+	//	double startInitialY{std::abs(startY - currentStartTileY) * startCoefficientY};
 
-						j--;
-					} while(j >= endCellY && getTileOpaque(cellX, j));
+	//	std::int64_t startCellX{}, startCellY{};
+	//	std::int64_t startStepsX{}, startStepsY{};
+	//	while(true)
+	//	{
+	//		double distanceX{startInitialX + startCoefficientX * startStepsX}, distanceY{startInitialY + startCoefficientY * startStepsY};
+	//		if(distanceX <= distanceY)
+	//		{
+	//			startStepsX++;
+	//			currentStartTileX--;
+	//			if(getTileOpaque(currentStartTileX, currentStartTileY))
+	//			{
+	//				startCellX = currentStartTileX;
+	//				startCellY = currentStartTileY;
+	//				break;
+	//			}
+	//		}
+	//		else
+	//		{
+	//			startCellX = currentStartTileX;
+	//			startCellY = currentStartTileY;
+	//			break;
+	//		}
+	//	}
 
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
-					startSlope = (j + 1.0 - playerY) / (cellX + 1.0 - playerX);
-					if(startSlope <= endSlope)
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						return;
-					}
-				}
+	//	double endSlopePosX{}, endSlopePosY{};
+	//	double endSlope{0.01};
 
-				double distanceY = j - playerY;
-				updateVisibleTile(cellX, j, distanceX, distanceY);
-			}
-		}
-	};
-	calculateOctant4(1, 1.0, 0.0);
+	//	auto endCoefficientX = std::sqrt(1.0 + endSlope * endSlope);
+	//	auto endCoefficientY = std::sqrt(1.0 + 1.0 / (endSlope * endSlope));
 
-	//Octant 5
-	auto calculateOctant5 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
-	{
-		for(auto i = startOffset; i <= lookupRange; i++)
-		{
-			std::int64_t startCellX = std::min((std::int64_t)(playerX + i * startSlope), Constants::mapWidth - 1);
-			std::int64_t endCellX = std::min((std::int64_t)(playerX + i * endSlope), Constants::mapWidth - 1);
+	//	std::int64_t currentEndTileX{startX}, currentEndTileY{startY};
 
-			std::int64_t cellY = playerY + i;
-			if(cellY >= Constants::mapHeight)
-				break;
+	//	double endInitialX{std::abs(1.0 - (startX - currentEndTileX)) * endCoefficientX};
+	//	double endInitialY{std::abs(startY - currentStartTileY) * endCoefficientY};
 
-			double distanceY = cellY - playerY;
-			for(auto j = startCellX; j >= endCellX; j--)
-			{
-				if(getTileOpaque(j, cellY))
-				{
-					double newEndSlope = (j + 1 - playerX) / (cellY - playerY);
-					if(startSlope > newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
+	//	std::int64_t endCellX{}, endCellY{};
+	//	std::int64_t endStepsX{}, endStepsY{};
+	//	while(true)
+	//	{
+	//		double distanceX{endInitialX + endCoefficientX * endStepsX}, distanceY{endInitialY + endCoefficientY * endStepsY};
+	//		if(distanceX <= distanceY)
+	//		{
+	//			endStepsX++;
+	//			currentEndTileX++;
+	//			if(getTileOpaque(currentEndTileX, currentEndTileY))
+	//			{
+	//				endCellX = currentEndTileX;
+	//				endCellY = currentEndTileY;
+	//				break;
+	//			}
+	//		}
+	//		else
+	//		{
+	//			endCellX = currentEndTileX;
+	//			endCellY = currentEndTileY;
+	//			break;
+	//		}
+	//	}
+	//};
 
-					do
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						if(j == endCellX)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * endSlope, playerY + i);
-							return;
-						}
+	////Octants are numbered clockwise from top left corner
+	////Octant 1
+	//auto calculateOctant1 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
 
-						j--;
-					} while(j >= endCellX && getTileOpaque(j, cellY));
 
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
-					startSlope = (j + 1 - playerX) / (cellY + 1 - playerY);
-					if(startSlope <= endSlope)
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						return;
-					}
-				}
+	//	for(auto i = startOffset; i <= lookupRange; i++)
+	//	{
+	//		std::int64_t startCellX = std::max((std::int64_t)(playerX - i * startSlope), 0ll);
+	//		std::int64_t endCellX = std::max((std::int64_t)(playerX - i * endSlope), 0ll);
 
-				double distanceX = j - playerX;
-				updateVisibleTile(j, cellY, distanceX, distanceY);
-			}
-		}
-	};
-	calculateOctant5(1, 1.0, 0.0);
+	//		std::int64_t cellY = playerY - i;
+	//		if(cellY < 0)
+	//			break;
 
-	//Octant 6
-	auto calculateOctant6 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
-	{
-		for(auto i = startOffset; i <= lookupRange; i++)
-		{
-			std::int64_t startCellX = std::max((std::int64_t)(playerX + i * startSlope), 0ll);
-			std::int64_t endCellX = std::max((std::int64_t)(playerX + i * endSlope), 0ll);
+	//		double distanceY = cellY - playerY;
+	//		for(auto j = startCellX; j <= endCellX; j++)
+	//		{
+	//			if(getTileOpaque(j, cellY))
+	//			{
+	//				double newEndSlope = (j - playerX) / (cellY + 1.0 - playerY);
+	//				if(startSlope > newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
 
-			std::int64_t cellY = playerY + i;
-			if(cellY >= Constants::mapHeight)
-				break;
+	//				do
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					if(j == endCellX)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * endSlope, playerY - i);
+	//						return;
+	//					}
 
-			double distanceY = cellY - playerY;
-			for(auto j = startCellX; j <= endCellX; j++)
-			{
-				if(getTileOpaque(j, cellY))
-				{
-					double newEndSlope = (j - playerX) / (cellY - playerY);
-					if(startSlope < newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
+	//					j++;
+	//				} while(j <= endCellX && getTileOpaque(j, cellY));
 
-					do
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						if(j == endCellX)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * endSlope, playerY + i);
-							return;
-						}
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
+	//				startSlope = (j - playerX) / (cellY - playerY);
+	//				if(startSlope <= endSlope)
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
 
-						j++;
-					} while(j <= endCellX && getTileOpaque(j, cellY));
+	//			double distanceX = j - playerX;
+	//			updateVisibleTile(j, cellY, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant1(1, 1.0, 0.0);
 
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
-					startSlope = (j - playerX) / (cellY + 1.0 - playerY);
-					if(startSlope >= endSlope)
-					{
-						double distanceX = j - playerX;
-						updateVisibleTile(j, cellY, distanceX, distanceY);
-						return;
-					}
-				}
+	////Octant 2
+	//auto calculateOctant2 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
+	//	for(auto i = startOffset; i <= lookupRange; i++)
+	//	{
+	//		std::int64_t startCellX = std::min((std::int64_t)(playerX - i * startSlope), Constants::mapWidth - 1);
+	//		std::int64_t endCellX = std::min((std::int64_t)(playerX - i * endSlope), Constants::mapWidth - 1);
 
-				double distanceX = j - playerX;
-				updateVisibleTile(j, cellY, distanceX, distanceY);
-			}
-		}
-	};
-	calculateOctant6(1, -1.0, 0.0);
+	//		std::int64_t cellY = playerY - i;
+	//		if(cellY < 0)
+	//			break;
 
-	//Octant 7
-	auto calculateOctant7 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
-	{
-		for(auto i = startOffset; i <= lookupRange * 2; i++)
-		{
-			std::int64_t cellX = playerX - i;
-			if(cellX < 0)
-				break;
+	//		double distanceY = cellY - playerY;
+	//		for(auto j = startCellX; j >= endCellX; j--)
+	//		{
+	//			if(getTileOpaque(j, cellY))
+	//			{
+	//				double newEndSlope = (j + 1 - playerX) / (cellY + 1 - playerY);
+	//				if(startSlope < newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
 
-			std::int64_t startCellY = std::min((std::int64_t)(playerY - i * startSlope), Constants::mapHeight - 1);
-			std::int64_t endCellY = std::min((std::int64_t)(playerY - i * endSlope), Constants::mapHeight - 1);
+	//				do
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					if(j == endCellX)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * endSlope, playerY - i);
+	//						return;
+	//					}
 
-			double distanceX = cellX - playerX;
-			for(auto j = startCellY; j >= endCellY; j--)
-			{
-				if(getTileOpaque(cellX, j))
-				{
-					double newEndSlope = (j + 1.0 - playerY) / (cellX + 1.0 - playerX);
-					if(startSlope < newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
+	//					j--;
+	//				} while(j >= endCellX && getTileOpaque(j, cellY));
 
-					do
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						if(j == endCellY)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * endSlope);
-							return;
-						}
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i * startSlope, playerY - i);
+	//				startSlope = (j + 1 - playerX) / (cellY - playerY);
+	//				if(startSlope >= endSlope)
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
 
-						j--;
-					} while(j >= endCellY && getTileOpaque(cellX, j));
+	//			double distanceX = j - playerX;
+	//			updateVisibleTile(j, cellY, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant2(1, -1.0, 0.0);
 
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
-					startSlope = (j + 1.0 - playerY) / (cellX - playerX);
-					if(startSlope >= endSlope)
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						return;
-					}
-				}
+	////Octant 3
+	//auto calculateOctant3 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
+	//	for(auto i = startOffset; i <= lookupRange * 2; i++)
+	//	{
+	//		std::int64_t cellX = playerX + i;
+	//		if(cellX >= Constants::mapWidth)
+	//			break;
 
-				double distanceY = j - playerY;
-				updateVisibleTile(cellX, j, distanceX, distanceY);
-			}
-		}
-	};
-	calculateOctant7(1, -1.0, 0.0);
+	//		std::int64_t startCellY = std::max((std::int64_t)(playerY + i * startSlope), 0ll);
+	//		std::int64_t endCellY = std::max((std::int64_t)(playerY + i * endSlope), 0ll);
 
-	//Octant 8
-	auto calculateOctant8 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
-	{
-		for(auto i = startOffset; i <= lookupRange * 2; i++)
-		{
-			std::int64_t cellX = playerX - i;
-			if(cellX < 0)
-				break;
+	//		double distanceX = cellX - playerX;
+	//		for(auto j = startCellY; j <= endCellY; j++)
+	//		{
+	//			if(getTileOpaque(cellX, j))
+	//			{
+	//				double newEndSlope = (j - playerY) / (cellX - playerX);
+	//				if(startSlope < newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
 
-			std::int64_t startCellY = std::max((std::int64_t)(playerY - i * startSlope), 0ll);
-			std::int64_t endCellY = std::max((std::int64_t)(playerY - i * endSlope), 0ll);
+	//				do
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					if(j == endCellY)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * endSlope);
+	//						return;
+	//					}
 
-			double distanceX = cellX - playerX;
-			for(auto j = startCellY; j <= endCellY; j++)
-			{
-				if(getTileOpaque(cellX, j))
-				{
-					double newEndSlope = (j - playerY) / (cellX + 1.0 - playerX);
-					if(startSlope > newEndSlope)
-						self(i + 1, startSlope, newEndSlope);
+	//					j++;
+	//				} while(j <= endCellY && getTileOpaque(cellX, j));
 
-					do
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						if(j == endCellY)
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * endSlope);
-							return;
-						}
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
+	//				startSlope = (j - playerY) / (cellX + 1 - playerX);
+	//				if(startSlope >= endSlope)
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
 
-						j++;
-					} while(j <= endCellY && getTileOpaque(cellX, j));
+	//			double distanceY = j - playerY;
+	//			updateVisibleTile(cellX, j, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant3(1, -1.0, 0.0);
 
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
-					startSlope = (j - playerY) / (cellX - playerX);
-					if(startSlope <= endSlope)
-					{
-						double distanceY = j - playerY;
-						updateVisibleTile(cellX, j, distanceX, distanceY);
-						return;
-					}
-				}
+	////Octant 4
+	//auto calculateOctant4 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
+	//	for(auto i = startOffset; i <= lookupRange * 2; i++)
+	//	{
+	//		std::int64_t cellX = playerX + i;
+	//		if(cellX >= Constants::mapWidth)
+	//			break;
 
-				double distanceY = j - playerY;
-				updateVisibleTile(cellX, j, distanceX, distanceY);
-			}
-		}
-	};
-	calculateOctant8(1, 1.0, 0.0);
+	//		std::int64_t startCellY = std::min((std::int64_t)(playerY + i * startSlope), Constants::mapHeight - 1);
+	//		std::int64_t endCellY = std::min((std::int64_t)(playerY + i * endSlope), Constants::mapHeight - 1);
+
+	//		double distanceX = cellX - playerX;
+	//		for(auto j = startCellY; j >= endCellY; j--)
+	//		{
+	//			if(getTileOpaque(cellX, j))
+	//			{
+	//				double newEndSlope = (j + 1.0 - playerY) / (cellX - playerX);
+	//				if(startSlope > newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
+
+	//				do
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					if(j == endCellY)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * endSlope);
+	//						return;
+	//					}
+
+	//					j--;
+	//				} while(j >= endCellY && getTileOpaque(cellX, j));
+
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i, playerY + i * startSlope);
+	//				startSlope = (j + 1.0 - playerY) / (cellX + 1.0 - playerX);
+	//				if(startSlope <= endSlope)
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
+
+	//			double distanceY = j - playerY;
+	//			updateVisibleTile(cellX, j, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant4(1, 1.0, 0.0);
+
+	////Octant 5
+	//auto calculateOctant5 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
+	//	for(auto i = startOffset; i <= lookupRange; i++)
+	//	{
+	//		std::int64_t startCellX = std::min((std::int64_t)(playerX + i * startSlope), Constants::mapWidth - 1);
+	//		std::int64_t endCellX = std::min((std::int64_t)(playerX + i * endSlope), Constants::mapWidth - 1);
+
+	//		std::int64_t cellY = playerY + i;
+	//		if(cellY >= Constants::mapHeight)
+	//			break;
+
+	//		double distanceY = cellY - playerY;
+	//		for(auto j = startCellX; j >= endCellX; j--)
+	//		{
+	//			if(getTileOpaque(j, cellY))
+	//			{
+	//				double newEndSlope = (j + 1 - playerX) / (cellY - playerY);
+	//				if(startSlope > newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
+
+	//				do
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					if(j == endCellX)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * endSlope, playerY + i);
+	//						return;
+	//					}
+
+	//					j--;
+	//				} while(j >= endCellX && getTileOpaque(j, cellY));
+
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
+	//				startSlope = (j + 1 - playerX) / (cellY + 1 - playerY);
+	//				if(startSlope <= endSlope)
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
+
+	//			double distanceX = j - playerX;
+	//			updateVisibleTile(j, cellY, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant5(1, 1.0, 0.0);
+
+	////Octant 6
+	//auto calculateOctant6 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
+	//	for(auto i = startOffset; i <= lookupRange; i++)
+	//	{
+	//		std::int64_t startCellX = std::max((std::int64_t)(playerX + i * startSlope), 0ll);
+	//		std::int64_t endCellX = std::max((std::int64_t)(playerX + i * endSlope), 0ll);
+
+	//		std::int64_t cellY = playerY + i;
+	//		if(cellY >= Constants::mapHeight)
+	//			break;
+
+	//		double distanceY = cellY - playerY;
+	//		for(auto j = startCellX; j <= endCellX; j++)
+	//		{
+	//			if(getTileOpaque(j, cellY))
+	//			{
+	//				double newEndSlope = (j - playerX) / (cellY - playerY);
+	//				if(startSlope < newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
+
+	//				do
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					if(j == endCellX)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * endSlope, playerY + i);
+	//						return;
+	//					}
+
+	//					j++;
+	//				} while(j <= endCellX && getTileOpaque(j, cellY));
+
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX + i * startSlope, playerY + i);
+	//				startSlope = (j - playerX) / (cellY + 1.0 - playerY);
+	//				if(startSlope >= endSlope)
+	//				{
+	//					double distanceX = j - playerX;
+	//					updateVisibleTile(j, cellY, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
+
+	//			double distanceX = j - playerX;
+	//			updateVisibleTile(j, cellY, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant6(1, -1.0, 0.0);
+
+	////Octant 7
+	//auto calculateOctant7 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
+	//	for(auto i = startOffset; i <= lookupRange * 2; i++)
+	//	{
+	//		std::int64_t cellX = playerX - i;
+	//		if(cellX < 0)
+	//			break;
+
+	//		std::int64_t startCellY = std::min((std::int64_t)(playerY - i * startSlope), Constants::mapHeight - 1);
+	//		std::int64_t endCellY = std::min((std::int64_t)(playerY - i * endSlope), Constants::mapHeight - 1);
+
+	//		double distanceX = cellX - playerX;
+	//		for(auto j = startCellY; j >= endCellY; j--)
+	//		{
+	//			if(getTileOpaque(cellX, j))
+	//			{
+	//				double newEndSlope = (j + 1.0 - playerY) / (cellX + 1.0 - playerX);
+	//				if(startSlope < newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
+
+	//				do
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					if(j == endCellY)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * endSlope);
+	//						return;
+	//					}
+
+	//					j--;
+	//				} while(j >= endCellY && getTileOpaque(cellX, j));
+
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
+	//				startSlope = (j + 1.0 - playerY) / (cellX - playerX);
+	//				if(startSlope >= endSlope)
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
+
+	//			double distanceY = j - playerY;
+	//			updateVisibleTile(cellX, j, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant7(1, -1.0, 0.0);
+
+	////Octant 8
+	//auto calculateOctant8 = [this, lookupRange, playerX, playerY, &updateVisibleTile](this auto self, std::int64_t startOffset, double startSlope, double endSlope) -> void
+	//{
+	//	for(auto i = startOffset; i <= lookupRange * 2; i++)
+	//	{
+	//		std::int64_t cellX = playerX - i;
+	//		if(cellX < 0)
+	//			break;
+
+	//		std::int64_t startCellY = std::max((std::int64_t)(playerY - i * startSlope), 0ll);
+	//		std::int64_t endCellY = std::max((std::int64_t)(playerY - i * endSlope), 0ll);
+
+	//		double distanceX = cellX - playerX;
+	//		for(auto j = startCellY; j <= endCellY; j++)
+	//		{
+	//			if(getTileOpaque(cellX, j))
+	//			{
+	//				double newEndSlope = (j - playerY) / (cellX + 1.0 - playerX);
+	//				if(startSlope > newEndSlope)
+	//					self(i + 1, startSlope, newEndSlope);
+
+	//				do
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					if(j == endCellY)
+	//					{
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
+	//						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * endSlope);
+	//						return;
+	//					}
+
+	//					j++;
+	//				} while(j <= endCellY && getTileOpaque(cellX, j));
+
+	//				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + playerX - i, playerY - i * startSlope);
+	//				startSlope = (j - playerY) / (cellX - playerX);
+	//				if(startSlope <= endSlope)
+	//				{
+	//					double distanceY = j - playerY;
+	//					updateVisibleTile(cellX, j, distanceX, distanceY);
+	//					return;
+	//				}
+	//			}
+
+	//			double distanceY = j - playerY;
+	//			updateVisibleTile(cellX, j, distanceX, distanceY);
+	//		}
+	//	}
+	//};
+	//calculateOctant8(1, 1.0, 0.0);
 }
