@@ -807,7 +807,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 		{
 			startCellY--;
 			startSlope = (startCellY + 1 - playerY) / (startCellX + 1 - playerX);
-			debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, startCellY + 1);
+			debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, playerY);
 			break;
 		}
 		startCellX--;
@@ -825,87 +825,106 @@ void Map::updateVisibilityDebug(double deltaTime)
 		{
 			endCellY--;
 			endSlope = (endCellY + 1 - playerY) / (endCellX - playerX);
-			debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endCellX, endCellY + 1);
+			debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endCellX, playerY);
 			break;
 		}
 		endCellX++;
 	}
 
-	std::int64_t currentStartCellX{};
-	if(getTileOpaque(startCellX, startCellY))
+	auto calculateVisibilitySector = [this, playerX, playerY, &updateVisibleTile](this auto&& self,
+																			   double startSlope, double startEnterX, std::int64_t startCellX, std::int64_t startCellY,
+																			   double endSlope, double endEnterX, std::int64_t endCellX, std::int64_t endCellY)
 	{
-		do
-		{
-			double distanceX = startCellX + 0.5 - playerX;
-			double distanceY = startCellY + 0.5 - playerY;
-			updateVisibleTile(startCellX, startCellY, distanceX, distanceY);
-
-			if(startCellX == endCellX)
-				break;
-			startCellX++;
-
-		} while(getTileOpaque(startCellX, startCellY));
-
-		updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
-		currentStartCellX = startCellX + 1;
-
-		startCellY--;
-	}
-	else
-	{
-		currentStartCellX = startCellX + 1;
-		updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
-
-		auto startCoefficientX = std::sqrt(1.0 + startSlope * startSlope);
-		auto startCoefficientY = std::sqrt(1.0 + 1.0 / (startSlope * startSlope));
-		std::int64_t startStepsX{}, startStepsY{};
 		while(true)
 		{
-			double distanceX{startCoefficientX * (1 + startStepsX)}, distanceY{startCoefficientY * 1};
-			if(distanceX <= distanceY)
+			std::int64_t currentStartCellX{};
+			if(getTileOpaque(startCellX, startCellY))
 			{
-				startStepsX++;
+				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startEnterX, startCellY + 1);
 
-				startCellX--;
-				updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
-				if(getTileOpaque(startCellX, startCellY))
+				do
 				{
-					startCellY--;
-					endSlope = (startCellY + 1 - playerY) / (startCellX - playerX);
-					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, startCellY + 1);
-					break;
-				}
+					double distanceX = startCellX + 0.5 - playerX;
+					double distanceY = startCellY + 0.5 - playerY;
+					updateVisibleTile(startCellX, startCellY, distanceX, distanceY);
+
+					if(startCellX == endCellX)
+						return;
+					startCellX++;
+
+				} while(getTileOpaque(startCellX, startCellY));
+
+				updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
+				currentStartCellX = startCellX + 1;
+
+				startSlope = (startCellY - playerY) / (startCellX - playerX);
+				startEnterX = startCellX;
+				startCellX--;
+				startCellY--;
 			}
 			else
 			{
-				startCellY--;
-				break;
+				currentStartCellX = startCellX + 1;
+				updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
+
+				auto startCoefficientX = std::sqrt(1.0 + startSlope * startSlope);
+				auto startCoefficientY = std::sqrt(1.0 + 1.0 / (startSlope * startSlope));
+				std::int64_t startStepsX{}, startStepsY{};
+				while(true)
+				{
+					double distanceX{startCoefficientX * (startEnterX - startCellX + startStepsX)}, distanceY{startCoefficientY * 1};
+					if(distanceX <= distanceY)
+					{
+						startStepsX++;
+
+						startCellX--;
+						updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
+						if(getTileOpaque(startCellX, startCellY))
+						{
+							startCellY--;
+							startSlope = (startCellY + 1 - playerY) / (startCellX + 1 - playerX);
+							startEnterX = startCellX + 1;
+							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, startCellY + 1);
+							break;
+						}
+					}
+					else
+					{
+						startEnterX = currentStartCellX + std::sqrt(distanceY * distanceY - 1);
+						startCellY--;
+						break;
+					}
+				}
+			}
+
+			std::int64_t currentCellY{startCellY + 1};
+			for(auto i = currentStartCellX; i <= endCellX; i++)
+			{
+				if(getTileOpaque(i, currentCellY))
+				{
+					double newEndSlope = (currentCellY + 1 - playerY) / (i - playerX);
+					self(startSlope, startEnterX, startCellX, startCellY, newEndSlope, i, i - 1, startCellY);
+
+					do
+					{
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+
+						if(i == endCellX)
+							return;
+						i++;
+
+					} while(getTileOpaque(i, currentCellY));
+
+					startSlope = (currentCellY - playerY) / (i - playerX);
+					startEnterX = i;
+					startCellX = i - 1;
+				}
+
+				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
 			}
 		}
-	}
-
-	std::int64_t currentCellY{startCellY + 1};
-	for(auto i = currentStartCellX; i <= endCellX; i++)
-	{
-		if(getTileOpaque(i, currentCellY))
-		{
-			do
-			{
-				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
-
-				if(i == endCellX)
-					break;
-				i++;
-
-			} while(getTileOpaque(i, currentCellY));
-
-			updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
-		}
-		else
-		{
-			updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
-		}
-	}
+	};
+	calculateVisibilitySector(startSlope, startCellX + 1.0, startCellX, startCellY, endSlope, endCellX, endCellX, endCellY);
 
 	//auto calculateTopHalf = [](double startX, double startY)
 	//{
