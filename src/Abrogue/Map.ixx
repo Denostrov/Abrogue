@@ -5,44 +5,76 @@ export import Item;
 export import FixedVector;
 export import DebugLine;
 
-export enum class Direction
-{
-	eNone = 0,
-	eUp = 1,
-	eTopRight = 2,
-	eRight = 4,
-	eDownRight = 8,
-	eDown = 16,
-	eDownLeft = 32,
-	eLeft = 64,
-	eTopLeft = 128
-};
-
 export class Map
 {
-	enum class TileType
+	class Tile
 	{
-		eFloor,
-		eGrass,
-		eBush,
-		eWall,
-		eBedrock,
-		eDoor,
-		eExit,
-		COUNT
-	};
+	public:
+		enum class Type
+		{
+			eFloor,
+			eGrass,
+			eBush,
+			eWall,
+			eBedrock,
+			eDoor,
+			eExit,
+			COUNT
+		};
 
-	struct Tile
-	{
-		QuadPool::Reference quadReference;
-		TileType type{TileType::eWall};
-	};
+		Tile() = default;
+		Tile(std::int64_t x, std::int64_t y, Type type);
 
-	struct TileInfo
-	{
-		std::uint32_t color{};
-		std::uint32_t backgroundColor{};
-		std::uint32_t glyph{};
+		void updateDraw(double brightness)
+		{
+			auto color = info[(std::size_t)type].color;
+			auto backgroundColor = info[(std::size_t)type].backgroundColor;
+
+			color.multiplyRGB(brightness);
+			backgroundColor.multiplyRGB(brightness);
+
+			quad.setColor(color.getPacked());
+			quad.setBackgroundColor(backgroundColor.getPacked());
+		}
+
+		bool getIsSolid() const
+		{
+			return type == Type::eBedrock || type == Type::eWall || type == Type::eExit;
+		}
+		bool getIsOpaque() const
+		{
+			return type == Type::eBedrock || type == Type::eWall || type == Type::eBush || type == Type::eDoor || type == Type::eExit;
+		}
+		bool getIsFloor() const
+		{
+			return type == Type::eFloor || type == Type::eGrass || type == Type::eBush;
+		}
+
+		void setType(Type newType)
+		{
+			type = newType;
+			quad.setGlyph(info[(std::size_t)type].glyph);
+		}
+
+	private:
+		struct Info
+		{
+			Color color{};
+			Color backgroundColor{};
+			std::uint32_t glyph{};
+		};
+		static constexpr std::array<Info, (size_t)Type::COUNT> info{
+			Info{Color(96, 96, 96, 255), Color(8, 8, 8, 255), 250},
+			Info{Color(0, 255, 0, 255), Color(8, 8, 8, 255), 34},
+			Info{Color(0, 255, 0, 255), Color(8, 8, 8, 255), 237},
+			Info{Color(255, 255, 255, 255), Color(32, 32, 32, 255), 35},
+			Info{Color(255, 255, 255, 255), Color(16, 16, 16, 255), 35},
+			Info{Color(255, 128, 0, 255), Color(192, 64, 0, 255), 43},
+			Info{Color(255, 255, 255, 255), Color(16, 16, 192, 255), 234}
+		};
+
+		QuadPool::Reference quad;
+		Type type{Type::COUNT};
 	};
 
 	struct Room
@@ -91,16 +123,6 @@ private:
 	void updateVisibility(double deltaTime);
 	void updateVisibilityDebug(double deltaTime);
 	inline static void (Map::* updateVisibilityFunc)(double) {};
-
-	static constexpr std::array<TileInfo, (size_t)TileType::COUNT> tilesInfo{
-		TileInfo{Color::pack(96, 96, 96, 255), Color::pack(8, 8, 8, 255), 250},
-		TileInfo{Color::pack(0, 255, 0, 255), Color::pack(8, 8, 8, 255), 34},
-		TileInfo{Color::pack(0, 255, 0, 255), Color::pack(8, 8, 8, 255), 237},
-		TileInfo{Color::pack(255, 255, 255, 255), Color::pack(32, 32, 32, 255), 35},
-		TileInfo{Color::pack(255, 255, 255, 255), Color::pack(16, 16, 16, 255), 35},
-		TileInfo{Color::pack(255, 128, 0, 255), Color::pack(192, 64, 0, 255), 43},
-		TileInfo{Color::pack(255, 255, 255, 255), Color::pack(16, 16, 192, 255), 234}
-	};
 
 	FixedVector<DebugLine, 256> debugLines;
 

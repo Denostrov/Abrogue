@@ -5,18 +5,24 @@ import Logger;
 import Random;
 import Enemy;
 
+Map::Tile::Tile(std::int64_t x, std::int64_t y, Type type)
+	:type(type)
+{
+	quad = quadPool.insert(QuadData{{Constants::mapOffset + x + 0.5f, y + 0.5f},
+									{Color::pack(0, 0, 0, 255), Color::pack(0, 0, 0, 255)}, info[(size_t)type].glyph}, QuadPool::eMap);
+}
+
 void Map::init()
 {
-	generateLevel();
-
 	for(std::int64_t y = 0; y < Constants::mapHeight; y++)
 	{
 		for(std::int64_t x = 0; x < Constants::mapWidth; x++)
 		{
-			getTile(x, y).quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x + 0.5f, y + 0.5f},
-																 {Color::pack(0, 0, 0, 255), Color::pack(0,0,0,255)}, 32}, QuadPool::eMap);
+			getTile(x, y) = Tile(x, y, Tile::Type::eWall);
 		}
 	}
+
+	generateLevel();
 
 	updateVisibilityFunc = &Map::updateVisibility;
 	(this->*updateVisibilityFunc)(0.0);
@@ -69,24 +75,21 @@ bool Map::getTileSolid(std::int64_t x, std::int64_t y) const
 {
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile solid out of bounds");
 
-	auto type = getTile(x, y).type;
-	return type == TileType::eBedrock || type == TileType::eWall || type == TileType::eExit;
+	return getTile(x, y).getIsSolid();
 }
 
 bool Map::getTileOpaque(std::int64_t x, std::int64_t y) const
 {
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile opaque out of bounds");
 
-	auto type = getTile(x, y).type;
-	return type == TileType::eBedrock || type == TileType::eWall || type == TileType::eBush || type == TileType::eDoor || type == TileType::eExit;
+	return getTile(x, y).getIsOpaque();
 }
 
 bool Map::getTileFloor(std::int64_t x, std::int64_t y) const
 {
 	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile a floor out of bounds");
 
-	auto type = getTile(x, y).type;
-	return type == TileType::eFloor || type == TileType::eGrass || type == TileType::eBush;
+	return getTile(x, y).getIsFloor();
 }
 
 double Map::getTileBrightness(std::int64_t x, std::int64_t y) const
@@ -100,19 +103,19 @@ void Map::generateLevel()
 {
 	for(std::int64_t x = 0; x < Constants::mapWidth; x++)
 	{
-		getTile(x, 0).type = TileType::eBedrock;
+		getTile(x, 0).setType(Tile::Type::eBedrock);
 		levelData.tilesOccupiedMask[x] = true;
 
-		getTile(x, Constants::mapHeight - 1).type = TileType::eBedrock;
+		getTile(x, Constants::mapHeight - 1).setType(Tile::Type::eBedrock);
 		levelData.tilesOccupiedMask[x + (Constants::mapHeight - 1) * Constants::mapWidth] = true;
 	}
 
 	for(std::int64_t y = 0; y < Constants::mapHeight; y++)
 	{
-		getTile(0, y).type = TileType::eBedrock;
+		getTile(0, y).setType(Tile::Type::eBedrock);
 		levelData.tilesOccupiedMask[y * Constants::mapWidth] = true;
 
-		getTile(Constants::mapWidth - 1, y).type = TileType::eBedrock;
+		getTile(Constants::mapWidth - 1, y).setType(Tile::Type::eBedrock);
 		levelData.tilesOccupiedMask[Constants::mapWidth - 1 + y * Constants::mapWidth] = true;
 	}
 
@@ -131,7 +134,7 @@ void Map::generateLevel()
 		for(auto y = originY; y < originY + height; y++)
 		{
 			for(auto x = originX; x < originX + width; x++)
-				getTile(x, y).type = TileType::eFloor;
+				getTile(x, y).setType(Tile::Type::eFloor);
 		}
 
 		for(auto y = originY - 1; y < originY + height + 1; y++)
@@ -141,7 +144,7 @@ void Map::generateLevel()
 		}
 
 		std::uint64_t value = std::random_device()() % 2;
-		getTile(doorX, doorY).type = value == 0 ? TileType::eDoor : TileType::eFloor;
+		getTile(doorX, doorY).setType(value == 0 ? Tile::Type::eDoor : Tile::Type::eFloor);
 
 		levelData.rooms[levelData.roomCount].originX = originX;
 		levelData.rooms[levelData.roomCount].originY = originY;
@@ -160,7 +163,7 @@ void Map::generateLevel()
 				if(getTileFloor(x - 1, y) && getTileFloor(x + 1, y))
 				{
 					std::uint64_t value = std::random_device()() % 2;
-					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
+					getTile(x, y).setType(value == 0 ? Tile::Type::eDoor : Tile::Type::eFloor);
 					break;
 				}
 			}
@@ -177,7 +180,7 @@ void Map::generateLevel()
 				if(getTileFloor(x - 1, y) && getTileFloor(x + 1, y))
 				{
 					std::uint64_t value = std::random_device()() % 2;
-					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
+					getTile(x, y).setType(value == 0 ? Tile::Type::eDoor : Tile::Type::eFloor);
 					break;
 				}
 			}
@@ -194,7 +197,7 @@ void Map::generateLevel()
 				if(getTileFloor(x, y - 1) && getTileFloor(x, y + 1))
 				{
 					std::uint64_t value = std::random_device()() % 2;
-					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
+					getTile(x, y).setType(value == 0 ? Tile::Type::eDoor : Tile::Type::eFloor);
 					break;
 				}
 			}
@@ -211,7 +214,7 @@ void Map::generateLevel()
 				if(getTileFloor(x, y - 1) && getTileFloor(x, y + 1))
 				{
 					std::uint64_t value = std::random_device()() % 2;
-					getTile(x, y).type = value == 0 ? TileType::eDoor : TileType::eFloor;
+					getTile(x, y).setType(value == 0 ? Tile::Type::eDoor : Tile::Type::eFloor);
 					break;
 				}
 			}
@@ -227,14 +230,14 @@ void Map::generateLevel()
 	for(auto y = startingRoom.originY; y < startingRoom.originY + startingRoom.height; y++)
 	{
 		for(auto x = startingRoom.originX; x < startingRoom.originX + startingRoom.width; x++)
-			getTile(x, y).type = TileType::eFloor;
+			getTile(x, y).setType(Tile::Type::eFloor);
 	}
 	for(auto y = startingRoom.originY - 1; y < startingRoom.originY + startingRoom.height + 1; y++)
 	{
 		for(auto x = startingRoom.originX - 1; x < startingRoom.originX + startingRoom.width + 1; x++)
 			levelData.tilesOccupiedMask[x + y * Constants::mapWidth] = true;
 	}
-	getTile(40, 34).type = TileType::eExit;
+	getTile(40, 34).setType(Tile::Type::eExit);
 
 	for(std::int64_t i = 0; i < 200; i++)
 	{
@@ -310,28 +313,9 @@ void Map::generateLevel()
 
 void Map::updateVisibility(double deltaTime)
 {
-	auto updateTileProperties = [](Tile const& tile, double brightness)
-	{
-		auto const& tileInfo = tilesInfo[(size_t)tile.type];
-
-		Color color = tileInfo.color;
-		Color backgroundColor = tileInfo.backgroundColor;
-
-		color.r *= brightness;
-		color.g *= brightness;
-		color.b *= brightness;
-		backgroundColor.r *= brightness;
-		backgroundColor.g *= brightness;
-		backgroundColor.b *= brightness;
-
-		tile.quadReference.setGlyph(tileInfo.glyph);
-		tile.quadReference.setColor(color.getPacked());
-		tile.quadReference.setBackgroundColor(backgroundColor.getPacked());
-	};
-
 	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
 	{
-		updateTileProperties(tiles[lastVisibleTiles[i]], 0.25);
+		tiles[lastVisibleTiles[i]].updateDraw(0.25);
 		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
 	}
 
@@ -343,7 +327,7 @@ void Map::updateVisibility(double deltaTime)
 	std::int64_t playerCellX = playerX;
 	std::int64_t playerCellY = playerY;
 	std::uint64_t playerCell = playerCellX + playerCellY * Constants::mapWidth;
-	updateTileProperties(tiles[playerCell], 1.0);
+	tiles[playerCell].updateDraw(1.0);
 	lastVisibleTiles[0] = playerCell;
 	lastVisibleTilesSize = 1;
 	tileBrightnessMask[playerCell] = 1.0;
@@ -351,14 +335,14 @@ void Map::updateVisibility(double deltaTime)
 	double visionRange = 40.0;
 	std::int64_t lookupRange = std::ceil(visionRange);
 
-	auto updateVisibleTile = [this, &updateTileProperties, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
+	auto updateVisibleTile = [this, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
 	{
 		double distance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
 		if(distance > visionRange)
 			return;
 
 		double lightStrength = std::clamp((visionRange - distance) / 2.0 + 0.5, 0.5, 1.0);
-		updateTileProperties(getTile(x, y), lightStrength);
+		getTile(x, y).updateDraw(lightStrength);
 
 		lastVisibleTiles[lastVisibleTilesSize] = x + y * Constants::mapWidth;
 		lastVisibleTilesSize++;
@@ -746,28 +730,9 @@ void Map::updateVisibility(double deltaTime)
 
 void Map::updateVisibilityDebug(double deltaTime)
 {
-	auto updateTileProperties = [](Tile const& tile, double brightness)
-	{
-		auto const& tileInfo = tilesInfo[(size_t)tile.type];
-
-		Color color = tileInfo.color;
-		Color backgroundColor = tileInfo.backgroundColor;
-
-		color.r *= brightness;
-		color.g *= brightness;
-		color.b *= brightness;
-		backgroundColor.r *= brightness;
-		backgroundColor.g *= brightness;
-		backgroundColor.b *= brightness;
-
-		tile.quadReference.setGlyph(tileInfo.glyph);
-		tile.quadReference.setColor(color.getPacked());
-		tile.quadReference.setBackgroundColor(backgroundColor.getPacked());
-	};
-
 	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
 	{
-		updateTileProperties(tiles[lastVisibleTiles[i]], 0.25);
+		tiles[lastVisibleTiles[i]].updateDraw(0.25);
 		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
 	}
 	lastVisibleTilesSize = 0;
@@ -780,14 +745,14 @@ void Map::updateVisibilityDebug(double deltaTime)
 	double visionRange = 40.0;
 	std::int64_t lookupRange = std::ceil(visionRange);
 
-	auto updateVisibleTile = [this, &updateTileProperties, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
+	auto updateVisibleTile = [this, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
 	{
 		double distance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
 		if(distance > visionRange)
 			return;
 
 		double lightStrength = std::clamp((visionRange - distance) / 2.0 + 0.5, 0.5, 1.0);
-		updateTileProperties(getTile(x, y), lightStrength);
+		getTile(x, y).updateDraw(lightStrength);
 
 		lastVisibleTiles[lastVisibleTilesSize] = x + y * Constants::mapWidth;
 		lastVisibleTilesSize++;
@@ -832,8 +797,8 @@ void Map::updateVisibilityDebug(double deltaTime)
 	}
 
 	auto calculateVisibilitySector = [this, playerX, playerY, &updateVisibleTile](this auto&& self,
-																			   double startSlope, double startEnterX, std::int64_t startCellX, std::int64_t startCellY,
-																			   double endSlope, double endEnterX, std::int64_t endCellX, std::int64_t endCellY)
+																				  double startSlope, double startEnterX, std::int64_t startCellX, std::int64_t startCellY,
+																				  double endSlope, double endEnterX, std::int64_t endCellX, std::int64_t endCellY)
 	{
 		while(true)
 		{
