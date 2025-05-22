@@ -1,7 +1,5 @@
 module Label;
 
-import GameSystems;
-
 void Label::init(std::string_view text, std::int64_t x, std::int64_t y, QuadPool::Layer drawLayer, bool visible)
 {
 	layer = drawLayer;

@@ -1,7 +1,5 @@
 module Screen;
 
-import GameSystems;
-
 void Screen::updateMouseMoved(std::uint32_t x, std::uint32_t y)
 {
 	//Check if cursor is hovering over a pressable button
