@@ -896,7 +896,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 				auto endCoefficientY = std::sqrt(1.0 + 1.0 / (endSlope * endSlope));
 				while(true)
 				{
-					double rightExtentX{endCellX - endEnterX};
+					double rightExtentX{endCellX + 1 - endEnterX};
 					double distanceX{endCoefficientX * rightExtentX}, distanceY{endCoefficientY * 1};
 					if(distanceX <= distanceY)
 					{
@@ -904,9 +904,6 @@ void Map::updateVisibilityDebug(double deltaTime)
 						updateVisibleTile(endCellX, endCellY, endCellX + 0.5 - playerX, endCellY + 0.5 - playerY);
 						if(getTileOpaque(endCellX, endCellY))
 						{
-							rightExtentX = endCellX - endEnterX;
-							distanceX = endCoefficientX * rightExtentX;
-
 							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endCellX, endCellY + 1 - std::sqrt(distanceX * distanceX - rightExtentX * rightExtentX));
 							endCellY--;
 							endSlope = (endCellY + 1 - playerY) / (endCellX - playerX);
@@ -930,7 +927,35 @@ void Map::updateVisibilityDebug(double deltaTime)
 				{
 					double newEndSlope = (currentCellY + 1 - playerY) / (i - playerX);
 					if(newEndSlope > startSlope)
-						self(startSlope, startEnterX, startCellX, startCellY, newEndSlope, i, i - 1, startCellY);
+					{
+						if(newEndSlope > 0.0)
+						{
+							std::int64_t newEndCellX = i - 1;
+							std::int64_t newEndEnterX = i;
+
+							auto endCoefficientX = std::sqrt(1.0 + newEndSlope * newEndSlope);
+							auto endCoefficientY = std::sqrt(1.0 + 1.0 / (newEndSlope * newEndSlope));
+							while(true)
+							{
+								double leftExtentX{endCellX - endEnterX};
+								double distanceX{endCoefficientX * leftExtentX}, distanceY{endCoefficientY * 1};
+								if(distanceX <= distanceY)
+								{
+									newEndCellX--;
+									if(newEndCellX == startCellX)
+										break;
+								}
+								else
+								{
+									newEndEnterX = newEndCellX - std::sqrt(distanceY * distanceY - 1);
+									self(startSlope, startEnterX, startCellX, startCellY, newEndSlope, newEndEnterX, newEndCellX, startCellY);
+									break;
+								}
+							}
+						}
+						else
+							self(startSlope, startEnterX, startCellX, startCellY, newEndSlope, i, i - 1, startCellY);
+					}
 
 					do
 					{
