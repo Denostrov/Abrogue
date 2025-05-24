@@ -81,6 +81,8 @@ void Game::advanceStep()
 
 		player.update();
 
+		map.update();
+
 		enemyHandler.update();
 	}
 }

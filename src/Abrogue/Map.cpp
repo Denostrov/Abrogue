@@ -798,41 +798,53 @@ void Map::updateVisibilityDebug(double deltaTime)
 		endCellX++;
 	}
 
-	auto calculateVisibilitySector = [this, playerX, playerY, &updateVisibleTile](this auto&& self,
-																				  double startSlope, double startEnterX, std::int64_t startCellX, std::int64_t startCellY,
-																				  double endSlope, double endEnterX, std::int64_t endCellX, std::int64_t endCellY)
+	auto calculateVisibilitySector = [this, playerX, playerY, &updateVisibleTile](this auto&& self, std::int64_t currentCellY,
+																				  double startSlope, double startEnterX, std::int64_t startCellX,
+																				  double endSlope, double endEnterX, std::int64_t endCellX)
 	{
 		while(true)
 		{
+			//Check if left entry cell is opaque
 			std::int64_t currentStartCellX{};
-			if(getTileOpaque(startCellX, startCellY))
+			if(getTileOpaque(startCellX, currentCellY))
 			{
-				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startEnterX, startCellY + 1);
-
+				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startEnterX, currentCellY + 1);
+				//Move right until first non opaque cell found
 				do
 				{
-					double distanceX = startCellX + 0.5 - playerX;
-					double distanceY = startCellY + 0.5 - playerY;
-					updateVisibleTile(startCellX, startCellY, distanceX, distanceY);
-
+					updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+					//Terminate if no more empty cells
 					if(startCellX == endCellX)
+					{
+						debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endEnterX, currentCellY + 1);
 						return;
+					}
 					startCellX++;
 
-				} while(getTileOpaque(startCellX, startCellY));
+				} while(getTileOpaque(startCellX, currentCellY));
+				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
 
-				updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
 				currentStartCellX = startCellX + 1;
 
-				startSlope = (startCellY - playerY) / (startCellX - playerX);
-				startEnterX = startCellX;
-				startCellX--;
-				startCellY--;
+				if(startCellX < playerX)
+				{
+					//New slope is towards top right corner of last blocking cell
+					startSlope = (currentCellY - playerY) / (startCellX - playerX);
+					startEnterX = startCellX;
+					startCellX--;
+				}
+				else
+				{
+					//New slope is towards bottom right corner of last blocking cell
+					startSlope = (currentCellY + 1 - playerY) / (startCellX - playerX);
+					startEnterX = startCellX + 1.0 / std::abs(startSlope);
+					startCellX = (std::int64_t)startEnterX;
+				}
 			}
 			else
 			{
 				currentStartCellX = startCellX + 1;
-				updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
+				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
 
 				auto startCoefficientX = std::sqrt(1.0 + startSlope * startSlope);
 				auto startCoefficientY = std::sqrt(1.0 + 1.0 / (startSlope * startSlope));
@@ -843,12 +855,11 @@ void Map::updateVisibilityDebug(double deltaTime)
 					if(distanceX <= distanceY)
 					{
 						startCellX--;
-						updateVisibleTile(startCellX, startCellY, startCellX + 0.5 - playerX, startCellY + 0.5 - playerY);
-						if(getTileOpaque(startCellX, startCellY))
+						updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						if(getTileOpaque(startCellX, currentCellY))
 						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, startCellY + 1 - std::sqrt(distanceX * distanceX - leftExtentX * leftExtentX));
-							startCellY--;
-							startSlope = (startCellY + 1 - playerY) / (startCellX + 1 - playerX);
+							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + startCellX + 1, currentCellY + 1 - std::sqrt(distanceX * distanceX - leftExtentX * leftExtentX));
+							startSlope = (currentCellY - playerY) / (startCellX + 1 - playerX);
 							startEnterX = startCellX + 1;
 							break;
 						}
@@ -856,71 +867,64 @@ void Map::updateVisibilityDebug(double deltaTime)
 					else
 					{
 						startEnterX = currentStartCellX + std::sqrt(distanceY * distanceY - 1);
-						startCellY--;
 						break;
 					}
 				}
 			}
 
-			std::int64_t currentEndCellX{};
-			if(getTileOpaque(endCellX, endCellY))
+			std::int64_t currentEndCellX{endCellX};
+			if(endSlope < 0.0)
 			{
-				debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endEnterX, endCellY + 1);
-
-				do
+				if(getTileOpaque(endCellX, currentCellY))
 				{
-					double distanceX = endCellX + 0.5 - playerX;
-					double distanceY = endCellY + 0.5 - playerY;
-					updateVisibleTile(endCellX, endCellY, distanceX, distanceY);
-
-					if(endCellX == startCellX)
-						return;
-					endCellX--;
-
-				} while(getTileOpaque(endCellX, endCellY));
-
-				updateVisibleTile(endCellX, endCellY, endCellX + 0.5 - playerX, endCellY + 0.5 - playerY);
-				currentEndCellX = endCellX - 1;
-
-				endSlope = (endCellY - playerY) / (endCellX + 1 - playerX);
-				endEnterX = endCellX + 1;
-				endCellX++;
-				endCellY--;
-			}
-			else
-			{
-				currentEndCellX = endCellX - 1;
-				updateVisibleTile(endCellX, endCellY, endCellX + 0.5 - playerX, endCellY + 0.5 - playerY);
-
-				auto endCoefficientX = std::sqrt(1.0 + endSlope * endSlope);
-				auto endCoefficientY = std::sqrt(1.0 + 1.0 / (endSlope * endSlope));
-				while(true)
-				{
-					double rightExtentX{endCellX + 1 - endEnterX};
-					double distanceX{endCoefficientX * rightExtentX}, distanceY{endCoefficientY * 1};
-					if(distanceX <= distanceY)
+					debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endEnterX, currentCellY + 1);
+					do
 					{
-						endCellX++;
-						updateVisibleTile(endCellX, endCellY, endCellX + 0.5 - playerX, endCellY + 0.5 - playerY);
-						if(getTileOpaque(endCellX, endCellY))
-						{
-							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + endCellX, endCellY + 1 - std::sqrt(distanceX * distanceX - rightExtentX * rightExtentX));
-							endCellY--;
-							endSlope = (endCellY + 1 - playerY) / (endCellX - playerX);
-							endEnterX = endCellX;
-							break;
-						}
+						updateVisibleTile(endCellX, currentCellY, endCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						endCellX--;
+
+					} while(getTileOpaque(endCellX, currentCellY));
+
+					currentEndCellX = endCellX;
+					endCellX++;
+
+					if(endCellX > playerX)
+					{
+						endSlope = (currentCellY - playerY) / (endCellX - playerX);
+						endEnterX = endCellX;
 					}
 					else
 					{
-						endEnterX = currentEndCellX + std::sqrt(distanceY * distanceY - 1);
-						endCellY--;
-						break;
+						endSlope = (currentCellY + 1 - playerY) / (endCellX - playerX);
+						endEnterX = endCellX - 1.0 / endSlope;
+						endCellX = (std::int64_t)endEnterX;
 					}
 				}
+				else
+				{
+					updateVisibleTile(currentEndCellX, currentCellY, currentEndCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+					endEnterX = endEnterX - 1.0 / endSlope;
+					endCellX = (std::int64_t)(endEnterX);
+					for(auto i = currentEndCellX + 1; i <= endCellX; i++)
+					{
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						if(getTileOpaque(i, currentCellY))
+						{
+							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + i, currentCellY + 1 - (i - currentEndCellX - 1) * std::abs(endSlope));
+							endSlope = (currentCellY - playerY) / (i - playerX);
+							endEnterX = i;
+							endCellX = i;
+						}
+					}
+					currentEndCellX--;
+				}
+			}
+			else
+			{
+				endEnterX = endEnterX - 1.0 / endSlope;
+				endCellX = (std::int64_t)(endEnterX);
 			}
 
-			std::int64_t currentCellY{startCellY + 1};
 			for(auto i = currentStartCellX; i <= currentEndCellX; i++)
 			{
 				if(getTileOpaque(i, currentCellY))
@@ -948,13 +952,13 @@ void Map::updateVisibilityDebug(double deltaTime)
 								else
 								{
 									newEndEnterX = newEndCellX - std::sqrt(distanceY * distanceY - 1);
-									self(startSlope, startEnterX, startCellX, startCellY, newEndSlope, newEndEnterX, newEndCellX, startCellY);
+									self(currentCellY - 1, startSlope, startEnterX, startCellX, newEndSlope, newEndEnterX, newEndCellX);
 									break;
 								}
 							}
 						}
 						else
-							self(startSlope, startEnterX, startCellX, startCellY, newEndSlope, i, i - 1, startCellY);
+							self(currentCellY - 1, startSlope, startEnterX, startCellX, newEndSlope, i, i - 1);
 					}
 
 					do
@@ -974,9 +978,14 @@ void Map::updateVisibilityDebug(double deltaTime)
 
 				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
 			}
+
+			if((endSlope > 0.0 && startSlope < 0.0) || (endSlope <= startSlope && (startSlope < 0.0 || endSlope > 0.0)))
+				return;
+
+			currentCellY--;
 		}
 	};
-	calculateVisibilitySector(startSlope, startCellX + 1.0, startCellX, startCellY, endSlope, endCellX, endCellX, endCellY);
+	calculateVisibilitySector(startCellY, startSlope, startCellX + 1.0, startCellX, endSlope, endCellX, endCellX);
 
 	//auto calculateTopHalf = [](double startX, double startY)
 	//{
