@@ -28,7 +28,7 @@ void Enemy::update(double playerX, double playerY, std::int64_t stealthRange)
 
 	if(state == State::eHunting)
 	{
-		if(totalDistance > stealthRange || map.getTileBrightness(x, y) <= 0.0)
+		if(totalDistance > stealthRange || !map.getTileInLineOfSight(x, y))
 		{
 			state = State::eWandering;
 			setMovementX(0);
@@ -53,7 +53,7 @@ void Enemy::update(double playerX, double playerY, std::int64_t stealthRange)
 	}
 	else
 	{
-		if(totalDistance < stealthRange && map.getTileBrightness(x, y) > 0.0)
+		if(totalDistance < stealthRange && map.getTileInLineOfSight(x, y))
 		{
 			std::int64_t timerWhole = stealthTimer;
 			stealthTimer += Constants::tickDuration;
@@ -79,7 +79,7 @@ void Enemy::updateDraw(double deltaTime)
 	quadReference.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
 
 	auto brightness = map.getTileBrightness(x, y);
-	if(brightness <= 0.0)
+	if(brightness < Constants::mapMinBrightness)
 	{
 		quadReference.setColor(0);
 		quadReference.setBackgroundColor(0);
@@ -146,7 +146,7 @@ void EnemyHandler::populateLevel()
 			std::int64_t spawnX = spawnRoom.originX + mapRandom.generate() % spawnRoom.width;
 			std::int64_t spawnY = spawnRoom.originY + mapRandom.generate() % spawnRoom.height;
 
-			if(map.getTileBrightness(spawnX, spawnY) > 0.0)
+			if(map.getTileInLineOfSight(spawnX, spawnY))
 			{
 				i--;
 				continue;

@@ -48,6 +48,8 @@ public:
 	static constexpr std::int64_t mapHeight{36};
 	static constexpr size_t mapTileCount{mapWidth * mapHeight};
 	static constexpr std::int64_t mapOffset{screenWidth - mapWidth};
+	static constexpr double mapMinBrightness{0.25};
+	static constexpr double mapInLineOfSightValue{0.125};
 
 	static constexpr float tileAspectRatio{0.5f};
 	static constexpr float tileScaleX{tileAspectRatio / Constants::screenHeight};

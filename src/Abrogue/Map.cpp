@@ -99,6 +99,13 @@ double Map::getTileBrightness(std::int64_t x, std::int64_t y) const
 	return tileBrightnessMask[x + Constants::mapWidth * y];
 }
 
+bool Map::getTileInLineOfSight(std::int64_t x, std::int64_t y) const
+{
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile in line of sight out of bounds");
+
+	return tileBrightnessMask[x + Constants::mapWidth * y] >= Constants::mapInLineOfSightValue;
+}
+
 void Map::generateLevel()
 {
 	for(std::int64_t x = 0; x < Constants::mapWidth; x++)
@@ -311,11 +318,32 @@ void Map::generateLevel()
 	items.emplace_back(Item::Type::eAmulet, spawnX + 0.5, spawnY + 0.5);
 }
 
+void Map::updateVisibleTile(std::int64_t x, std::int64_t y, double distanceX, double distanceY, double visionRange)
+{
+	double distance2 = distanceX * distanceX / 4.0 + distanceY * distanceY;
+	double visionRange2 = visionRange * visionRange;
+	if(distance2 <= visionRange2)
+	{
+		//Light strength falls off quadratically down to a minimum
+		double lightStrength = 1.0 - distance2 / visionRange2 * (1.0 - Constants::mapMinBrightness);
+		getTile(x, y).updateDraw(lightStrength);
+		tileBrightnessMask[x + y * Constants::mapWidth] = lightStrength;
+	}
+	else
+	{
+		//Tiles outside the vision range are marked with special value
+		tileBrightnessMask[x + y * Constants::mapWidth] = Constants::mapInLineOfSightValue;
+	}
+
+	lastVisibleTiles[lastVisibleTilesSize] = x + y * Constants::mapWidth;
+	lastVisibleTilesSize++;
+}
+
 void Map::updateVisibility(double deltaTime)
 {
 	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
 	{
-		tiles[lastVisibleTiles[i]].updateDraw(0.25);
+		tiles[lastVisibleTiles[i]].updateDraw(Constants::mapInLineOfSightValue);
 		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
 	}
 	lastVisibleTilesSize = 0;
@@ -325,34 +353,19 @@ void Map::updateVisibility(double deltaTime)
 	playerX += playerVx * deltaTime;
 	playerY += playerVy * deltaTime;
 
-	double visionRange = 40.0;
+	double visionRange = 8.0;
 	std::int64_t lookupRange = std::ceil(visionRange);
-
-	auto updateVisibleTile = [this, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
-	{
-		double distance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
-		if(distance > visionRange)
-			return;
-
-		double lightStrength = std::clamp((visionRange - distance) / 2.0 + 0.5, 0.5, 1.0);
-		getTile(x, y).updateDraw(lightStrength);
-
-		lastVisibleTiles[lastVisibleTilesSize] = x + y * Constants::mapWidth;
-		lastVisibleTilesSize++;
-
-		tileBrightnessMask[x + y * Constants::mapWidth] = lightStrength;
-	};
 
 	std::int64_t playerCellX = playerX;
 	std::int64_t playerCellY = playerY;
-	updateVisibleTile(playerX, playerY, playerCellX + 0.5 - playerX, playerCellY + 0.5 - playerY);
+	updateVisibleTile(playerX, playerY, playerCellX + 0.5 - playerX, playerCellY + 0.5 - playerY, visionRange);
 
 	//Get initial left slopes
 	double topStartSlope{}, bottomStartSlope{};
 	std::int64_t startCellX{playerCellX - 1};
 	while(true)
 	{
-		updateVisibleTile(startCellX, playerCellY, startCellX + 0.5 - playerX, playerCellY + 0.5 - playerY);
+		updateVisibleTile(startCellX, playerCellY, startCellX + 0.5 - playerX, playerCellY + 0.5 - playerY, visionRange);
 
 		if(getTileOpaque(startCellX, playerCellY))
 		{
@@ -369,7 +382,7 @@ void Map::updateVisibility(double deltaTime)
 	std::int64_t endCellX{playerCellX + 1};
 	while(true)
 	{
-		updateVisibleTile(endCellX, playerCellY, endCellX + 0.5 - playerX, playerCellY + 0.5 - playerY);
+		updateVisibleTile(endCellX, playerCellY, endCellX + 0.5 - playerX, playerCellY + 0.5 - playerY, visionRange);
 
 		if(getTileOpaque(endCellX, playerCellY))
 		{
@@ -386,9 +399,9 @@ void Map::updateVisibility(double deltaTime)
 		return (startSlope < 0.0 && endSlope > 0.0) || (endSlope < startSlope && (endSlope > 0.0 || startSlope < 0.0));
 	};
 
-	auto calculateVisibilitySector = [this, playerX, playerY, &updateVisibleTile, &getSlopesCorrect](this auto&& self, std::int64_t currentCellY, std::int64_t directionY,
-																									 double startSlope, double startEnterX, std::int64_t startCellX,
-																									 double endSlope, double endEnterX, std::int64_t endCellX)
+	auto calculateVisibilitySector = [this, playerX, playerY, visionRange, &getSlopesCorrect](this auto&& self, std::int64_t currentCellY, std::int64_t directionY,
+																				 double startSlope, double startEnterX, std::int64_t startCellX,
+																				 double endSlope, double endEnterX, std::int64_t endCellX)
 	{
 		while(true)
 		{
@@ -399,7 +412,7 @@ void Map::updateVisibility(double deltaTime)
 				//Move right until first non opaque cell found
 				do
 				{
-					updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+					updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 					//Terminate if no more empty cells
 					if(startCellX == endCellX)
@@ -408,7 +421,7 @@ void Map::updateVisibility(double deltaTime)
 					startCellX++;
 
 				} while(getTileOpaque(startCellX, currentCellY));
-				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 				currentStartCellX = startCellX + 1;
 
@@ -430,7 +443,7 @@ void Map::updateVisibility(double deltaTime)
 			else
 			{
 				currentStartCellX = startCellX + 1;
-				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 				//Move left until first opaque cell or move right until next row
 				double directedStartSlope = startSlope * directionY;
@@ -441,7 +454,7 @@ void Map::updateVisibility(double deltaTime)
 					startCellX = startEnterX;
 					for(auto i = currentStartCellX - 2; i >= startCellX; i--)
 					{
-						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 						if(getTileOpaque(i, currentCellY))
 						{
 							//New slope is towards top right corner of first opaque cell in top half and towards bottom right corner in bottom half
@@ -467,7 +480,7 @@ void Map::updateVisibility(double deltaTime)
 				{
 					do
 					{
-						updateVisibleTile(endCellX, currentCellY, endCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(endCellX, currentCellY, endCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 						endCellX--;
 
 					} while(getTileOpaque(endCellX, currentCellY));
@@ -489,13 +502,13 @@ void Map::updateVisibility(double deltaTime)
 				}
 				else
 				{
-					updateVisibleTile(currentEndCellX, currentCellY, currentEndCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+					updateVisibleTile(currentEndCellX, currentCellY, currentEndCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 					double initialEndEnterX = endEnterX;
 					endEnterX = endEnterX + 1.0 / directedEndSlope;
 					endCellX = (std::int64_t)(endEnterX);
 					for(auto i = currentEndCellX + 1; i <= endCellX; i++)
 					{
-						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 						if(getTileOpaque(i, currentCellY))
 						{
 							endSlope = (currentCellY + (directionY == 1) - playerY) / (i - playerX);
@@ -531,7 +544,7 @@ void Map::updateVisibility(double deltaTime)
 
 					do
 					{
-						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 						if(i == currentEndCellX)
 							return;
@@ -553,7 +566,7 @@ void Map::updateVisibility(double deltaTime)
 					}
 				}
 
-				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 			}
 
 			if(!getSlopesCorrect(startSlope * directionY, endSlope * directionY))
@@ -570,7 +583,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 {
 	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
 	{
-		tiles[lastVisibleTiles[i]].updateDraw(0.25);
+		tiles[lastVisibleTiles[i]].updateDraw(Constants::mapInLineOfSightValue);
 		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
 	}
 	lastVisibleTilesSize = 0;
@@ -580,34 +593,19 @@ void Map::updateVisibilityDebug(double deltaTime)
 	playerX += playerVx * deltaTime;
 	playerY += playerVy * deltaTime;
 
-	double visionRange = 40.0;
+	double visionRange = 8.0;
 	std::int64_t lookupRange = std::ceil(visionRange);
-
-	auto updateVisibleTile = [this, visionRange](std::int64_t x, std::int64_t y, double distanceX, double distanceY)
-	{
-		double distance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
-		if(distance > visionRange)
-			return;
-
-		double lightStrength = std::clamp((visionRange - distance) / 2.0 + 0.5, 0.5, 1.0);
-		getTile(x, y).updateDraw(lightStrength);
-
-		lastVisibleTiles[lastVisibleTilesSize] = x + y * Constants::mapWidth;
-		lastVisibleTilesSize++;
-
-		tileBrightnessMask[x + y * Constants::mapWidth] = lightStrength;
-	};
 
 	std::int64_t playerCellX = playerX;
 	std::int64_t playerCellY = playerY;
-	updateVisibleTile(playerX, playerY, playerCellX + 0.5 - playerX, playerCellY + 0.5 - playerY);
+	updateVisibleTile(playerX, playerY, playerCellX + 0.5 - playerX, playerCellY + 0.5 - playerY, visionRange);
 
 	//Get initial left slopes
 	double topStartSlope{}, bottomStartSlope{};
 	std::int64_t startCellX{playerCellX - 1};
 	while(true)
 	{
-		updateVisibleTile(startCellX, playerCellY, startCellX + 0.5 - playerX, playerCellY + 0.5 - playerY);
+		updateVisibleTile(startCellX, playerCellY, startCellX + 0.5 - playerX, playerCellY + 0.5 - playerY, visionRange);
 
 		if(getTileOpaque(startCellX, playerCellY))
 		{
@@ -625,7 +623,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 	std::int64_t endCellX{playerCellX + 1};
 	while(true)
 	{
-		updateVisibleTile(endCellX, playerCellY, endCellX + 0.5 - playerX, playerCellY + 0.5 - playerY);
+		updateVisibleTile(endCellX, playerCellY, endCellX + 0.5 - playerX, playerCellY + 0.5 - playerY, visionRange);
 
 		if(getTileOpaque(endCellX, playerCellY))
 		{
@@ -643,7 +641,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 		return (startSlope < 0.0 && endSlope > 0.0) || (endSlope < startSlope && (endSlope > 0.0 || startSlope < 0.0));
 	};
 
-	auto calculateVisibilitySector = [this, playerX, playerY, &updateVisibleTile, &getSlopesCorrect](this auto&& self, std::int64_t currentCellY, std::int64_t directionY,
+	auto calculateVisibilitySector = [this, playerX, playerY, visionRange, &getSlopesCorrect](this auto&& self, std::int64_t currentCellY, std::int64_t directionY,
 																									 double startSlope, double startEnterX, std::int64_t startCellX,
 																									 double endSlope, double endEnterX, std::int64_t endCellX)
 	{
@@ -658,7 +656,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 				//Move right until first non opaque cell found
 				do
 				{
-					updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+					updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 					//Terminate if no more empty cells
 					if(startCellX == endCellX)
@@ -669,7 +667,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 					startCellX++;
 
 				} while(getTileOpaque(startCellX, currentCellY));
-				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 				currentStartCellX = startCellX + 1;
 
@@ -683,7 +681,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 				else
 				{
 					//New slope is towards bottom right corner of last blocking cell in top half and towards top right corner in bottom half
-					startSlope =  (currentCellY + (directionY == -1) - playerY) / (startCellX - playerX);
+					startSlope = (currentCellY + (directionY == -1) - playerY) / (startCellX - playerX);
 					startEnterX = startCellX + 1.0 / std::abs(startSlope);
 					startCellX = (std::int64_t)startEnterX;
 				}
@@ -691,7 +689,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 			else
 			{
 				currentStartCellX = startCellX + 1;
-				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+				updateVisibleTile(startCellX, currentCellY, startCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 				//Move left until first opaque cell or move right until next row
 				double directedStartSlope = startSlope * directionY;
@@ -702,7 +700,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 					startCellX = startEnterX;
 					for(auto i = currentStartCellX - 2; i >= startCellX; i--)
 					{
-						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 						if(getTileOpaque(i, currentCellY))
 						{
 							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + i + 1, currentCellY + (directionY == -1) - (initialEnterX - i - 1) * startSlope);
@@ -732,7 +730,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 
 					do
 					{
-						updateVisibleTile(endCellX, currentCellY, endCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(endCellX, currentCellY, endCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 						endCellX--;
 
 					} while(getTileOpaque(endCellX, currentCellY));
@@ -754,13 +752,13 @@ void Map::updateVisibilityDebug(double deltaTime)
 				}
 				else
 				{
-					updateVisibleTile(currentEndCellX, currentCellY, currentEndCellX + 0.5 - playerX, currentCellY + 0.5 - playerY);
+					updateVisibleTile(currentEndCellX, currentCellY, currentEndCellX + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 					double initialEndEnterX = endEnterX;
 					endEnterX = endEnterX + 1.0 / directedEndSlope;
 					endCellX = (std::int64_t)(endEnterX);
 					for(auto i = currentEndCellX + 1; i <= endCellX; i++)
 					{
-						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 						if(getTileOpaque(i, currentCellY))
 						{
 							debugLines.emplace_back(Constants::mapOffset + playerX, playerY, Constants::mapOffset + i, currentCellY + (directionY == -1) + (i - initialEndEnterX) * endSlope);
@@ -798,7 +796,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 
 					do
 					{
-						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+						updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 
 						if(i == currentEndCellX)
 							return;
@@ -820,7 +818,7 @@ void Map::updateVisibilityDebug(double deltaTime)
 					}
 				}
 
-				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY);
+				updateVisibleTile(i, currentCellY, i + 0.5 - playerX, currentCellY + 0.5 - playerY, visionRange);
 			}
 
 			if(!getSlopesCorrect(startSlope * directionY, endSlope * directionY))

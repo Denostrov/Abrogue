@@ -69,7 +69,7 @@ export class Map
 			Info{Color(0, 255, 0, 255), Color(8, 8, 8, 255), 237},
 			Info{Color(255, 255, 255, 255), Color(32, 32, 32, 255), 35},
 			Info{Color(255, 255, 255, 255), Color(16, 16, 16, 255), 35},
-			Info{Color(255, 128, 0, 255), Color(192, 64, 0, 255), 43},
+			Info{Color(255, 128, 0, 255), Color(192, 16, 0, 255), 43},
 			Info{Color(255, 255, 255, 255), Color(16, 16, 192, 255), 234}
 		};
 
@@ -112,6 +112,7 @@ public:
 	[[nodiscard]] bool getTileOpaque(std::int64_t x, std::int64_t y) const;
 	[[nodiscard]] bool getTileFloor(std::int64_t x, std::int64_t y) const;
 	[[nodiscard]] double getTileBrightness(std::int64_t x, std::int64_t y) const;
+	[[nodiscard]] bool getTileInLineOfSight(std::int64_t x, std::int64_t y) const;
 
 	static void setDrawDebugViewcone(bool draw) { updateVisibilityFunc = draw ? &updateVisibilityDebug : &updateVisibility; }
 
@@ -120,6 +121,7 @@ private:
 
 	void generateLevel();
 
+	void updateVisibleTile(std::int64_t x, std::int64_t y, double distanceX, double distanceY, double visionRange);
 	void updateVisibility(double deltaTime);
 	void updateVisibilityDebug(double deltaTime);
 	inline static void (Map::* updateVisibilityFunc)(double) {};

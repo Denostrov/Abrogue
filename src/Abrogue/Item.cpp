@@ -24,7 +24,7 @@ void Item::updateDraw(double deltaTime)
 	quad.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
 
 	auto brightness = map.getTileBrightness(x, y);
-	if(brightness <= 0.0)
+	if(brightness < Constants::mapMinBrightness)
 	{
 		quad.setColor(0);
 		quad.setBackgroundColor(0);
