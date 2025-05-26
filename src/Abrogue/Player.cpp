@@ -79,13 +79,12 @@ void Player::takeDamage(std::int64_t damage)
 	setHealth(newHealth);
 }
 
-void Player::setMovement(std::int32_t movementX, std::int32_t movementY)
+void Player::setMovement(std::int64_t movementX, std::int64_t movementY)
 {
 	if(health == 0)
 		return;
 
-	setMovementX(movementX);
-	setMovementY(movementY);
+	setMovementDirection(movementX, movementY);
 }
 
 void Player::setHealth(std::int64_t newHealth)
@@ -96,7 +95,6 @@ void Player::setHealth(std::int64_t newHealth)
 	if(health == 0)
 	{
 		gui.showGameOver(false);
-		setMovementX(0);
-		setMovementY(0);
+		setMovementDirection(0.0, 0.0);
 	}
 }

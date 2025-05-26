@@ -8,9 +8,9 @@ Enemy::Enemy(EnemyData const& data, double positionX, double positionY)
 	:PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color)
 {
 	auto [x, y] = getPosition();
-	quadReference = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
+	quad = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
 									{color.getPacked(), color.getTransparentPacked()}, data.symbol},
-									QuadPool::eEntity);
+						   QuadPool::eEntity);
 
 	setMass(data.mass);
 	setMaxVelocity(data.speed);
@@ -22,29 +22,36 @@ void Enemy::update(double playerX, double playerY, std::int64_t stealthRange)
 {
 	auto [x, y] = getPosition();
 
-	double distanceX = playerX - x;
+	double distanceX = (playerX - x) / 2.0;
 	double distanceY = playerY - y;
-	double totalDistance = std::sqrt(distanceX * distanceX / 4.0 + distanceY * distanceY);
+	double totalDistance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
 
 	if(state == State::eHunting)
 	{
 		if(totalDistance > stealthRange || !map.getTileInLineOfSight(x, y))
 		{
 			state = State::eWandering;
-			setMovementX(0);
-			setMovementY(0);
+			setMovementDirection(0, 0);
 		}
 		else
 		{
-			if(totalDistance > 1.5)
+			if(totalDistance > 1.0)
 			{
-				setMovementX(x < playerX - 0.5 ? 1 : x > playerX + 0.5 ? -1 : 0);
-				setMovementY(y < playerY - 0.5 ? 1 : y > playerY + 0.5 ? -1 : 0);
+				if(std::abs(distanceX) > std::abs(distanceY))
+					setMovementDirection(std::copysign(1.0, distanceX), std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(0.5, distanceY));
+				else
+					setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(0.5, distanceX), std::copysign(1.0, distanceY));
 			}
-			else if(totalDistance < 1.0)
+			else if(totalDistance < 0.75)
+				setMovementDirection(-distanceX, -distanceY);
+			else
 			{
-				setMovementX(x < playerX ? -1 : x >= playerX ? 1 : 0);
-				setMovementY(y < playerY ? -1 : y >= playerY ? 1 : 0);
+				auto [velocityX, velocityY] = getVelocity();
+				double velocityMagnitude = std::sqrt(velocityX * velocityX / 4.0 + velocityY * velocityY);
+				if(velocityMagnitude > 0.5)
+					setMovementDirection(-velocityX / velocityMagnitude, -velocityY / velocityMagnitude);
+				else
+					setMovementDirection(0.0, 0.0);
 			}
 
 			if(totalDistance < 1.5 && !weapon.getIsAttacking())
@@ -76,18 +83,18 @@ void Enemy::updateDraw(double deltaTime)
 {
 	auto [x, y] = getPosition();
 	auto [vx, vy] = getVelocity();
-	quadReference.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
+	quad.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
 
 	auto brightness = map.getTileBrightness(x, y);
 	if(brightness < Constants::mapMinBrightness)
 	{
-		quadReference.setColor(0);
-		quadReference.setBackgroundColor(0);
+		quad.setColor(0);
+		quad.setBackgroundColor(0);
 	}
 	else
 	{
-		quadReference.setColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, color.a));
-		quadReference.setBackgroundColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, 0));
+		quad.setColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, color.a));
+		quad.setBackgroundColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, 0));
 
 		weapon.updateDraw(Constants::mapOffset + x, y);
 	}

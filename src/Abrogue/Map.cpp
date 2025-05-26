@@ -320,6 +320,7 @@ void Map::generateLevel()
 
 void Map::updateVisibleTile(std::int64_t x, std::int64_t y, double distanceX, double distanceY, double visionRange)
 {
+	std::uint64_t tileIndex = x + y * Constants::mapWidth;
 	double distance2 = distanceX * distanceX / 4.0 + distanceY * distanceY;
 	double visionRange2 = visionRange * visionRange;
 	if(distance2 <= visionRange2)
@@ -327,26 +328,24 @@ void Map::updateVisibleTile(std::int64_t x, std::int64_t y, double distanceX, do
 		//Light strength falls off quadratically down to a minimum
 		double lightStrength = 1.0 - distance2 / visionRange2 * (1.0 - Constants::mapMinBrightness);
 		getTile(x, y).updateDraw(lightStrength);
-		tileBrightnessMask[x + y * Constants::mapWidth] = lightStrength;
+		tileBrightnessMask[tileIndex] = lightStrength;
+		lastVisibleTiles.emplace_back(tileIndex);
 	}
 	else
 	{
 		//Tiles outside the vision range are marked with special value
-		tileBrightnessMask[x + y * Constants::mapWidth] = Constants::mapInLineOfSightValue;
+		tileBrightnessMask[tileIndex] = Constants::mapInLineOfSightValue;
 	}
-
-	lastVisibleTiles[lastVisibleTilesSize] = x + y * Constants::mapWidth;
-	lastVisibleTilesSize++;
 }
 
 void Map::updateVisibility(double deltaTime)
 {
-	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
+	for(auto tileIndex : lastVisibleTiles)
 	{
-		tiles[lastVisibleTiles[i]].updateDraw(Constants::mapInLineOfSightValue);
-		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
+		tiles[tileIndex].updateDraw(Constants::mapInLineOfSightValue);
+		tileBrightnessMask[tileIndex] = 0.0;
 	}
-	lastVisibleTilesSize = 0;
+	lastVisibleTiles.clear();
 
 	auto [playerX, playerY] = player.getPosition();
 	auto [playerVx, playerVy] = player.getVelocity();
@@ -581,12 +580,12 @@ void Map::updateVisibility(double deltaTime)
 
 void Map::updateVisibilityDebug(double deltaTime)
 {
-	for(std::size_t i = 0; i < lastVisibleTilesSize; i++)
+	for(auto tileIndex : lastVisibleTiles)
 	{
-		tiles[lastVisibleTiles[i]].updateDraw(Constants::mapInLineOfSightValue);
-		tileBrightnessMask[lastVisibleTiles[i]] = 0.0;
+		tiles[tileIndex].updateDraw(Constants::mapInLineOfSightValue);
+		tileBrightnessMask[tileIndex] = 0.0;
 	}
-	lastVisibleTilesSize = 0;
+	lastVisibleTiles.clear();
 
 	auto [playerX, playerY] = player.getPosition();
 	auto [playerVx, playerVy] = player.getVelocity();

@@ -15,9 +15,8 @@ public:
 protected:
 	void setMass(double newMass) { mass = newMass; }
 	void setFrictionCoefficient(double newFriction) { frictionCoefficient = newFriction; }
-	void setMaxVelocity(double newMaxSpeed) { maxVelocity = newMaxSpeed; walkingForce = maxVelocity * resistanceCoefficient; }
-	void setMovementX(std::int32_t direction) { movementDirectionX = direction; }
-	void setMovementY(std::int32_t direction) { movementDirectionY = direction; }
+	void setMaxVelocity(double newMaxSpeed);
+	void setMovementDirection(double directionX, double directionY);
 
 	void update();
 
@@ -35,5 +34,5 @@ private:
 
 	double previousX{x}, previousY{y};	//Coordinates on last update frame
 
-	std::int32_t movementDirectionX{}, movementDirectionY{};	//Direction of applied movement forces (0 - no force, 1 - positive, -1 - negative)
+	double movementDirectionX{}, movementDirectionY{};	//Unscaled directions of applied movement forces
 };

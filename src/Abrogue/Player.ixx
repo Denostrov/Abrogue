@@ -20,13 +20,13 @@ public:
 
 	std::int64_t getStealthRange() const { return stealthRange; }
 
-	void setMovement(std::int32_t movementX, std::int32_t movementY);
+	void setMovement(std::int64_t movementX, std::int64_t movementY);
 	void setHealth(std::int64_t newHealth);
 
 	Weapon weapon;
 	std::int64_t health{};
 	std::int64_t gold{};
-	std::int64_t stealthRange{4};
+	std::int64_t stealthRange{7};
 
 	std::int64_t lastTileX{}, lastTileY{};
 

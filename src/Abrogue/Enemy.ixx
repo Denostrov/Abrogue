@@ -19,7 +19,6 @@ public:
 	void update(double playerX, double playerY, std::int64_t stealthRange);
 	void updateDraw(double deltaTime);
 
-	QuadPool::Reference quadReference;
 private:
 	State state;
 	Weapon weapon;
@@ -27,6 +26,8 @@ private:
 	Color color;
 
 	double stealthTimer{};
+
+	QuadPool::Reference quad;
 };
 
 export class EnemyHandler

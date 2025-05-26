@@ -6,9 +6,21 @@ PhysicsComponent::PhysicsComponent(double x, double y, double leftScaleX, double
 	:x(x), y(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)
 {}
 
+void PhysicsComponent::setMaxVelocity(double newMaxSpeed)
+{
+	maxVelocity = newMaxSpeed;
+	walkingForce = maxVelocity * resistanceCoefficient;
+}
+
+void PhysicsComponent::setMovementDirection(double directionX, double directionY)
+{
+	movementDirectionX = directionX;
+	movementDirectionY = directionY;
+}
+
 void PhysicsComponent::update()
 {
-	auto calculateNextStep = [this](double coordinate, double velocity, double tileScale, int32_t movementDirection, int32_t otherMovementDirection)
+	auto calculateNextStep = [this](double coordinate, double velocity, double tileScale, double movementDirection)
 	{
 		std::pair<double, double> result{coordinate, velocity};
 
@@ -16,7 +28,7 @@ void PhysicsComponent::update()
 		result.first += velocity * Constants::tickDuration / 2.0;
 
 		//Calculate forces
-		double movementForce = movementDirection * walkingForce * frictionCoefficient * (otherMovementDirection != 0 ? 1.0 / std::sqrt(2.0) : 1.0);
+		double movementForce = movementDirection * walkingForce * frictionCoefficient;
 		double frictionForce{};
 		if(std::abs(velocity) > 0.0)
 		{
@@ -31,18 +43,22 @@ void PhysicsComponent::update()
 		result.second += (movementForce * tileScale + frictionForce) / mass * Constants::tickDuration / 2.0;
 
 		//Check if velocity inverted due to friction
-		if(std::signbit(result.second) != velocitySign && movementDirection == 0)
+		if(std::signbit(result.second) != velocitySign && std::abs(movementDirection) <= 0.001)
 			result.second = 0.0;
 
 		return result;
 	};
 
-	//Do forward euler integration in two steps to reflect coordinate change on same tick
-	std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementDirectionX, movementDirectionY);
-	std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementDirectionY, movementDirectionX);
+	double directionAmplitude = std::sqrt(movementDirectionX * movementDirectionX + movementDirectionY * movementDirectionY);
+	double movementX = directionAmplitude <= 0.001 ? 0 : movementDirectionX / directionAmplitude;
+	double movementY = directionAmplitude <= 0.001 ? 0 : movementDirectionY / directionAmplitude;
 
-	std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementDirectionX, movementDirectionY);
-	std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementDirectionY, movementDirectionX);
+	//Do forward euler integration in two steps to reflect coordinate change on same tick
+	std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementX);
+	std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementY);
+
+	std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementX);
+	std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementY);
 
 	//No collisions possible if no movement
 	if(x == previousX && y == previousY)

@@ -131,8 +131,7 @@ private:
 	std::array<Tile, Constants::mapTileCount> tiles;
 	LevelData levelData;
 
-	std::array<std::uint64_t, Constants::mapTileCount> lastVisibleTiles{};
-	std::uint64_t lastVisibleTilesSize{};
+	FixedVector<std::uint64_t, Constants::mapTileCount> lastVisibleTiles;
 
 	std::array<double, Constants::mapTileCount> tileBrightnessMask{};
 
