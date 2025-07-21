@@ -8,25 +8,22 @@ using namespace std::literals;
 
 void GUI::init()
 {
+	//Initialize all available screens
 	mainMenu.init();
 	playArea.init();
-	menu.init();
+	pauseMenu.init();
 	discoveries.init();
 	debugMenu.init();
 	gameOver.init();
 
 	fpsLabel.init("FPS:"sv, 0, 0, QuadPool::eMap, true);
 
-	mainMenu.setVisible(true);
-	setCurrentScreen(mainMenu);
+	setCurrentScreen(ScreenType::eMainMenu);
 }
 
 void GUI::showPlayArea()
 {
-	mainMenu.setVisible(false);
-
-	playArea.setVisible(true);
-	setCurrentScreen(playArea);
+	setCurrentScreen(ScreenType::ePlayArea);
 }
 
 void GUI::showMainMenu()
@@ -34,164 +31,110 @@ void GUI::showMainMenu()
 	//Restore default GUI state
 	playArea.setPaused(false);
 	debugMenu.resetToDefault();
-	popupBackground.setVisible(false);
 
-	//Hide all visible screens
-	currentScreen->setVisible(false);
-	playArea.setVisible(false);
-
-	//Show main menu
-	mainMenu.setVisible(true);
-	setCurrentScreen(mainMenu);
+	setCurrentScreen(ScreenType::eMainMenu);
 }
 
 void GUI::showGameOver(bool winner)
 {
-	//Show background if not already visible and hide popups
-	if(currentScreen == &playArea)
-		popupBackground.setVisible(true);
-	else
-		currentScreen->setVisible(false);
-
 	gameOver.setWinner(winner);
-	gameOver.setVisible(true);
-	setCurrentScreen(gameOver);
+
+	setCurrentScreen(ScreenType::eGameOver);
 }
 
 void GUI::updateDraw(double deltaTime)
 {
-	currentScreen->updateDraw(deltaTime);
 	popupBackground.updateDraw(deltaTime);
 }
 
 void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 {
-	currentScreen->updateMouseMoved(x, y);
+	executeOnScreen(activeScreenType, [x, y](auto& screen) { screen.updateMouseMoved(x, y); });
 }
 
 void GUI::onMousePressed(std::int64_t x, std::int64_t y)
 {
 	//Handle player actions when pressing on the map
-	if(currentScreen == &playArea && !playArea.getPaused() && x >= Constants::mapOffset)
+	if(activeScreenType == ScreenType::ePlayArea && !playArea.getPaused() && x >= Constants::mapOffset)
 		player.onMousePressed(x - Constants::mapOffset, y);
 
-	currentScreen->updateMousePressed(x, y);
+	executeOnScreen(activeScreenType, [x, y](auto& screen) { screen.updateMousePressed(x, y); });
 }
 
-void GUI::onMenuHotkeyPressed()
+void GUI::onPauseMenuHotkeyPressed()
 {
-	if(currentScreen == &mainMenu)
+	//Requesting the pause menu before the game starts does nothing
+	if(activeScreenType == ScreenType::eMainMenu)
 		return;
 
-	//Pressing escape after game over to return to main menu
-	if(currentScreen == &gameOver)
+	//Requesting the pause menu after game over returns to the main menu
+	if(activeScreenType == ScreenType::eGameOver)
 	{
 		game.quitToMainMenu();
 		return;
 	}
 
 	//Close a popup if its the current screen
-	if(currentScreen != &playArea)
+	if(activeScreenType != ScreenType::ePlayArea)
 	{
 		playArea.setPaused(previouslyPaused);
-
-		currentScreen->setVisible(false);
-		setCurrentScreen(playArea);
-		popupBackground.setVisible(false);
-
 		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
+		setCurrentScreen(ScreenType::ePlayArea);
 		return;
 	}
 
-	//Show options menu
+	//Show the pause menu
 	playArea.setPaused(true);
-
-	menu.setVisible(true);
-	setCurrentScreen(menu);
-	popupBackground.setVisible(true);
-
 	playArea.setTabButtonPressed(PlayArea::ButtonType::eMenu);
+	setCurrentScreen(ScreenType::ePauseMenu);
 }
 
 void GUI::onDebugHotkeyPressed()
 {
-	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
+	//Requesting the debug menu only works during play
+	if(activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::ePauseMenu || activeScreenType == ScreenType::eGameOver)
 		return;
 
-	//Close debug menu if its already open or switch to it if another popup is open
-	if(currentScreen != &playArea)
+	//Close debug menu if its already open
+	if(activeScreenType == ScreenType::eDebugMenu)
 	{
-		currentScreen->setVisible(false);
-		if(currentScreen == &debugMenu)
-		{
-			setCurrentScreen(playArea);
-			popupBackground.setVisible(false);
-
-			playArea.setPaused(previouslyPaused);
-			playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
-		}
-		else
-		{
-			setCurrentScreen(debugMenu);
-			debugMenu.setVisible(true);
-
-			playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
-		}
-
+		playArea.setPaused(previouslyPaused);
+		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
+		setCurrentScreen(backgroundScreenType);
 		return;
 	}
 
 	//Show debug options
 	playArea.setPaused(true);
-
-	debugMenu.setVisible(true);
-	setCurrentScreen(debugMenu);
-	popupBackground.setVisible(true);
-
 	playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
-
+	setCurrentScreen(ScreenType::eDebugMenu);
 }
 
 void GUI::onDiscoveriesHotkeyPressed()
 {
-	if(currentScreen == &mainMenu || currentScreen == &menu || currentScreen == &gameOver)
+	//Requesting the discoveries menu only works during play
+	if(activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::ePauseMenu || activeScreenType == ScreenType::eGameOver)
 		return;
 
-	//Close discoveries menu if its already open or switch to it if another popup is open
-	if(currentScreen != &playArea)
+	//Close discoveries menu if its already open
+	if(activeScreenType == ScreenType::eDiscoveries)
 	{
-		currentScreen->setVisible(false);
-		if(currentScreen == &discoveries)
-		{
-			setCurrentScreen(playArea);
-			popupBackground.setVisible(false);
-
-			playArea.setPaused(previouslyPaused);
-			playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
-		}
-		else
-		{
-			discoveries.setVisible(true);
-			setCurrentScreen(discoveries);
-			playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
-		}
-
+		playArea.setPaused(previouslyPaused);
+		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
+		setCurrentScreen(backgroundScreenType);
 		return;
 	}
 
 	//Show discoveries menu
 	playArea.setPaused(true);
-
-	discoveries.setVisible(true);
-	setCurrentScreen(discoveries);
-	popupBackground.setVisible(true);
-
 	playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
+	setCurrentScreen(ScreenType::eDiscoveries);
 }
 
 void GUI::onPauseHotkeyPressed()
 {
-	if(currentScreen != &playArea)
+	//Pausing only allowed during active play
+	if(activeScreenType != ScreenType::ePlayArea)
 		return;
 
 	previouslyPaused = !playArea.getPaused();
@@ -200,7 +143,8 @@ void GUI::onPauseHotkeyPressed()
 
 void GUI::onStopTimeHotkeyPressed()
 {
-	if(currentScreen == &mainMenu || currentScreen == &gameOver)
+	//Stopping time not allowed in main menu or during game over
+	if(activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::eGameOver)
 		return;
 
 	debugMenu.toggleStopTime();
@@ -208,19 +152,74 @@ void GUI::onStopTimeHotkeyPressed()
 
 void GUI::onStepTimeHotkeyPressed()
 {
-	if(currentScreen == &mainMenu || currentScreen == &gameOver)
+	//Stepping time not allowed in main menu or during game over
+	if(activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::eGameOver)
 		return;
 
 	debugMenu.toggleStepTime();
 }
 
-void GUI::setCurrentScreen(Screen& newScreen)
+void GUI::setCurrentScreen(ScreenType screenType)
 {
-	currentScreen = &newScreen;
+	//Do nothing if the old and new screens are the same
+	if(activeScreenType == screenType)
+		return;
+
+	auto isOldScreenAPopup = isScreenAPopup(activeScreenType);
+	auto isNewScreenAPopup = isScreenAPopup(screenType);
+
+	//Show popup on top of the already visible screen
+	//If the old screen was a popup too, simply switch to the new one
+	//Else keep the old screen visible in the background
+	if(isNewScreenAPopup)
+	{
+		if(isOldScreenAPopup)
+			setScreenVisible(activeScreenType, false);
+		else
+		{
+			popupBackground.setVisible(true);
+			backgroundScreenType = activeScreenType;
+		}
+
+		setScreenVisible(screenType, true);
+	}
+	//Hide the popup and its background
+	//If the new and background screens are different, hide the old background too
+	else if(isOldScreenAPopup)
+	{
+		popupBackground.setVisible(false);
+
+		setScreenVisible(activeScreenType, false);
+		if(screenType != backgroundScreenType)
+		{
+			setScreenVisible(backgroundScreenType, false);
+			setScreenVisible(screenType, true);
+		}
+
+		backgroundScreenType = ScreenType::eNone;
+	}
+	//Hide the old screen and show the new one
+	else
+	{
+		setScreenVisible(activeScreenType, false);
+		setScreenVisible(screenType, true);
+	}
+
+	activeScreenType = screenType;
 
 	//Refresh mouse position for the newly shown screen
 	auto [x, y] = inputHandler.getMousePosition();
 	onMouseMoved(x, y);
+}
+
+void GUI::setScreenVisible(ScreenType screenType, bool visible)
+{
+	executeOnScreen(screenType, [visible](auto& screen) { screen.setVisible(visible); });
+}
+
+bool GUI::isScreenAPopup(ScreenType screenType) const
+{
+	return screenType == ScreenType::ePauseMenu || screenType == ScreenType::eDiscoveries || screenType == ScreenType::eDebugMenu || screenType == ScreenType::eGameOver;
 }
 
 void GUI::setFPS(std::int64_t fps)

@@ -9,14 +9,15 @@ export class Enemy : public PhysicsComponent
 	{
 		eSleeping,
 		eWandering,
-		eHunting
+		eHunting,
+		eSearching
 	};
 
 public:
 	Enemy() = default;
 	Enemy(EnemyData const& data, double positionX, double positionY);
 
-	void update(double playerX, double playerY, std::int64_t stealthRange);
+	void update(double playerX, double playerY, double playerVelocityX, double playerVelocityY, std::int64_t stealthRange);
 	void updateDraw(double deltaTime);
 
 private:
@@ -25,7 +26,11 @@ private:
 
 	Color color;
 
+	double lastPlayerSeenX{}, lastPlayerSeenY{};
+	double lastPlayerInterpolatedX{}, lastPlayerInterpolatedY{};
+
 	double stealthTimer{};
+	double lastCheckedStealthTime{};
 
 	QuadPool::Reference quad;
 };

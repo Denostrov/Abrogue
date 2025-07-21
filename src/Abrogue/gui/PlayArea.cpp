@@ -99,7 +99,7 @@ void PlayArea::onButtonPressed(size_t index)
 	pressedTabButton = type;
 
 	if(type == ButtonType::eMenu)
-		gui.onMenuHotkeyPressed();
+		gui.onPauseMenuHotkeyPressed();
 	else if(type == ButtonType::eDiscoveries)
 		gui.onDiscoveriesHotkeyPressed();
 	else if(type == ButtonType::eDebug)

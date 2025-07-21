@@ -10,6 +10,17 @@ export import GameOver;
 //Class for handling buttons and menus
 export class GUI
 {
+	enum class ScreenType
+	{
+		eNone,
+		eMainMenu,
+		ePlayArea,
+		ePauseMenu,
+		eDiscoveries,
+		eDebugMenu,
+		eGameOver
+	};
+
 public:
 	GUI() = default;
 	void init();
@@ -23,7 +34,7 @@ public:
 	void onMouseMoved(std::int64_t x, std::int64_t y);
 	void onMousePressed(std::int64_t x, std::int64_t y);
 
-	void onMenuHotkeyPressed();
+	void onPauseMenuHotkeyPressed();
 	void onDebugHotkeyPressed();
 	void onDiscoveriesHotkeyPressed();
 	void onPauseHotkeyPressed();
@@ -35,21 +46,51 @@ public:
 	void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 
 private:
-	void setCurrentScreen(Screen& newScreen);
+	void setCurrentScreen(ScreenType screenType);
+	void setScreenVisible(ScreenType screenType, bool visible);
+	bool isScreenAPopup(ScreenType screenType) const;
 
-	Screen* currentScreen{};	//Screen that's currently active and receiving input
-	bool previouslyPaused{};	//Pause state before the popup screen was shown
+	void executeOnScreen(ScreenType screenType, auto func)
+	{
+		switch(screenType)
+		{
+			case ScreenType::eMainMenu:
+				func(mainMenu);
+				break;
+			case ScreenType::ePlayArea:
+				func(playArea);
+				break;
+			case ScreenType::ePauseMenu:
+				func(pauseMenu);
+				break;
+			case ScreenType::eDiscoveries:
+				func(discoveries);
+				break;
+			case ScreenType::eDebugMenu:
+				func(debugMenu);
+				break;
+			case ScreenType::eGameOver:
+				func(gameOver);
+				break;
+			default:
+				break;
+		}
+	}
+
+	ScreenType activeScreenType{ScreenType::eNone};		//Screen that's currently active and receiving input
+	ScreenType backgroundScreenType{ScreenType::eNone};	//Screen that's behind the currently active screen
+	bool previouslyPaused{};							//Pause state before the popup screen was shown
 
 	//Available screens
 	MainMenu mainMenu;
 	PlayArea playArea;
-	Menu menu;
+	Menu pauseMenu;
 	Discoveries discoveries;
 	DebugMenu debugMenu;
 	GameOver gameOver;
 
-	Background popupBackground;
-	Label fpsLabel;
+	Background popupBackground;	//Semi transparent black box behind popup screens
+	Label fpsLabel;				//Debug label for showing fps
 };
 
 export inline GUI gui;

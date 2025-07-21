@@ -25,7 +25,7 @@ void Menu::onButtonPressed(size_t index)
 	auto type = (ButtonType)index;
 
 	if(type == ButtonType::eResume)
-		gui.onMenuHotkeyPressed();
+		gui.onPauseMenuHotkeyPressed();
 	else if(type == ButtonType::eAbandonGame || type == ButtonType::eSaveAndQuit)
 		game.quitToMainMenu();
 }

@@ -18,7 +18,7 @@ Enemy::Enemy(EnemyData const& data, double positionX, double positionY)
 	weapon.init(data.weaponType, data.weaponColor, data.damage, data.attackTime, false);
 }
 
-void Enemy::update(double playerX, double playerY, std::int64_t stealthRange)
+void Enemy::update(double playerX, double playerY, double playerVelocityX, double playerVelocityY, std::int64_t stealthRange)
 {
 	auto [x, y] = getPosition();
 
@@ -26,49 +26,98 @@ void Enemy::update(double playerX, double playerY, std::int64_t stealthRange)
 	double distanceY = playerY - y;
 	double totalDistance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
 
+	auto moveTowards = [this, x, y](double targetX, double targetY)
+	{
+		double distanceX = (targetX - x) / 2.0;
+		double distanceY = targetY - y;
+		if(std::abs(distanceX) > std::abs(distanceY))
+			setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(1.0, distanceX), std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(0.5, distanceY));
+		else
+			setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(0.5, distanceX), std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(1.0, distanceY));
+	};
+
+	auto moveWithinDistance = [this, x, y](double targetX, double targetY, double distance)
+	{
+		double distanceX = (targetX - x) / 2.0;
+		double distanceY = targetY - y;
+		double totalDistance = std::sqrt(distanceX * distanceX + distanceY * distanceY);
+
+		if(totalDistance > distance + 0.25)
+		{
+			if(std::abs(distanceX) > std::abs(distanceY))
+				setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(1.0, distanceX), std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(0.5, distanceY));
+			else
+				setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(0.5, distanceX), std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(1.0, distanceY));
+		}
+		else if(totalDistance < distance - 0.25)
+			setMovementDirection(-distanceX, -distanceY);
+	};
+
+	auto pursuePlayer = [this, playerX, playerY, playerVelocityX, playerVelocityY, x, y, totalDistance, &moveWithinDistance]()
+	{
+		lastPlayerSeenX = playerX;
+		lastPlayerSeenY = playerY;
+
+		lastPlayerInterpolatedX = playerX + playerVelocityX * 1.0;
+		lastPlayerInterpolatedY = playerY + playerVelocityY * 1.0;
+
+		moveWithinDistance(lastPlayerSeenX, lastPlayerSeenY, 1.0);
+
+		if(totalDistance < 1.5 && !weapon.getIsAttacking())
+			weapon.startAttack(x, y, playerX, playerY);
+	};
+
 	if(state == State::eHunting)
 	{
 		if(totalDistance > stealthRange || !map.getTileInLineOfSight(x, y))
 		{
-			state = State::eWandering;
-			setMovementDirection(0, 0);
+			if((std::int64_t)x == (std::int64_t)lastPlayerSeenX && (std::int64_t)y == (std::int64_t)lastPlayerSeenY)
+			{
+				state = State::eSearching;
+				moveTowards(lastPlayerInterpolatedX, lastPlayerInterpolatedY);
+			}
+			else
+				moveTowards(lastPlayerSeenX, lastPlayerSeenY);
+		}
+		else
+			pursuePlayer();
+	}
+	else if(state == State::eSearching)
+	{
+		if(totalDistance < stealthRange && map.getTileInLineOfSight(x, y))
+		{
+			state = State::eHunting;
+
+			pursuePlayer();
 		}
 		else
 		{
-			if(totalDistance > 1.0)
+			if((std::int64_t)x == (std::int64_t)lastPlayerInterpolatedX && (std::int64_t)y == (std::int64_t)lastPlayerInterpolatedY)
 			{
-				if(std::abs(distanceX) > std::abs(distanceY))
-					setMovementDirection(std::copysign(1.0, distanceX), std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(0.5, distanceY));
-				else
-					setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(0.5, distanceX), std::copysign(1.0, distanceY));
+				state = State::eWandering;
+				setMovementDirection(0.0, 0.0);
 			}
-			else if(totalDistance < 0.75)
-				setMovementDirection(-distanceX, -distanceY);
 			else
-			{
-				auto [velocityX, velocityY] = getVelocity();
-				double velocityMagnitude = std::sqrt(velocityX * velocityX / 4.0 + velocityY * velocityY);
-				if(velocityMagnitude > 0.5)
-					setMovementDirection(-velocityX / velocityMagnitude, -velocityY / velocityMagnitude);
-				else
-					setMovementDirection(0.0, 0.0);
-			}
-
-			if(totalDistance < 1.5 && !weapon.getIsAttacking())
-				weapon.startAttack(x, y, playerX, playerY);
+				moveTowards(lastPlayerInterpolatedX, lastPlayerInterpolatedY);
 		}
 	}
 	else
 	{
 		if(totalDistance < stealthRange && map.getTileInLineOfSight(x, y))
 		{
-			std::int64_t timerWhole = stealthTimer;
 			stealthTimer += Constants::tickDuration;
-			if((std::int64_t)stealthTimer > timerWhole)
+			if(stealthTimer > lastCheckedStealthTime + 0.5)
 			{
-				std::uint64_t detectRoll = mapRandom.generate() % 2;
-				if(detectRoll)
+				lastCheckedStealthTime += 0.5;
+				std::uint64_t detectRoll = mapRandom.generate() % 4;
+				if(detectRoll == 0)
+				{
 					state = State::eHunting;
+					stealthTimer = 0.0;
+					lastCheckedStealthTime = 0.0;
+
+					pursuePlayer();
+				}
 			}
 		}
 	}
@@ -119,9 +168,10 @@ void EnemyHandler::update()
 	}
 
 	auto [playerX, playerY] = player.getPosition();
+	auto [playerVelocityX, playerVelocityY] = player.getVelocity();
 	auto stealthRange = player.getStealthRange();
 	for(auto& enemy : enemies)
-		enemy.update(playerX, playerY, stealthRange);
+		enemy.update(playerX, playerY, playerVelocityX, playerVelocityY, stealthRange);
 }
 
 void EnemyHandler::updateDraw(double deltaTime)

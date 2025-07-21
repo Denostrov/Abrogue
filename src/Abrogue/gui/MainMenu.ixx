@@ -16,10 +16,10 @@ public:
 	MainMenu() = default;
 	void init();
 
-	void setVisible(bool visible) final;
+	void onButtonPressed(size_t index);
+
+	void setVisible(bool visible);
 
 private:
-	void onButtonPressed(size_t index) final;
-
 	std::array<Label, (size_t)ButtonType::COUNT> buttons;
 };

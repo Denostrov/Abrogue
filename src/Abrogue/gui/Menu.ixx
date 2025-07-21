@@ -18,10 +18,10 @@ public:
 	Menu() = default;
 	void init();
 
-	void setVisible(bool visible) final;
+	void onButtonPressed(size_t index);
+
+	void setVisible(bool visible);
 
 private:
-	void onButtonPressed(size_t index) final;
-
 	std::array<Label, COUNT> buttons;
 };

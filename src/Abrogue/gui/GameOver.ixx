@@ -9,7 +9,9 @@ public:
 	GameOver() = default;
 	void init();
 
-	void setVisible(bool visible) final;
+	void onButtonPressed(std::size_t index) {}
+
+	void setVisible(bool visible);
 
 	void setWinner(bool winner);
 

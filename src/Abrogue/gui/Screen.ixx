@@ -8,17 +8,23 @@ export class Screen
 public:
 	Screen() = default;
 
-	virtual void updateDraw(double deltaTime) {}
-	virtual void setVisible(bool visible) {}
+	void updateMouseMoved(std::int64_t x, std::int64_t y);
+	template<class Self>
+	void updateMousePressed(this Self&& self, std::int64_t x, std::int64_t y)
+	{
+		for(size_t i = 0; i < self.pressableButtons.size(); i++)
+		{
+			if(!self.pressableButtons[i].checkCollision(x, y))
+				continue;
 
-	void updateMouseMoved(std::uint32_t x, std::uint32_t y);
-	void updateMousePressed(std::uint32_t x, std::uint32_t y);
+			self.onButtonPressed(i);
+			return;
+		}
+	}
 
 protected:
 	std::span<Label> pressableButtons;
 
 private:
-	virtual void onButtonPressed(size_t index) {}
-
 	Label* hoveredButton{};
 };

@@ -28,9 +28,11 @@ public:
 	PlayArea() = default;
 	void init();
 
+	void onButtonPressed(size_t index);
+
 	void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 
-	void setVisible(bool visible) final;
+	void setVisible(bool visible);
 
 	bool getPaused() const { return buttons[(size_t)ButtonType::ePause].getPressed(); }
 	void setPaused(bool paused);
@@ -40,8 +42,6 @@ public:
 	void setPlayerHealth(double percentage);
 
 private:
-	void onButtonPressed(size_t index) final;
-
 	std::array<Label, (size_t)ButtonType::COUNT> buttons;
 	ButtonType pressedTabButton{ButtonType::COUNT};
 };

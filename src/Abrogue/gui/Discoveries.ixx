@@ -9,7 +9,9 @@ public:
 	Discoveries() = default;
 	void init();
 
-	void setVisible(bool visible) final;
+	void onButtonPressed(std::size_t index) {}
+
+	void setVisible(bool visible);
 
 private:
 	Label title;

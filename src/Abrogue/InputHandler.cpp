@@ -38,7 +38,7 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 		if(scancode == SDL_SCANCODE_SPACE)
 			gui.onPauseHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_ESCAPE)
-			gui.onMenuHotkeyPressed();
+			gui.onPauseMenuHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_F3)
 			gui.onDebugHotkeyPressed();
 		else if(scancode == SDL_SCANCODE_KP_7)
