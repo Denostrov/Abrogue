@@ -3,6 +3,7 @@ add_executable(${PROJECT_NAME}
 	"helpers/Configuration.cpp" 
 	"helpers/Logger.cpp" 
 	"helpers/ImageLoader.cpp"
+	"helpers/DebugLine.cpp"
 
 	"RenderEngine.cpp" 
 	"RenderWindow.cpp" 
@@ -13,16 +14,21 @@ add_executable(${PROJECT_NAME}
 	"Player.cpp" 
 	"QuadPool.cpp" 
 	"InputHandler.cpp"
+	"Weapon.cpp"
+	"Item.cpp"
 	
 	"gui/GUI.cpp" 
 	"gui/Label.cpp" 
-	"gui/Menu.cpp" 
+	"gui/PauseMenu.cpp" 
 	"gui/Discoveries.cpp" 
 	"gui/DebugMenu.cpp"  
 	"gui/PlayArea.cpp" 
 	"gui/MainMenu.cpp"
 	"gui/Screen.cpp"
- "Weapon.cpp" "gui/GameOver.cpp" "gui/Background.cpp" "Item.cpp" "helpers/DebugLine.cpp")
+	"gui/GameOver.cpp"
+	"gui/Background.cpp"
+ "gui/OptionsMenu.cpp")
+
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES 
 	${STANDARD_MODULE_PATH} 
 	"helpers/Configuration.ixx" 
@@ -30,6 +36,10 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 	"helpers/ImageLoader.ixx"
 	"helpers/Constants.ixx" 
 	"helpers/Event.ixx"
+	"helpers/DebugLine.ixx"
+	"helpers/Random.ixx"
+	"helpers/Helpers.ixx"
+	"helpers/FixedVector.ixx"
 
 	"RenderEngine.ixx"  
 	"RenderWindow.ixx" 
@@ -39,21 +49,22 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 	"QuadPool.ixx" 
 	"Player.ixx" 
 	"Map.ixx" 
-	
-	
+	"Weapon.ixx"
+	"Item.ixx"
 	"InputHandler.ixx"
 
 	"gui/Label.ixx" 
-	"gui/GUI.ixx"    
-	"gui/Menu.ixx" 
+	"gui/GUI.ixx"
+	"gui/OptionsMenu.ixx"
+	"gui/PauseMenu.ixx" 
 	"gui/Discoveries.ixx" 
 	"gui/DebugMenu.ixx"   
 	"gui/PlayArea.ixx" 
 	"gui/MainMenu.ixx"
 	"gui/GameOver.ixx"
 	"gui/Screen.ixx"
- "Weapon.ixx" "gui/Background.ixx" "helpers/Helpers.ixx" "helpers/FixedVector.ixx" "helpers/Random.ixx" "Item.ixx" 
- "helpers/DebugLine.ixx")
+	"gui/Background.ixx"
+)
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})

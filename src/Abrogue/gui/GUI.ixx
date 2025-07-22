@@ -1,8 +1,9 @@
 export module GUI;
 
 export import MainMenu;
+export import OptionsMenu;
 export import PlayArea;
-export import Menu;
+export import PauseMenu;
 export import Discoveries;
 export import DebugMenu;
 export import GameOver;
@@ -10,10 +11,12 @@ export import GameOver;
 //Class for handling buttons and menus
 export class GUI
 {
+	//Enum for different screen types
 	enum class ScreenType
 	{
 		eNone,
 		eMainMenu,
+		eOptionsMenu,
 		ePlayArea,
 		ePauseMenu,
 		eDiscoveries,
@@ -27,6 +30,7 @@ public:
 
 	void showPlayArea();
 	void showMainMenu();
+	void showOptionsMenu();
 	void showGameOver(bool winner);
 
 	void updateDraw(double deltaTime);
@@ -57,6 +61,9 @@ private:
 			case ScreenType::eMainMenu:
 				func(mainMenu);
 				break;
+			case ScreenType::eOptionsMenu:
+				func(optionsMenu);
+				break;
 			case ScreenType::ePlayArea:
 				func(playArea);
 				break;
@@ -83,8 +90,9 @@ private:
 
 	//Available screens
 	MainMenu mainMenu;
+	OptionsMenu optionsMenu;
 	PlayArea playArea;
-	Menu pauseMenu;
+	PauseMenu pauseMenu;
 	Discoveries discoveries;
 	DebugMenu debugMenu;
 	GameOver gameOver;

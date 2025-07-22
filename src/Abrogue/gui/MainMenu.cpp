@@ -7,8 +7,11 @@ using namespace std::literals;
 
 void MainMenu::init()
 {
-	buttons[eStartGame].init("New game"sv, 120, 30, QuadPool::eMap);
-	buttons[eQuitToDesktop].init("Quit to desktop"sv, 113, 31, QuadPool::eMap);
+	using enum ButtonType;
+
+	buttons[(std::size_t)eStartGame].init("New game"sv, 120, 30, QuadPool::eMap);
+	buttons[(std::size_t)eOptions].init("Options"sv, 121, 31, QuadPool::eMap);
+	buttons[(std::size_t)eQuitToDesktop].init("Quit to desktop"sv, 113, 32, QuadPool::eMap);
 
 	pressableButtons = buttons;
 }
@@ -21,9 +24,13 @@ void MainMenu::setVisible(bool visible)
 
 void MainMenu::onButtonPressed(size_t index)
 {
+	using enum ButtonType;
+
 	auto type = (ButtonType)index;
 	if(type == eStartGame)
 		game.startGame();
+	else if(type == eOptions)
+		gui.showOptionsMenu();
 	else if(type == eQuitToDesktop)
 		game.quitToDesktop();
 }

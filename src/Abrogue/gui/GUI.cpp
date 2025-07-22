@@ -10,6 +10,7 @@ void GUI::init()
 {
 	//Initialize all available screens
 	mainMenu.init();
+	optionsMenu.init();
 	playArea.init();
 	pauseMenu.init();
 	discoveries.init();
@@ -33,6 +34,11 @@ void GUI::showMainMenu()
 	debugMenu.resetToDefault();
 
 	setCurrentScreen(ScreenType::eMainMenu);
+}
+
+void GUI::showOptionsMenu()
+{
+	setCurrentScreen(ScreenType::eOptionsMenu);
 }
 
 void GUI::showGameOver(bool winner)
@@ -75,11 +81,11 @@ void GUI::onPauseMenuHotkeyPressed()
 	}
 
 	//Close a popup if its the current screen
-	if(activeScreenType != ScreenType::ePlayArea)
+	if(isScreenAPopup(activeScreenType))
 	{
 		playArea.setPaused(previouslyPaused);
 		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
-		setCurrentScreen(ScreenType::ePlayArea);
+		setCurrentScreen(backgroundScreenType);
 		return;
 	}
 
@@ -219,7 +225,8 @@ void GUI::setScreenVisible(ScreenType screenType, bool visible)
 
 bool GUI::isScreenAPopup(ScreenType screenType) const
 {
-	return screenType == ScreenType::ePauseMenu || screenType == ScreenType::eDiscoveries || screenType == ScreenType::eDebugMenu || screenType == ScreenType::eGameOver;
+	return screenType == ScreenType::ePauseMenu || screenType == ScreenType::eDiscoveries || screenType == ScreenType::eDebugMenu || 
+		screenType == ScreenType::eGameOver || screenType == ScreenType::eOptionsMenu;
 }
 
 void GUI::setFPS(std::int64_t fps)

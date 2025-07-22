@@ -1,21 +1,22 @@
-export module Menu;
+export module PauseMenu;
 
 export import Screen;
 export import Background;
 
 //Class for pause menu
-export class Menu : public Screen
+export class PauseMenu: public Screen
 {
 public:
 	enum ButtonType
 	{
 		eResume,
+		eOptions,
 		eAbandonGame,
 		eSaveAndQuit,
 		COUNT
 	};
 
-	Menu() = default;
+	PauseMenu() = default;
 	void init();
 
 	void onButtonPressed(size_t index);

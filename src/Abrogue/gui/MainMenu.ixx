@@ -6,9 +6,10 @@ export import Screen;
 export class MainMenu: public Screen
 {
 public:
-	enum ButtonType
+	enum class ButtonType
 	{
 		eStartGame,
+		eOptions,
 		eQuitToDesktop,
 		COUNT
 	};
