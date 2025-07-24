@@ -2,25 +2,22 @@ export module MainMenu;
 
 export import Screen;
 
+enum class ButtonType
+{
+	eStartGame,
+	eOptions,
+	eQuitToDesktop,
+	COUNT
+};
+
 //Class for main menu screen
-export class MainMenu: public Screen
+export class MainMenu: public ScreenComponent<MainMenu, ButtonType>
 {
 public:
-	enum class ButtonType
-	{
-		eStartGame,
-		eOptions,
-		eQuitToDesktop,
-		COUNT
-	};
-
 	MainMenu() = default;
 	void init();
 
-	void onButtonPressed(size_t index);
+	void onButtonPressed(ButtonType type);
 
 	void setVisible(bool visible);
-
-private:
-	std::array<Label, (size_t)ButtonType::COUNT> buttons;
 };

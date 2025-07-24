@@ -84,14 +84,14 @@ void GUI::onPauseMenuHotkeyPressed()
 	if(isScreenAPopup(activeScreenType))
 	{
 		playArea.setPaused(previouslyPaused);
-		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
+		playArea.setTabButtonPressed(PlayArea::TabButtonType::COUNT);
 		setCurrentScreen(backgroundScreenType);
 		return;
 	}
 
 	//Show the pause menu
 	playArea.setPaused(true);
-	playArea.setTabButtonPressed(PlayArea::ButtonType::eMenu);
+	playArea.setTabButtonPressed(PlayArea::TabButtonType::eMenu);
 	setCurrentScreen(ScreenType::ePauseMenu);
 }
 
@@ -105,14 +105,14 @@ void GUI::onDebugHotkeyPressed()
 	if(activeScreenType == ScreenType::eDebugMenu)
 	{
 		playArea.setPaused(previouslyPaused);
-		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
+		playArea.setTabButtonPressed(PlayArea::TabButtonType::COUNT);
 		setCurrentScreen(backgroundScreenType);
 		return;
 	}
 
 	//Show debug options
 	playArea.setPaused(true);
-	playArea.setTabButtonPressed(PlayArea::ButtonType::eDebug);
+	playArea.setTabButtonPressed(PlayArea::TabButtonType::eDebug);
 	setCurrentScreen(ScreenType::eDebugMenu);
 }
 
@@ -126,14 +126,14 @@ void GUI::onDiscoveriesHotkeyPressed()
 	if(activeScreenType == ScreenType::eDiscoveries)
 	{
 		playArea.setPaused(previouslyPaused);
-		playArea.setTabButtonPressed(PlayArea::ButtonType::COUNT);
+		playArea.setTabButtonPressed(PlayArea::TabButtonType::COUNT);
 		setCurrentScreen(backgroundScreenType);
 		return;
 	}
 
 	//Show discoveries menu
 	playArea.setPaused(true);
-	playArea.setTabButtonPressed(PlayArea::ButtonType::eDiscoveries);
+	playArea.setTabButtonPressed(PlayArea::TabButtonType::eDiscoveries);
 	setCurrentScreen(ScreenType::eDiscoveries);
 }
 

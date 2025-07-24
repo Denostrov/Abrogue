@@ -8,55 +8,56 @@ using namespace std::literals;
 
 void DebugMenu::init()
 {
-	labels[eTitle].init("Debug Options"sv, 56, 6, QuadPool::ePopup);
-	labels[eStopTime].init("Stop time[Num7]"sv, 40, 8, QuadPool::ePopup);
-	labels[eStepTime].init("Step forward[Num8]"sv, 38, 10, QuadPool::ePopup);
-	labels[eShowDamage].init("Show damage"sv, 70, 8, QuadPool::ePopup);
-	labels[eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
+	using enum ButtonType;
 
-	pressableButtons = labels;
+	buttons[(std::size_t)eTitle].init("Debug Options"sv, 56, 6, QuadPool::ePopup);
+	buttons[(std::size_t)eStopTime].init("Stop time[Num7]"sv, 40, 8, QuadPool::ePopup);
+	buttons[(std::size_t)eStepTime].init("Step forward[Num8]"sv, 38, 10, QuadPool::ePopup);
+	buttons[(std::size_t)eShowDamage].init("Show damage"sv, 70, 8, QuadPool::ePopup);
+	buttons[(std::size_t)eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
 }
 
 void DebugMenu::setVisible(bool visible)
 {
-	for(auto& label : labels)
-		label.setVisible(visible);
+	for(auto& button : buttons)
+		button.setVisible(visible);
 }
 
 void DebugMenu::resetToDefault()
 {
-	//Reset buttons to unpressed state
-	if(labels[eStopTime].getPressed())
-		onButtonPressed((size_t)eStopTime);
+	using enum ButtonType;
 
-	if(labels[eShowDamage].getPressed())
-		onButtonPressed((size_t)eShowDamage);
+	if(buttons[(std::size_t)eStopTime].getPressed())
+		onButtonPressed(eStopTime);
 
-	if(labels[eShowViewcone].getPressed())
-		onButtonPressed((size_t)eShowViewcone);
+	if(buttons[(std::size_t)eShowDamage].getPressed())
+		onButtonPressed(eShowDamage);
+
+	if(buttons[(std::size_t)eShowViewcone].getPressed())
+		onButtonPressed(eShowViewcone);
 }
 
-void DebugMenu::onButtonPressed(std::size_t index)
+void DebugMenu::onButtonPressed(ButtonType type)
 {
-	auto type = (ButtonType)index;
+	using enum ButtonType;
 
 	if(type == eStopTime)
 	{
-		labels[eStopTime].togglePressed();
-		game.setSpeedMultiplier(labels[eStopTime].getPressed() ? 0.0 : 1.0);
+		buttons[(std::size_t)eStopTime].togglePressed();
+		game.setSpeedMultiplier(buttons[(std::size_t)eStopTime].getPressed() ? 0.0 : 1.0);
 	}
-	else if(type == eStepTime && labels[eStopTime].getPressed())
+	else if(type == eStepTime && buttons[(std::size_t)eStopTime].getPressed())
 	{
 		game.advanceStep();
 	}
 	else if(type == eShowDamage)
 	{
-		labels[eShowDamage].togglePressed();
-		Weapon::setDrawDebug(labels[eShowDamage].getPressed());
+		buttons[(std::size_t)eShowDamage].togglePressed();
+		Weapon::setDrawDebug(buttons[(std::size_t)eShowDamage].getPressed());
 	}
 	else if(type == eShowViewcone)
 	{
-		labels[eShowViewcone].togglePressed();
-		Map::setDrawDebugViewcone(labels[eShowViewcone].getPressed());
+		buttons[(std::size_t)eShowViewcone].togglePressed();
+		Map::setDrawDebugViewcone(buttons[(std::size_t)eShowViewcone].getPressed());
 	}
 }

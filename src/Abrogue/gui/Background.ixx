@@ -2,7 +2,7 @@ export module Background;
 
 export import QuadPool;
 
-//Class for fading background behind popup menus
+//Class for semi transparent rectangle that covers the whole screen
 export class Background
 {
 public:
@@ -12,8 +12,9 @@ public:
 	void setVisible(bool visible);
 
 private:
-	static constexpr double fadeTime{2.0};	//Time until end of animation
-	double animationTime{};					//Current animation time
+	static constexpr double animationEndTime{2.0};
 
-	QuadPool::Reference quad;	//Semi transparent rectangle that covers the whole screen
+	double animationTime{};
+
+	QuadPool::Reference quad;
 };

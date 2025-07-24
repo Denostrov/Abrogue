@@ -2,24 +2,23 @@ export module DebugMenu;
 
 export import Screen;
 
-//Class for debug options menu
-export class DebugMenu : public Screen
+enum class ButtonType
 {
-	enum ButtonType
-	{
-		eTitle,
-		eStopTime,
-		eStepTime,
-		eShowDamage,
-		eShowViewcone,
-		COUNT
-	};
+	eTitle,
+	eStopTime,
+	eStepTime,
+	eShowDamage,
+	eShowViewcone,
+	COUNT
+};
 
+export class DebugMenu: public ScreenComponent<DebugMenu, ButtonType>
+{
 public:
 	DebugMenu() = default;
 	void init();
 
-	void onButtonPressed(std::size_t index);
+	void onButtonPressed(ButtonType type);
 
 	void setVisible(bool visible);
 
@@ -27,8 +26,4 @@ public:
 
 	void toggleStopTime() { onButtonPressed(ButtonType::eStopTime); }
 	void toggleStepTime() { onButtonPressed(ButtonType::eStepTime); }
-
-private:
-
-	std::array<Label, COUNT> labels;
 };
