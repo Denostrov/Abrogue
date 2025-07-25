@@ -153,7 +153,7 @@ void GUI::onStopTimeHotkeyPressed()
 	if(activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::eGameOver)
 		return;
 
-	debugMenu.toggleStopTime();
+	debugMenu.pressButton(DebugMenu::ButtonType::eStopTime);
 }
 
 void GUI::onStepTimeHotkeyPressed()
@@ -162,7 +162,7 @@ void GUI::onStepTimeHotkeyPressed()
 	if(activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::eGameOver)
 		return;
 
-	debugMenu.toggleStepTime();
+	debugMenu.pressButton(DebugMenu::ButtonType::eStepTime);
 }
 
 void GUI::setCurrentScreen(ScreenType screenType)

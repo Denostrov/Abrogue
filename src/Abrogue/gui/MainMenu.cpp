@@ -14,12 +14,6 @@ void MainMenu::init()
 	buttons[(std::size_t)eQuitToDesktop].init("Quit to desktop"sv, 113, 32, QuadPool::eMap);
 }
 
-void MainMenu::setVisible(bool visible)
-{
-	for(auto& button : buttons)
-		button.setVisible(true);
-}
-
 void MainMenu::onButtonPressed(ButtonType type)
 {
 	using enum ButtonType;

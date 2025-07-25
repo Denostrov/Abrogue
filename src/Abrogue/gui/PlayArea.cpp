@@ -43,15 +43,6 @@ void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int6
 		buttons[(std::size_t)eInventorySlotFirst + i].setText(""sv);
 }
 
-void PlayArea::setVisible(bool visible)
-{
-	for(auto& button : buttons)
-		button.setVisible(visible);
-
-	for(auto& button : tabButtons)
-		button.setVisible(visible);
-}
-
 void PlayArea::setPaused(bool paused)
 {
 	using enum ButtonType;

@@ -13,13 +13,11 @@ enum class ButtonType
 };
 
 //Class for pause menu
-export class PauseMenu: public ScreenComponent<PauseMenu, ButtonType>
+export class PauseMenu: public ScreenComponent<PauseMenu, EmptyEnumType, ButtonType>
 {
 public:
 	PauseMenu() = default;
 	void init();
 
 	void onButtonPressed(ButtonType type);
-
-	void setVisible(bool visible);
 };

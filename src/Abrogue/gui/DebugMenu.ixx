@@ -2,6 +2,7 @@ export module DebugMenu;
 
 export import Screen;
 
+//Enum for debug menu buttons
 enum class ButtonType
 {
 	eTitle,
@@ -12,7 +13,8 @@ enum class ButtonType
 	COUNT
 };
 
-export class DebugMenu: public ScreenComponent<DebugMenu, ButtonType>
+//Class for menu screen with debugging options
+export class DebugMenu: public ScreenComponent<DebugMenu, EmptyEnumType, ButtonType>
 {
 public:
 	DebugMenu() = default;
@@ -20,10 +22,5 @@ public:
 
 	void onButtonPressed(ButtonType type);
 
-	void setVisible(bool visible);
-
 	void resetToDefault();
-
-	void toggleStopTime() { onButtonPressed(ButtonType::eStopTime); }
-	void toggleStepTime() { onButtonPressed(ButtonType::eStepTime); }
 };

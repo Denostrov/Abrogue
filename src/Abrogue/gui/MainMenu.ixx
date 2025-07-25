@@ -11,13 +11,11 @@ enum class ButtonType
 };
 
 //Class for main menu screen
-export class MainMenu: public ScreenComponent<MainMenu, ButtonType>
+export class MainMenu: public ScreenComponent<MainMenu, EmptyEnumType, ButtonType>
 {
 public:
 	MainMenu() = default;
 	void init();
 
 	void onButtonPressed(ButtonType type);
-
-	void setVisible(bool visible);
 };

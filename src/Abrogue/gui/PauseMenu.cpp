@@ -15,12 +15,6 @@ void PauseMenu::init()
 	buttons[(std::size_t)eSaveAndQuit].init("Save and quit"sv, 57, 18, QuadPool::ePopup);
 }
 
-void PauseMenu::setVisible(bool visible)
-{
-	for(auto& button : buttons)
-		button.setVisible(visible);
-}
-
 void PauseMenu::onButtonPressed(ButtonType type)
 {
 	using enum ButtonType;

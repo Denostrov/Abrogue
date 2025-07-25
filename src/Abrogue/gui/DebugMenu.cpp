@@ -17,12 +17,6 @@ void DebugMenu::init()
 	buttons[(std::size_t)eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
 }
 
-void DebugMenu::setVisible(bool visible)
-{
-	for(auto& button : buttons)
-		button.setVisible(visible);
-}
-
 void DebugMenu::resetToDefault()
 {
 	using enum ButtonType;

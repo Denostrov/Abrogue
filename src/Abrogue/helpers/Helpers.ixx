@@ -7,6 +7,24 @@ using optRef = std::optional<std::reference_wrapper<T>>;
 export template<class T>
 using optCRef = std::optional<std::reference_wrapper<T const>>;
 
+export template<class T, auto N>
+class Array
+{
+public:
+	Array() = default;
+
+	template<class Self>
+	constexpr auto begin(this Self&& self) { return std::forward<Self>(self).val.begin(); }
+	template<class Self>
+	constexpr auto end(this Self&& self) { return std::forward<Self>(self).val.end(); }
+
+	template<class Self, class Index>
+	constexpr auto&& operator[](this Self&& self, Index index) { return std::forward<Self>(self).val[(std::size_t)index]; }
+
+private:
+	std::array<T, (std::size_t)N> val{};
+};
+
 //Classes for storing and manipulating RGBA colors
 export using PackedColor = std::uint32_t;
 export struct Color

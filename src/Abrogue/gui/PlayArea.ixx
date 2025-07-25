@@ -25,7 +25,7 @@ enum class TabButtonType
 	COUNT
 };
 
-export class PlayArea : public ScreenComponent<PlayArea, ButtonType, TabButtonType>
+export class PlayArea : public ScreenComponent<PlayArea, EmptyEnumType, ButtonType, TabButtonType>
 {
 public:
 	PlayArea() = default;
@@ -35,8 +35,6 @@ public:
 	void onTabButtonPressed(TabButtonType type);
 
 	void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
-
-	void setVisible(bool visible);
 
 	bool getPaused() const { return buttons[(size_t)ButtonType::ePause].getPressed(); }
 	void setPaused(bool paused);
