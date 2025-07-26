@@ -113,7 +113,7 @@ public:
 					continue;
 
 				if(pressedTabButtonType != TabButtonType::COUNT)
-					tabButtons[(std::size_t)pressedTabButtonType].setPressed(false);
+					tabButtons[pressedTabButtonType].setPressed(false);
 
 				pressedTabButtonType = (TabButtonType)i;
 
@@ -141,21 +141,21 @@ public:
 			return;
 
 		if(pressedTabButtonType != TabButtonType::COUNT)
-			tabButtons[(size_t)pressedTabButtonType].setPressed(false);
+			tabButtons[pressedTabButtonType].setPressed(false);
 
 		pressedTabButtonType = type;
 
 		if(type != TabButtonType::COUNT)
 		{
 			static_cast<Derived*>(this)->onTabButtonPressed(pressedTabButtonType);
-			tabButtons[(size_t)pressedTabButtonType].setPressed(true);
+			tabButtons[pressedTabButtonType].setPressed(true);
 		}
 	}
 
 protected:
 	Array<Label, LabelType::COUNT> labels;
-	std::array<Label, (std::size_t)ButtonType::COUNT> buttons;
-	std::array<Label, (std::size_t)TabButtonType::COUNT> tabButtons;
+	Array<Label, ButtonType::COUNT> buttons;
+	Array<Label, TabButtonType::COUNT> tabButtons;
 
 private:
 	Label* hoveredButton{};

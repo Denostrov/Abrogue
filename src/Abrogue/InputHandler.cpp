@@ -36,28 +36,53 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 
 	if(pressed)
 	{
-		if(scancode == SDL_SCANCODE_SPACE)
+		if(changingControlType != InputControlType::COUNT)
+		{
+			configuration.setInputControlScancode(changingControlType, scancode);
+			changingControlType = InputControlType::COUNT;
+			return;
+		}
+
+		auto inputControl = configuration.getInputControlFromScancode(scancode);
+
+		if(inputControl == InputControlType::ePause)
 			gui.onPauseHotkeyPressed();
-		else if(scancode == SDL_SCANCODE_ESCAPE)
+		else if(inputControl == InputControlType::eMenu)
 			gui.onPauseMenuHotkeyPressed();
-		else if(scancode == SDL_SCANCODE_F3)
+		else if(inputControl == InputControlType::eDiscoveries)
+			gui.onDiscoveriesHotkeyPressed();
+		else if(inputControl == InputControlType::eDebug)
 			gui.onDebugHotkeyPressed();
-		else if(scancode == SDL_SCANCODE_KP_7)
+		else if(inputControl == InputControlType::eStopTime)
 			gui.onStopTimeHotkeyPressed();
-		else if(scancode == SDL_SCANCODE_KP_8)
+		else if(inputControl == InputControlType::eStepTime)
 			gui.onStepTimeHotkeyPressed();
-		else if(scancode == SDL_SCANCODE_W || scancode == SDL_SCANCODE_A || scancode == SDL_SCANCODE_S || scancode == SDL_SCANCODE_D)
-			game.setPlayerMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
+		else if(inputControl == InputControlType::eMoveUp ||
+				inputControl == InputControlType::eMoveLeft ||
+				inputControl == InputControlType::eMoveDown ||
+				inputControl == InputControlType::eMoveRight)
+		{
+			int64_t moveRight = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveRight)];
+			int64_t moveLeft = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveLeft)];
+			int64_t moveDown = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveDown)];
+			int64_t moveUp = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveUp)];
+			game.setPlayerMovement(moveRight - moveLeft, moveDown - moveUp);
+		}
 	}
 	else
 	{
-		if(scancode == SDL_SCANCODE_W || scancode == SDL_SCANCODE_A || scancode == SDL_SCANCODE_S || scancode == SDL_SCANCODE_D)
-			game.setPlayerMovement(pressedButtons[SDL_SCANCODE_D] - pressedButtons[SDL_SCANCODE_A], pressedButtons[SDL_SCANCODE_S] - pressedButtons[SDL_SCANCODE_W]);
-	}
-}
+		auto inputControl = configuration.getInputControlFromScancode(scancode);
 
-void InputHandler::onShiftButtonPressed(SDL_Scancode scancode)
-{
-	if(scancode == SDL_SCANCODE_D) 
-		gui.onDiscoveriesHotkeyPressed();
+		if(inputControl == InputControlType::eMoveUp ||
+		   inputControl == InputControlType::eMoveLeft ||
+		   inputControl == InputControlType::eMoveDown ||
+		   inputControl == InputControlType::eMoveRight)
+		{
+			int64_t moveRight = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveRight)];
+			int64_t moveLeft = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveLeft)];
+			int64_t moveDown = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveDown)];
+			int64_t moveUp = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveUp)];
+			game.setPlayerMovement(moveRight - moveLeft, moveDown - moveUp);
+		}
+	}
 }

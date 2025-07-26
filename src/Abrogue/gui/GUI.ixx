@@ -45,6 +45,8 @@ public:
 	void onStopTimeHotkeyPressed();
 	void onStepTimeHotkeyPressed();
 
+	void refreshScreens();
+
 	void setFPS(std::int64_t fps);
 	void setPlayerHealth(double percentage);
 	void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);

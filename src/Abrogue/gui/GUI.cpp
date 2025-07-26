@@ -165,6 +165,9 @@ void GUI::onStepTimeHotkeyPressed()
 	debugMenu.pressButton(DebugMenu::ButtonType::eStepTime);
 }
 
+void GUI::refreshScreens()
+{}
+
 void GUI::setCurrentScreen(ScreenType screenType)
 {
 	//Do nothing if the old and new screens are the same

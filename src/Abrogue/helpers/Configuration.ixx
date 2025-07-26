@@ -1,6 +1,7 @@
 module;
 
 #include <json.hpp>
+#include <SDL3/SDL_scancode.h>
 
 export module Configuration;
 
@@ -16,6 +17,24 @@ export enum class WeaponType
 	eClaw,
 	eClub,
 	eDagger
+};
+
+//Enum for controls mapped to player input
+export enum class InputControlType
+{
+	eMoveUp,
+	eMoveDown,
+	eMoveLeft,
+	eMoveRight,
+	eAttack,
+	ePause,
+	eSearch,
+	eDiscoveries,
+	eMenu,
+	eDebug,
+	eStopTime,
+	eStepTime,
+	COUNT
 };
 
 //Struct for defining an enemy type
@@ -36,10 +55,17 @@ export struct EnemyData
 export class Configuration
 {
 public:
-	[[nodiscard]] bool load();
+	Configuration() = default;
+	[[nodiscard]] bool init();
 
 	[[nodiscard]] auto getWindowWidth() const { return windowWidth; }
 	[[nodiscard]] auto getWindowHeight() const { return windowHeight; }
+
+	[[nodiscard]] InputControlType getInputControlFromScancode(SDL_Scancode scancode) const { return scancodeToInputControl[scancode]; }
+	[[nodiscard]] SDL_Scancode getScancodeFromInputControl(InputControlType type) const { return inputControlToScancode[type]; }
+
+	[[nodiscard]] FixedVector<char, 8> getInputControlName(InputControlType type) const;
+	void setInputControlScancode(InputControlType type, SDL_Scancode scancode);
 
 	[[nodiscard]] optCRef<EnemyData> getSuitableEnemy();
 
@@ -54,6 +80,9 @@ private:
 
 	std::int64_t windowWidth{800};
 	std::int64_t windowHeight{450};
+
+	Array<InputControlType, SDL_Scancode::SDL_SCANCODE_COUNT> scancodeToInputControl;
+	Array<SDL_Scancode, InputControlType::COUNT> inputControlToScancode;
 
 	FixedVector<EnemyData, 128> enemyData;
 };
@@ -137,9 +166,20 @@ void Configuration::readJSONValue(nlohmann::json const& json, std::string_view k
 		if(!json[key].is_number())
 		{
 			logger.logInfo("Requested JSON value was not a number"sv);
+			return;
 		}
 
 		value = json[key].get<ValueType>();
+	}
+	else if constexpr(std::is_enum_v<ValueType>)
+	{
+		if(!json[key].is_number_unsigned())
+		{
+			logger.logInfo("Requested JSON value was not an enum"sv);
+			return;
+		}
+
+		value = (ValueType)json[key].get<std::size_t>();
 	}
 	else
 	{

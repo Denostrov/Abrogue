@@ -19,7 +19,7 @@ bool Game::init()
 	if(!logger.openFiles())
 		return false;
 
-	if(!configuration.load())
+	if(!configuration.init())
 		return false;
 
 	if(!renderEngine.initVulkan())

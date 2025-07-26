@@ -10,7 +10,17 @@ enum class LabelType
 
 enum class ButtonType
 {
+	eMoveUp,
+	eMoveDown,
+	eMoveLeft,
+	eMoveRight,
+	eAttack,
 	ePauseControl,
+	eSearch,
+	eDiscoveries,
+	eMenu,
+	eDebug,
+	eResetToDefault,
 	COUNT
 };
 
@@ -20,5 +30,5 @@ public:
 	OptionsMenu() = default;
 	void init();
 
-	void onButtonPressed(ButtonType index);
+	void onButtonPressed(ButtonType type);
 };

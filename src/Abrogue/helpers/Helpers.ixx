@@ -14,15 +14,21 @@ public:
 	Array() = default;
 
 	template<class Self>
-	constexpr auto begin(this Self&& self) { return std::forward<Self>(self).val.begin(); }
+	constexpr auto begin(this Self&& self) { return std::forward<Self>(self).arr.begin(); }
 	template<class Self>
-	constexpr auto end(this Self&& self) { return std::forward<Self>(self).val.end(); }
+	constexpr auto end(this Self&& self) { return std::forward<Self>(self).arr.end(); }
+
+	template<class Self>
+	constexpr auto size(this Self&& self) { return std::forward<Self>(self).arr.size(); }
 
 	template<class Self, class Index>
-	constexpr auto&& operator[](this Self&& self, Index index) { return std::forward<Self>(self).val[(std::size_t)index]; }
+	constexpr auto&& operator[](this Self&& self, Index index) { return std::forward<Self>(self).arr[(std::size_t)index]; }
+
+	template<class Self>
+	constexpr void fill(this Self&& self, T const& value) { std::forward<Self>(self).arr.fill(value); }
 
 private:
-	std::array<T, (std::size_t)N> val{};
+	std::array<T, (std::size_t)N> arr{};
 };
 
 //Classes for storing and manipulating RGBA colors

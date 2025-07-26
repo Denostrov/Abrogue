@@ -10,24 +10,24 @@ void DebugMenu::init()
 {
 	using enum ButtonType;
 
-	buttons[(std::size_t)eTitle].init("Debug Options"sv, 56, 6, QuadPool::ePopup);
-	buttons[(std::size_t)eStopTime].init("Stop time[Num7]"sv, 40, 8, QuadPool::ePopup);
-	buttons[(std::size_t)eStepTime].init("Step forward[Num8]"sv, 38, 10, QuadPool::ePopup);
-	buttons[(std::size_t)eShowDamage].init("Show damage"sv, 70, 8, QuadPool::ePopup);
-	buttons[(std::size_t)eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
+	buttons[eTitle].init("Debug Options"sv, 56, 6, QuadPool::ePopup);
+	buttons[eStopTime].init("Stop time[Num7]"sv, 40, 8, QuadPool::ePopup);
+	buttons[eStepTime].init("Step forward[Num8]"sv, 38, 10, QuadPool::ePopup);
+	buttons[eShowDamage].init("Show damage"sv, 70, 8, QuadPool::ePopup);
+	buttons[eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
 }
 
 void DebugMenu::resetToDefault()
 {
 	using enum ButtonType;
 
-	if(buttons[(std::size_t)eStopTime].getPressed())
+	if(buttons[eStopTime].getPressed())
 		onButtonPressed(eStopTime);
 
-	if(buttons[(std::size_t)eShowDamage].getPressed())
+	if(buttons[eShowDamage].getPressed())
 		onButtonPressed(eShowDamage);
 
-	if(buttons[(std::size_t)eShowViewcone].getPressed())
+	if(buttons[eShowViewcone].getPressed())
 		onButtonPressed(eShowViewcone);
 }
 
@@ -37,21 +37,21 @@ void DebugMenu::onButtonPressed(ButtonType type)
 
 	if(type == eStopTime)
 	{
-		buttons[(std::size_t)eStopTime].togglePressed();
-		game.setSpeedMultiplier(buttons[(std::size_t)eStopTime].getPressed() ? 0.0 : 1.0);
+		buttons[eStopTime].togglePressed();
+		game.setSpeedMultiplier(buttons[eStopTime].getPressed() ? 0.0 : 1.0);
 	}
-	else if(type == eStepTime && buttons[(std::size_t)eStopTime].getPressed())
+	else if(type == eStepTime && buttons[eStopTime].getPressed())
 	{
 		game.advanceStep();
 	}
 	else if(type == eShowDamage)
 	{
-		buttons[(std::size_t)eShowDamage].togglePressed();
-		Weapon::setDrawDebug(buttons[(std::size_t)eShowDamage].getPressed());
+		buttons[eShowDamage].togglePressed();
+		Weapon::setDrawDebug(buttons[eShowDamage].getPressed());
 	}
 	else if(type == eShowViewcone)
 	{
-		buttons[(std::size_t)eShowViewcone].togglePressed();
-		Map::setDrawDebugViewcone(buttons[(std::size_t)eShowViewcone].getPressed());
+		buttons[eShowViewcone].togglePressed();
+		Map::setDrawDebugViewcone(buttons[eShowViewcone].getPressed());
 	}
 }

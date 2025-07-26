@@ -9,10 +9,10 @@ void PauseMenu::init()
 {
 	using enum ButtonType;
 
-	buttons[(std::size_t)eResume].init("Resume"sv, 60, 15, QuadPool::ePopup);
-	buttons[(std::size_t)eOptions].init("Options"sv, 60, 16, QuadPool::ePopup);
-	buttons[(std::size_t)eAbandonGame].init("Abandon game"sv, 57, 17, QuadPool::ePopup);
-	buttons[(std::size_t)eSaveAndQuit].init("Save and quit"sv, 57, 18, QuadPool::ePopup);
+	buttons[eResume].init("Resume"sv, 60, 15, QuadPool::ePopup);
+	buttons[eOptions].init("Options"sv, 60, 16, QuadPool::ePopup);
+	buttons[eAbandonGame].init("Abandon game"sv, 57, 17, QuadPool::ePopup);
+	buttons[eSaveAndQuit].init("Save and quit"sv, 57, 18, QuadPool::ePopup);
 }
 
 void PauseMenu::onButtonPressed(ButtonType type)
