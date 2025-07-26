@@ -16,7 +16,7 @@ public:
 
 	std::pair<float, float> getMousePosition() const;
 	void onMouseMoved(float x, float y);
-	void onMousePressed(float x, float y);
+	void onMousePressed(uint8_t buttonIndex, float x, float y);
 
 	void onButtonPressed(SDL_Scancode scancode, bool pressed);
 

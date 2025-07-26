@@ -35,8 +35,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 			inputHandler.onButtonPressed(event->key.scancode, false);
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
-			if(event->button.button == 1)
-				inputHandler.onMousePressed(event->button.x, event->button.y);
+			inputHandler.onMousePressed(event->button.button, event->button.x, event->button.y);
 			break;
 		case SDL_EVENT_MOUSE_MOTION:
 			inputHandler.onMouseMoved(event->motion.x, event->motion.y);

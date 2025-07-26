@@ -62,6 +62,10 @@ std::string_view Configuration::getInputControlName(InputControlType type) const
 
 void Configuration::setInputControlScancode(InputControlType type, SDL_Scancode scancode)
 {
+	auto oldScancode = inputControlToScancode[type];
+	if(oldScancode != SDL_SCANCODE_COUNT)
+		scancodeToInputControl[oldScancode] = InputControlType::COUNT;
+
 	scancodeToInputControl[scancode] = type;
 	inputControlToScancode[type] = scancode;
 }

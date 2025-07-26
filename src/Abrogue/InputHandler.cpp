@@ -24,10 +24,23 @@ void InputHandler::onMouseMoved(float x, float y)
 	gui.onMouseMoved(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
 }
 
-void InputHandler::onMousePressed(float x, float y)
+void InputHandler::onMousePressed(uint8_t buttonIndex, float x, float y)
 {
-	auto [width, height] = renderEngine.getFramebufferSize();
-	gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
+	if(changingControlType != InputControlType::COUNT)
+	{
+		configuration.setInputControlScancode(changingControlType, (SDL_Scancode)(buttonIndex + 300));
+		changingControlType = InputControlType::COUNT;
+		gui.refreshScreens();
+		return;
+	}
+
+	auto inputControl = configuration.getInputControlFromScancode((SDL_Scancode)(buttonIndex + 300));
+
+	if(inputControl == InputControlType::eAttack)
+	{
+		auto [width, height] = renderEngine.getFramebufferSize();
+		gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
+	}
 }
 
 void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
