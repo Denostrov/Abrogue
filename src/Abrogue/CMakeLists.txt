@@ -64,7 +64,7 @@ target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIR
 	"gui/GameOver.ixx"
 	"gui/Screen.ixx"
 	"gui/Background.ixx"
-)
+ "helpers/FixedString.ixx")
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_LIB_DIR})
 target_include_directories(${PROJECT_NAME} PUBLIC ${ABROGUE_INCLUDE_DIR})

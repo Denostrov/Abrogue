@@ -166,7 +166,9 @@ void GUI::onStepTimeHotkeyPressed()
 }
 
 void GUI::refreshScreens()
-{}
+{
+	optionsMenu.refreshLabels();
+}
 
 void GUI::setCurrentScreen(ScreenType screenType)
 {

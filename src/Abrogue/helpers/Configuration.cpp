@@ -37,7 +37,7 @@ bool Configuration::init()
 	return true;
 }
 
-FixedVector<char, 8> Configuration::getInputControlName(InputControlType type) const
+std::string_view Configuration::getInputControlName(InputControlType type) const
 {
 	auto scancode = inputControlToScancode[type];
 	switch(scancode)
@@ -49,6 +49,8 @@ FixedVector<char, 8> Configuration::getInputControlName(InputControlType type) c
 		case SDL_SCANCODE_Z: return "[Z]"sv;
 		case SDL_SCANCODE_C: return "[C]"sv;
 		case SDL_SCANCODE_SPACE: return "[SPACE]"sv;
+		case SDL_SCANCODE_LSHIFT: return "[LSHIFT]"sv;
+		case SDL_SCANCODE_RSHIFT: return "[RSHIFT]"sv;
 		case (SDL_Scancode)301: return "[M1]"sv;
 		case SDL_SCANCODE_ESCAPE: return "[ESC]"sv;
 		case SDL_SCANCODE_F3: return "[F3]"sv;
@@ -104,18 +106,31 @@ bool Configuration::loadOptions()
 	readJSONValue(configJSON, "windowWidth"sv, windowWidth);
 	readJSONValue(configJSON, "windowHeight"sv, windowHeight);
 
-	readJSONValue(configJSON, "controlMoveUp"sv, inputControlToScancode[InputControlType::eMoveUp]);
-	readJSONValue(configJSON, "controlMoveDown"sv, inputControlToScancode[InputControlType::eMoveDown]);
-	readJSONValue(configJSON, "controlMoveLeft"sv, inputControlToScancode[InputControlType::eMoveLeft]);
-	readJSONValue(configJSON, "controlMoveRight"sv, inputControlToScancode[InputControlType::eMoveRight]);
-	readJSONValue(configJSON, "controlAttack"sv, inputControlToScancode[InputControlType::eAttack]);
-	readJSONValue(configJSON, "controlPause"sv, inputControlToScancode[InputControlType::ePause]);
-	readJSONValue(configJSON, "controlSearch"sv, inputControlToScancode[InputControlType::eSearch]);
-	readJSONValue(configJSON, "controlDiscoveries"sv, inputControlToScancode[InputControlType::eDiscoveries]);
-	readJSONValue(configJSON, "controlMenu"sv, inputControlToScancode[InputControlType::eMenu]);
-	readJSONValue(configJSON, "controlDebug"sv, inputControlToScancode[InputControlType::eDebug]);
-	readJSONValue(configJSON, "controlStopTime"sv, inputControlToScancode[InputControlType::eStopTime]);
-	readJSONValue(configJSON, "controlStepTime"sv, inputControlToScancode[InputControlType::eStepTime]);
+	SDL_Scancode scancode{};
+	readJSONValue(configJSON, "controlMoveUp"sv, scancode);
+	setInputControlScancode(InputControlType::eMoveUp, scancode);
+	readJSONValue(configJSON, "controlMoveDown"sv, scancode);
+	setInputControlScancode(InputControlType::eMoveDown, scancode);
+	readJSONValue(configJSON, "controlMoveLeft"sv, scancode);
+	setInputControlScancode(InputControlType::eMoveLeft, scancode);
+	readJSONValue(configJSON, "controlMoveRight"sv, scancode);
+	setInputControlScancode(InputControlType::eMoveRight, scancode);
+	readJSONValue(configJSON, "controlAttack"sv, scancode);
+	setInputControlScancode(InputControlType::eAttack, scancode);
+	readJSONValue(configJSON, "controlPause"sv, scancode);
+	setInputControlScancode(InputControlType::ePause, scancode);
+	readJSONValue(configJSON, "controlSearch"sv, scancode);
+	setInputControlScancode(InputControlType::eSearch, scancode);
+	readJSONValue(configJSON, "controlDiscoveries"sv, scancode);
+	setInputControlScancode(InputControlType::eDiscoveries, scancode);
+	readJSONValue(configJSON, "controlMenu"sv, scancode);
+	setInputControlScancode(InputControlType::eMenu, scancode);
+	readJSONValue(configJSON, "controlDebug"sv, scancode);
+	setInputControlScancode(InputControlType::eDebug, scancode);
+	readJSONValue(configJSON, "controlStopTime"sv, scancode);
+	setInputControlScancode(InputControlType::eStopTime, scancode);
+	readJSONValue(configJSON, "controlStepTime"sv, scancode);
+	setInputControlScancode(InputControlType::eStepTime, scancode);
 
 	return true;
 }

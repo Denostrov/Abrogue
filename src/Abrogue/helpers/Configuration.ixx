@@ -7,6 +7,7 @@ export module Configuration;
 
 export import Helpers;
 export import FixedVector;
+export import FixedString;
 export import Logger;
 
 using namespace std::literals;
@@ -58,13 +59,15 @@ public:
 	Configuration() = default;
 	[[nodiscard]] bool init();
 
+	void saveOptions() { saveOptionsToFile(); }
+
 	[[nodiscard]] auto getWindowWidth() const { return windowWidth; }
 	[[nodiscard]] auto getWindowHeight() const { return windowHeight; }
 
 	[[nodiscard]] InputControlType getInputControlFromScancode(SDL_Scancode scancode) const { return scancodeToInputControl[scancode]; }
 	[[nodiscard]] SDL_Scancode getScancodeFromInputControl(InputControlType type) const { return inputControlToScancode[type]; }
 
-	[[nodiscard]] FixedVector<char, 8> getInputControlName(InputControlType type) const;
+	[[nodiscard]] std::string_view getInputControlName(InputControlType type) const;
 	void setInputControlScancode(InputControlType type, SDL_Scancode scancode);
 
 	[[nodiscard]] optCRef<EnemyData> getSuitableEnemy();

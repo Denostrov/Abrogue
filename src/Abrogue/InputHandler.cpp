@@ -40,6 +40,7 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 		{
 			configuration.setInputControlScancode(changingControlType, scancode);
 			changingControlType = InputControlType::COUNT;
+			gui.refreshScreens();
 			return;
 		}
 

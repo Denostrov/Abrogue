@@ -15,12 +15,15 @@ enum class ButtonType
 	eMoveLeft,
 	eMoveRight,
 	eAttack,
-	ePauseControl,
+	ePause,
 	eSearch,
 	eDiscoveries,
 	eMenu,
 	eDebug,
+	eStopTime,
+	eStepTime,
 	eResetToDefault,
+	eApplyChanges,
 	COUNT
 };
 
@@ -31,4 +34,6 @@ public:
 	void init();
 
 	void onButtonPressed(ButtonType type);
+
+	void refreshLabels();
 };
