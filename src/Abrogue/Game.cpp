@@ -144,7 +144,7 @@ void Game::resetTickTimer()
 	currentTick = 0;
 }
 
-bool Game::updateDraw(double deltaTime)
+bool Game::updateDraw(double deltaTime) const
 {
 	if(state == eRunning)
 	{

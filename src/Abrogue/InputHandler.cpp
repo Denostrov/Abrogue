@@ -30,7 +30,6 @@ void InputHandler::onMousePressed(uint8_t buttonIndex, float x, float y)
 	{
 		configuration.setInputControlScancode(changingControlType, (SDL_Scancode)(buttonIndex + 300));
 		changingControlType = InputControlType::COUNT;
-		gui.refreshScreens();
 		return;
 	}
 
@@ -53,7 +52,6 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
 		{
 			configuration.setInputControlScancode(changingControlType, scancode);
 			changingControlType = InputControlType::COUNT;
-			gui.refreshScreens();
 			return;
 		}
 

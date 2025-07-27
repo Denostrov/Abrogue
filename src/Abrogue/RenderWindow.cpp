@@ -73,3 +73,8 @@ std::pair<uint32_t, uint32_t> RenderWindow::getWindowSize() const
 	SDL_GetWindowSizeInPixels(window, &width, &height);
 	return {width, height};
 }
+
+void RenderWindow::setFullscreen(bool fullscreen)
+{
+	SDL_SetWindowFullscreen(window, fullscreen);
+}

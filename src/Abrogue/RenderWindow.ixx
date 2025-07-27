@@ -25,6 +25,8 @@ public:
 	//Get size of window in pixels
 	[[nodiscard]] std::pair<uint32_t, uint32_t> getWindowSize() const;
 
+	void setFullscreen(bool fullscreen);
+
 private:
 	SDL_Window* window{};
 	std::vector<char const*> requiredExtensions;

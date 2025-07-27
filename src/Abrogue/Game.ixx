@@ -30,7 +30,7 @@ public:
 private:
 	void resetTickTimer();
 
-	bool updateDraw(double deltaTime);
+	bool updateDraw(double deltaTime) const; 
 
 	std::uint64_t currentTick{};
 	std::uint64_t lastUpdateTime{};

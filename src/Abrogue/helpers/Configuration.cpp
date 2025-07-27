@@ -7,6 +7,7 @@ module Configuration;
 import Constants;
 import Logger;
 import Random;
+import GUI;
 
 bool Configuration::init()
 {
@@ -35,6 +36,19 @@ bool Configuration::init()
 		return false;
 
 	return true;
+}
+
+void Configuration::setWindowWidthHeight(std::int64_t width, std::int64_t height)
+{
+	windowWidth = width;
+	windowHeight = height;
+	gui.refreshScreens();
+}
+
+void Configuration::setIsFullscreen(bool fullscreen)
+{
+	isFullscreen = fullscreen;
+	gui.refreshScreens();
 }
 
 std::string_view Configuration::getInputControlName(InputControlType type) const
@@ -194,6 +208,8 @@ void Configuration::setInputControlScancode(InputControlType type, SDL_Scancode 
 
 	scancodeToInputControl[scancode] = type;
 	inputControlToScancode[type] = scancode;
+
+	gui.refreshScreens();
 }
 
 optCRef<EnemyData> Configuration::getSuitableEnemy()
@@ -235,6 +251,7 @@ bool Configuration::loadOptions()
 
 	readJSONValue(configJSON, "windowWidth"sv, windowWidth);
 	readJSONValue(configJSON, "windowHeight"sv, windowHeight);
+	readJSONValue(configJSON, "windowFullscreen"sv, isFullscreen);
 
 	SDL_Scancode scancode{};
 	readJSONValue(configJSON, "controlMoveUp"sv, scancode);
@@ -270,6 +287,7 @@ bool Configuration::saveOptionsToFile()
 	nlohmann::json configJSON;
 	configJSON["windowWidth"sv] = windowWidth;
 	configJSON["windowHeight"sv] = windowHeight;
+	configJSON["windowFullscreen"sv] = isFullscreen;
 
 	configJSON["controlMoveUp"sv] = inputControlToScancode[InputControlType::eMoveUp];
 	configJSON["controlMoveDown"sv] = inputControlToScancode[InputControlType::eMoveDown];

@@ -113,6 +113,8 @@ public:
 	//Initialize Vulkan resources
 	[[nodiscard]] bool initVulkan();
 
+	void setWindowFullscreen(bool fullscreen) { window.setFullscreen(fullscreen); }
+
 	//Submit drawing commands for current frame
 	[[nodiscard]] bool drawFrame();
 

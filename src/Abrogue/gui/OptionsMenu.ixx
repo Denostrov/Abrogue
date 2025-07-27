@@ -5,6 +5,8 @@ export import Screen;
 enum class LabelType
 {
 	eControls,
+	eVideo,
+	eResolution,
 	COUNT
 };
 
@@ -23,6 +25,7 @@ enum class ButtonType
 	eStopTime,
 	eStepTime,
 	eResetToDefault,
+	eFullscreen,
 	eApplyChanges,
 	COUNT
 };

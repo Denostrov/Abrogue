@@ -1,6 +1,8 @@
 module OptionsMenu;
 
 import InputHandler;
+import Game;
+import RenderEngine;
 
 using namespace std::literals;
 
@@ -9,6 +11,8 @@ void OptionsMenu::init()
 	using enum ButtonType;
 
 	labels[LabelType::eControls].init("Controls"sv, 60, 5, QuadPool::ePopup);
+	labels[LabelType::eVideo].init("Video"sv, 82, 5, QuadPool::ePopup);
+	labels[LabelType::eResolution].init(""sv, 80, 7, QuadPool::ePopup);
 
 	buttons[eMoveUp].init(""sv, 58, 7, QuadPool::ePopup);
 	buttons[eMoveDown].init(""sv, 58, 9, QuadPool::ePopup);
@@ -24,6 +28,9 @@ void OptionsMenu::init()
 	buttons[eStepTime].init(""sv, 58, 29, QuadPool::ePopup);
 
 	buttons[eResetToDefault].init("Reset To Default"sv, 58, 32, QuadPool::ePopup);
+
+	buttons[eFullscreen].init(""sv, 78, 9, QuadPool::ePopup);
+
 	buttons[eApplyChanges].init("Apply changes"sv, 80, 34, QuadPool::ePopup);
 
 	refreshLabels();
@@ -60,6 +67,8 @@ void OptionsMenu::onButtonPressed(ButtonType type)
 		inputHandler.setChangingControlType(InputControlType::eStopTime);
 	else if(type == eStepTime)
 		inputHandler.setChangingControlType(InputControlType::eStepTime);
+	else if(type == eFullscreen)
+		renderEngine.setWindowFullscreen(!configuration.getIsFullscreen());
 	else if(type == eApplyChanges)
 		configuration.saveOptions();
 }
@@ -82,6 +91,9 @@ void OptionsMenu::refreshLabels()
 	buttons[eDebug].setText(labelText.fill("Debug"sv, configuration.getInputControlName(InputControlType::eDebug)));
 	buttons[eStopTime].setText(labelText.fill("Stop Time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
 	buttons[eStepTime].setText(labelText.fill("Step Time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
+
+	labels[LabelType::eResolution].setText(labelText.format("{}x{}", configuration.getWindowWidth(), configuration.getWindowHeight()));
+	buttons[eFullscreen].setText(configuration.getIsFullscreen() ? "[X]Fullscreen"sv : "[ ]Fullscreen"sv);
 
 	for(std::size_t i = (std::size_t)eMoveUp; i <= (std::size_t)eStepTime; i++)
 		buttons[i].setPressed(false);

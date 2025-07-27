@@ -63,6 +63,10 @@ public:
 
 	[[nodiscard]] auto getWindowWidth() const { return windowWidth; }
 	[[nodiscard]] auto getWindowHeight() const { return windowHeight; }
+	void setWindowWidthHeight(std::int64_t width, std::int64_t height);
+
+	[[nodiscard]] auto getIsFullscreen() const { return isFullscreen; }
+	void setIsFullscreen(bool fullscreen);
 
 	[[nodiscard]] InputControlType getInputControlFromScancode(SDL_Scancode scancode) const { return scancodeToInputControl[scancode]; }
 	[[nodiscard]] SDL_Scancode getScancodeFromInputControl(InputControlType type) const { return inputControlToScancode[type]; }
@@ -83,6 +87,7 @@ private:
 
 	std::int64_t windowWidth{800};
 	std::int64_t windowHeight{450};
+	bool isFullscreen{};
 
 	Array<InputControlType, SDL_Scancode::SDL_SCANCODE_COUNT> scancodeToInputControl;
 	Array<SDL_Scancode, InputControlType::COUNT> inputControlToScancode;
@@ -153,6 +158,16 @@ void Configuration::readJSONValue(nlohmann::json const& json, std::string_view k
 		value.g = jsonValue[1].get<std::uint8_t>();
 		value.b = jsonValue[2].get<std::uint8_t>();
 		value.a = jsonValue[3].get<std::uint8_t>();
+	}
+	else if constexpr(std::is_same_v<ValueType, bool>)
+	{
+		if(!json[key].is_boolean())
+		{
+			logger.logInfo("Requested JSON value was not a boolean"sv);
+			return;
+		}
+
+		value = json[key].get<bool>();
 	}
 	else if constexpr(std::is_integral_v<ValueType>)
 	{
