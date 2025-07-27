@@ -29,13 +29,7 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 		case SDL_EVENT_QUIT:
 			return SDL_APP_SUCCESS;
 		case SDL_EVENT_WINDOW_RESIZED:
-			configuration.setWindowWidthHeight(event->window.data1, event->window.data2);
-			break;
-		case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
-			configuration.setIsFullscreen(true);
-			break;
-		case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
-			configuration.setIsFullscreen(false);
+			game.refreshWindowState();
 			break;
 		case SDL_EVENT_KEY_DOWN:
 			inputHandler.onButtonPressed(event->key.scancode, true);
@@ -60,5 +54,5 @@ SDL_AppResult SDL_AppEvent(void* appstate, SDL_Event* event)
 
 void SDL_AppQuit(void* appstate, SDL_AppResult result)
 {
-	
+	configuration.saveOptions();
 }

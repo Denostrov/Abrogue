@@ -29,7 +29,8 @@ bool RenderWindow::initSDL()
 		return false;
 
 	//Create window
-	window = SDL_CreateWindow(fullAppName.c_str(), configuration.getWindowWidth(), configuration.getWindowHeight(), SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE);
+	window = SDL_CreateWindow(fullAppName.c_str(), configuration.getWindowWidth(), configuration.getWindowHeight(),
+							  SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | (configuration.getIsFullscreen() ? SDL_WINDOW_FULLSCREEN : configuration.getIsMaximized() ? SDL_WINDOW_MAXIMIZED : 0));
 	if(logger.checkSDLError(window))
 		return false;
 
@@ -72,9 +73,4 @@ std::pair<uint32_t, uint32_t> RenderWindow::getWindowSize() const
 	int width{}, height{};
 	SDL_GetWindowSizeInPixels(window, &width, &height);
 	return {width, height};
-}
-
-void RenderWindow::setFullscreen(bool fullscreen)
-{
-	SDL_SetWindowFullscreen(window, fullscreen);
 }

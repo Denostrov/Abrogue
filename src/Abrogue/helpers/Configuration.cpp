@@ -8,6 +8,7 @@ import Constants;
 import Logger;
 import Random;
 import GUI;
+import RenderWindow;
 
 bool Configuration::init()
 {
@@ -38,17 +39,17 @@ bool Configuration::init()
 	return true;
 }
 
-void Configuration::setWindowWidthHeight(std::int64_t width, std::int64_t height)
+void Configuration::updateWindowOptions()
 {
-	windowWidth = width;
-	windowHeight = height;
-	gui.refreshScreens();
-}
+	isFullscreen = renderWindow.getIsFullscreen();
+	if(isFullscreen)
+		return;
 
-void Configuration::setIsFullscreen(bool fullscreen)
-{
-	isFullscreen = fullscreen;
-	gui.refreshScreens();
+	isMaximized = renderWindow.getIsMaximized();
+	if(isMaximized)
+		return;
+
+	std::tie(windowWidth, windowHeight) = renderWindow.getWindowSize();
 }
 
 std::string_view Configuration::getInputControlName(InputControlType type) const
@@ -252,6 +253,7 @@ bool Configuration::loadOptions()
 	readJSONValue(configJSON, "windowWidth"sv, windowWidth);
 	readJSONValue(configJSON, "windowHeight"sv, windowHeight);
 	readJSONValue(configJSON, "windowFullscreen"sv, isFullscreen);
+	readJSONValue(configJSON, "windowMaximized"sv, isMaximized);
 
 	SDL_Scancode scancode{};
 	readJSONValue(configJSON, "controlMoveUp"sv, scancode);
@@ -288,6 +290,7 @@ bool Configuration::saveOptionsToFile()
 	configJSON["windowWidth"sv] = windowWidth;
 	configJSON["windowHeight"sv] = windowHeight;
 	configJSON["windowFullscreen"sv] = isFullscreen;
+	configJSON["windowMaximized"sv] = isMaximized;
 
 	configJSON["controlMoveUp"sv] = inputControlToScancode[InputControlType::eMoveUp];
 	configJSON["controlMoveDown"sv] = inputControlToScancode[InputControlType::eMoveDown];

@@ -63,10 +63,10 @@ public:
 
 	[[nodiscard]] auto getWindowWidth() const { return windowWidth; }
 	[[nodiscard]] auto getWindowHeight() const { return windowHeight; }
-	void setWindowWidthHeight(std::int64_t width, std::int64_t height);
-
 	[[nodiscard]] auto getIsFullscreen() const { return isFullscreen; }
-	void setIsFullscreen(bool fullscreen);
+	[[nodiscard]] auto getIsMaximized() const { return isMaximized; }
+
+	void updateWindowOptions();
 
 	[[nodiscard]] InputControlType getInputControlFromScancode(SDL_Scancode scancode) const { return scancodeToInputControl[scancode]; }
 	[[nodiscard]] SDL_Scancode getScancodeFromInputControl(InputControlType type) const { return inputControlToScancode[type]; }
@@ -88,6 +88,7 @@ private:
 	std::int64_t windowWidth{800};
 	std::int64_t windowHeight{450};
 	bool isFullscreen{};
+	bool isMaximized{};
 
 	Array<InputControlType, SDL_Scancode::SDL_SCANCODE_COUNT> scancodeToInputControl;
 	Array<SDL_Scancode, InputControlType::COUNT> inputControlToScancode;

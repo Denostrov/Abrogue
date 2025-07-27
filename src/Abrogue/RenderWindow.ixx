@@ -25,9 +25,24 @@ public:
 	//Get size of window in pixels
 	[[nodiscard]] std::pair<uint32_t, uint32_t> getWindowSize() const;
 
-	void setFullscreen(bool fullscreen);
+	[[nodiscard]] bool getIsMaximized() const { return SDL_GetWindowFlags(window) & SDL_WINDOW_MAXIMIZED; }
+	void setIsMaximized(bool maximized) {
+		
+		if(maximized) SDL_MaximizeWindow(window);
+		else SDL_RestoreWindow(window);
+		SDL_SyncWindow(window);
+	}
+
+	[[nodiscard]] bool getIsFullscreen() const { return SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN; }
+	void setIsFullscreen(bool fullscreen)
+	{
+		SDL_SetWindowFullscreen(window, fullscreen);
+		SDL_SyncWindow(window);
+	}
 
 private:
 	SDL_Window* window{};
 	std::vector<char const*> requiredExtensions;
 };
+
+export inline RenderWindow renderWindow;

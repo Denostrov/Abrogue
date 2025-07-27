@@ -5,7 +5,7 @@ module;
 
 module InputHandler;
 
-import RenderEngine;
+import RenderWindow;
 import GUI;
 import Game;
 
@@ -14,13 +14,13 @@ std::pair<float, float> InputHandler::getMousePosition() const
 	float x{}, y{};
 	SDL_GetMouseState(&x, &y);
 
-	auto [width, height] = renderEngine.getFramebufferSize();
+	auto [width, height] = renderWindow.getWindowSize();
 	return {x / width * Constants::screenWidth, y / height * Constants::screenHeight};
 }
 
 void InputHandler::onMouseMoved(float x, float y)
 {
-	auto [width, height] = renderEngine.getFramebufferSize();
+	auto [width, height] = renderWindow.getWindowSize();
 	gui.onMouseMoved(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
 }
 
@@ -37,7 +37,7 @@ void InputHandler::onMousePressed(uint8_t buttonIndex, float x, float y)
 
 	if(inputControl == InputControlType::eAttack)
 	{
-		auto [width, height] = renderEngine.getFramebufferSize();
+		auto [width, height] = renderWindow.getWindowSize();
 		gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
 	}
 }

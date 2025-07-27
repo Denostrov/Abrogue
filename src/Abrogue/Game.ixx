@@ -27,6 +27,8 @@ public:
 
 	auto getShouldExit() const { return state == eFinished; }
 
+	void refreshWindowState() const;
+
 private:
 	void resetTickTimer();
 

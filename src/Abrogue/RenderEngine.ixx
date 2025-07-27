@@ -113,12 +113,8 @@ public:
 	//Initialize Vulkan resources
 	[[nodiscard]] bool initVulkan();
 
-	void setWindowFullscreen(bool fullscreen) { window.setFullscreen(fullscreen); }
-
 	//Submit drawing commands for current frame
 	[[nodiscard]] bool drawFrame();
-
-	[[nodiscard]] auto getFramebufferSize() const { return window.getWindowSize(); };
 
 private:
 	//Create new swapchain and mark old one for deletion
@@ -144,7 +140,6 @@ private:
 
 	static constexpr uint32_t maxFramesInFlight{2};
 
-	RenderWindow window;
 	vk::detail::DynamicLoader dynamicLoader;
 	vk::UniqueInstance instance;
 	vk::UniqueDebugUtilsMessengerEXT debugMessenger;

@@ -26,7 +26,6 @@ enum class ButtonType
 	eStepTime,
 	eResetToDefault,
 	eFullscreen,
-	eApplyChanges,
 	COUNT
 };
 

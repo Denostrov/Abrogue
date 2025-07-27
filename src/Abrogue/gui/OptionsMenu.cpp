@@ -31,8 +31,6 @@ void OptionsMenu::init()
 
 	buttons[eFullscreen].init(""sv, 78, 9, QuadPool::ePopup);
 
-	buttons[eApplyChanges].init("Apply changes"sv, 80, 34, QuadPool::ePopup);
-
 	refreshLabels();
 }
 
@@ -68,9 +66,13 @@ void OptionsMenu::onButtonPressed(ButtonType type)
 	else if(type == eStepTime)
 		inputHandler.setChangingControlType(InputControlType::eStepTime);
 	else if(type == eFullscreen)
-		renderEngine.setWindowFullscreen(!configuration.getIsFullscreen());
-	else if(type == eApplyChanges)
-		configuration.saveOptions();
+	{
+		auto isFullscreen = configuration.getIsFullscreen();
+		if(isFullscreen)
+			renderWindow.setIsMaximized(configuration.getIsMaximized());
+
+		renderWindow.setIsFullscreen(!isFullscreen);
+	}
 }
 
 void OptionsMenu::refreshLabels()
@@ -92,8 +94,9 @@ void OptionsMenu::refreshLabels()
 	buttons[eStopTime].setText(labelText.fill("Stop Time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
 	buttons[eStepTime].setText(labelText.fill("Step Time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
 
-	labels[LabelType::eResolution].setText(labelText.format("{}x{}", configuration.getWindowWidth(), configuration.getWindowHeight()));
-	buttons[eFullscreen].setText(configuration.getIsFullscreen() ? "[X]Fullscreen"sv : "[ ]Fullscreen"sv);
+	auto [windowWidth, windowHeight] = renderWindow.getWindowSize();
+	labels[LabelType::eResolution].setText(labelText.format("{}x{}", windowWidth, windowHeight));
+	buttons[eFullscreen].setText(renderWindow.getIsFullscreen() ? "[X]Fullscreen"sv : "[ ]Fullscreen"sv);
 
 	for(std::size_t i = (std::size_t)eMoveUp; i <= (std::size_t)eStepTime; i++)
 		buttons[i].setPressed(false);

@@ -139,6 +139,12 @@ void Game::quitToMainMenu()
 	enemyHandler = EnemyHandler();
 }
 
+void Game::refreshWindowState() const
+{
+	gui.refreshScreens();
+	configuration.updateWindowOptions();
+}
+
 void Game::resetTickTimer()
 {
 	currentTick = 0;

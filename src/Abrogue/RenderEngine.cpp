@@ -54,7 +54,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 	imageExtent = surfaceCapabilities.currentExtent;
 	if(imageExtent.width == std::numeric_limits<uint32_t>::max())
 	{
-		auto framebufferSize = engine.window.getWindowSize();
+		auto framebufferSize = renderWindow.getWindowSize();
 		imageExtent.width = std::clamp(framebufferSize.first, surfaceCapabilities.minImageExtent.width, surfaceCapabilities.maxImageExtent.width);
 		imageExtent.height = std::clamp(framebufferSize.second, surfaceCapabilities.minImageExtent.height, surfaceCapabilities.maxImageExtent.height);
 	}
@@ -124,7 +124,7 @@ bool RenderEngine::SwapchainResources::createSwapchain(RenderEngine const& engin
 bool RenderEngine::initVulkan()
 {
 	//Check if failed to initialize window
-	if(!window.initSDL())
+	if(!renderWindow.initSDL())
 		return false;
 
 	VULKAN_HPP_DEFAULT_DISPATCHER.init(dynamicLoader);
@@ -173,7 +173,7 @@ bool RenderEngine::initVulkan()
 	}
 
 	//Define required instance extensions
-	auto requiredInstanceExtensions{window.getRequiredExtensions()};
+	auto requiredInstanceExtensions{renderWindow.getRequiredExtensions()};
 	if constexpr(isDebugBuild)
 		requiredInstanceExtensions.emplace_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
 	logger.logInfo(std::format("{} Vulkan instance extensions required:", requiredInstanceExtensions.size()));
@@ -218,7 +218,7 @@ bool RenderEngine::initVulkan()
 	}
 
 	//Create window surface
-	surface = vk::UniqueSurfaceKHR(window.createSurface(instance.get()), instance.get());
+	surface = vk::UniqueSurfaceKHR(renderWindow.createSurface(instance.get()), instance.get());
 	if(!surface)
 		return false;
 	logger.logInfo("Created surface");
