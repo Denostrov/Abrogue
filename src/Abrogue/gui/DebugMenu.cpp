@@ -11,10 +11,12 @@ void DebugMenu::init()
 	using enum ButtonType;
 
 	buttons[eTitle].init("Debug Options"sv, 56, 6, QuadPool::ePopup);
-	buttons[eStopTime].init("Stop time[Num7]"sv, 40, 8, QuadPool::ePopup);
-	buttons[eStepTime].init("Step forward[Num8]"sv, 38, 10, QuadPool::ePopup);
+	buttons[eStopTime].init(""sv, 40, 8, QuadPool::ePopup);
+	buttons[eStepTime].init(""sv, 40, 10, QuadPool::ePopup);
 	buttons[eShowDamage].init("Show damage"sv, 70, 8, QuadPool::ePopup);
 	buttons[eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
+
+	refreshLabels();
 }
 
 void DebugMenu::resetToDefault()
@@ -29,6 +31,16 @@ void DebugMenu::resetToDefault()
 
 	if(buttons[eShowViewcone].getPressed())
 		onButtonPressed(eShowViewcone);
+}
+
+void DebugMenu::refreshLabels()
+{
+	using enum ButtonType;
+
+	FixedString<32> labelText;
+
+	buttons[eStopTime].setText(labelText.fill("Stop time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
+	buttons[eStepTime].setText(labelText.fill("Step time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
 }
 
 void DebugMenu::onButtonPressed(ButtonType type)

@@ -23,4 +23,6 @@ public:
 	void onButtonPressed(ButtonType type);
 
 	void resetToDefault();
+
+	void refreshLabels();
 };

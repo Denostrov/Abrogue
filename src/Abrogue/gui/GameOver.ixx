@@ -17,4 +17,6 @@ public:
 	void init();
 
 	void setWinner(bool winner);
+
+	void refreshLabels();
 };

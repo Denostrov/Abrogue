@@ -40,4 +40,6 @@ public:
 	void setPaused(bool paused);
 
 	void setPlayerHealth(double percentage);
+
+	void refreshLabels();
 };

@@ -2,6 +2,7 @@ module PlayArea;
 
 import Game;
 import GUI;
+import Configuration;
 
 using namespace std::literals;
 
@@ -9,13 +10,13 @@ void PlayArea::init()
 {
 	using enum ButtonType;
 
-	buttons[ePause].init("Pause[SPACE]"sv, 26, 1, QuadPool::eMap);
+	buttons[ePause].init(""sv, 26, 1, QuadPool::eMap);
 	buttons[eHealth].init("       Health       "sv, 0, 1, QuadPool::eMap);
 	buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
 	buttons[eNutrition].init("     Nutrition      "sv, 0, 2, QuadPool::eMap);
 	buttons[eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
 	buttons[eGold].init("Gold:0"sv, 0, 5, QuadPool::eMap);
-	buttons[eSearch].init("Search[S]"sv, 11, 35, QuadPool::eMap);
+	buttons[eSearch].init(""sv, 11, 35, QuadPool::eMap);
 	buttons[eInventory].init("Inventory"sv, 0, 6, QuadPool::eMap);
 
 	for(std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst; i++)
@@ -23,9 +24,11 @@ void PlayArea::init()
 
 	buttons[eDepth].init("Depth:"sv, 0, 35, QuadPool::eMap);
 
-	tabButtons[TabButtonType::eDebug].init("Debug[F3]"sv, 11, 0, QuadPool::eMap);
-	tabButtons[TabButtonType::eDiscoveries].init("Discoveries[D]"sv, 22, 35, QuadPool::eMap);
-	tabButtons[TabButtonType::eMenu].init("Menu[ESC]"sv, 38, 35, QuadPool::eMap);
+	tabButtons[TabButtonType::eDebug].init(""sv, 11, 0, QuadPool::eMap);
+	tabButtons[TabButtonType::eDiscoveries].init(""sv, 22, 35, QuadPool::eMap);
+	tabButtons[TabButtonType::eMenu].init(""sv, 38, 35, QuadPool::eMap);
+
+	refreshLabels();
 }
 
 void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold)
@@ -50,8 +53,10 @@ void PlayArea::setPaused(bool paused)
 	if(buttons[ePause].getPressed() == paused)
 		return;
 
+	FixedString<16> pauseText;
+
 	buttons[ePause].setPressed(paused);
-	buttons[ePause].setText(paused ? "PAUSED[SPACE]"sv : "Pause[SPACE]"sv);
+	buttons[ePause].setText(pauseText.fill(paused ? "PAUSED"sv : "Pause"sv, configuration.getInputControlName(InputControlType::ePause)));
 	game.setPaused(paused);
 }
 
@@ -78,4 +83,17 @@ void PlayArea::onTabButtonPressed(TabButtonType type)
 		gui.onDiscoveriesHotkeyPressed();
 	else if(type == eDebug)
 		gui.onDebugHotkeyPressed();
+}
+
+void PlayArea::refreshLabels()
+{
+	using enum ButtonType;
+
+	FixedString<32> labelText;
+
+	buttons[ePause].setText(labelText.fill(buttons[ePause].getPressed() ? "PAUSED"sv : "Pause"sv, configuration.getInputControlName(InputControlType::ePause)));
+	buttons[eSearch].setText(labelText.fill("Search"sv, configuration.getInputControlName(InputControlType::eSearch)));
+	tabButtons[TabButtonType::eDebug].setText(labelText.fill("Debug"sv, configuration.getInputControlName(InputControlType::eDebug)));
+	tabButtons[TabButtonType::eDiscoveries].setText(labelText.fill("Discoveries"sv, configuration.getInputControlName(InputControlType::eDiscoveries)));
+	tabButtons[TabButtonType::eMenu].setText(labelText.fill("Menu"sv, configuration.getInputControlName(InputControlType::eMenu)));
 }

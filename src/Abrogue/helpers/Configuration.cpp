@@ -100,8 +100,8 @@ std::string_view Configuration::getInputControlName(InputControlType type) const
 		case SDL_SCANCODE_SPACE: return "[SPACE]"sv;
 		case SDL_SCANCODE_MINUS: return "[-]"sv;
 		case SDL_SCANCODE_EQUALS: return "[=]"sv;
-		case SDL_SCANCODE_LEFTBRACKET: return "[ [ ]"sv;
-		case SDL_SCANCODE_RIGHTBRACKET: return "[ ] ]"sv;
+		case SDL_SCANCODE_LEFTBRACKET: return "[{]"sv;
+		case SDL_SCANCODE_RIGHTBRACKET: return "[}]"sv;
 		case SDL_SCANCODE_BACKSLASH: return "[\\]"sv;
 		case SDL_SCANCODE_SEMICOLON: return "[;]"sv;
 		case SDL_SCANCODE_APOSTROPHE: return "[']"sv;

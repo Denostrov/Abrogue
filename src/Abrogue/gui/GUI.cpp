@@ -168,6 +168,9 @@ void GUI::onStepTimeHotkeyPressed()
 void GUI::refreshScreens()
 {
 	optionsMenu.refreshLabels();
+	debugMenu.refreshLabels();
+	gameOver.refreshLabels();
+	playArea.refreshLabels();
 }
 
 void GUI::setCurrentScreen(ScreenType screenType)
