@@ -28,11 +28,31 @@ bool RenderWindow::initSDL()
 	if(logger.checkSDLError(SDL_Init(SDL_INIT_VIDEO)))
 		return false;
 
+	int displayCount{};
+	auto displays = SDL_GetDisplays(&displayCount);
+	if(logger.checkSDLError(displays))
+		return false;
+
+	SDL_Rect displayUsableRect{};
+	if(logger.checkSDLError(SDL_GetDisplayUsableBounds(displays[0], &displayUsableRect)))
+		return false;
+	SDL_free(displays);
+
+	auto windowWidth = std::min((std::int64_t)displayUsableRect.w, configuration.getWindowWidth());
+	auto windowHeight = std::min((std::int64_t)displayUsableRect.h, configuration.getWindowHeight());
+
 	//Create window
-	window = SDL_CreateWindow(fullAppName.c_str(), configuration.getWindowWidth(), configuration.getWindowHeight(),
+	window = SDL_CreateWindow(fullAppName.c_str(), windowWidth, windowHeight,
 							  SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | (configuration.getIsFullscreen() ? SDL_WINDOW_FULLSCREEN : configuration.getIsMaximized() ? SDL_WINDOW_MAXIMIZED : 0));
 	if(logger.checkSDLError(window))
 		return false;
+
+	auto usableCenterX = displayUsableRect.x + displayUsableRect.w / 2;
+	auto usableCenterY = displayUsableRect.y + displayUsableRect.h / 2;
+	if(logger.checkSDLError(SDL_SetWindowPosition(window, usableCenterX - windowWidth / 2, usableCenterY - windowHeight / 2)))
+		return false;
+	if(logger.checkSDLError(SDL_SyncWindow(window)))
+	   return false;
 
 	//Get required extensions
 	uint32_t extensionCount{};
