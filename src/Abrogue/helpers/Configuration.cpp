@@ -15,18 +15,7 @@ bool Configuration::init()
 	scancodeToInputControl.fill(InputControlType::COUNT);
 	inputControlToScancode.fill(SDL_SCANCODE_UNKNOWN);
 
-	setInputControlScancode(InputControlType::eMoveUp, SDL_SCANCODE_W);
-	setInputControlScancode(InputControlType::eMoveDown, SDL_SCANCODE_S);
-	setInputControlScancode(InputControlType::eMoveLeft, SDL_SCANCODE_A);
-	setInputControlScancode(InputControlType::eMoveRight, SDL_SCANCODE_D);
-	setInputControlScancode(InputControlType::eAttack, (SDL_Scancode)301);
-	setInputControlScancode(InputControlType::ePause, SDL_SCANCODE_SPACE);
-	setInputControlScancode(InputControlType::eSearch, SDL_SCANCODE_Z);
-	setInputControlScancode(InputControlType::eDiscoveries, SDL_SCANCODE_C);
-	setInputControlScancode(InputControlType::eMenu, SDL_SCANCODE_ESCAPE);
-	setInputControlScancode(InputControlType::eDebug, SDL_SCANCODE_F3);
-	setInputControlScancode(InputControlType::eStopTime, SDL_SCANCODE_KP_7);
-	setInputControlScancode(InputControlType::eStepTime, SDL_SCANCODE_KP_8);
+	setDefaultControls();
 
 	if(!loadOptions())
 		return false;
@@ -213,6 +202,12 @@ void Configuration::setInputControlScancode(InputControlType type, SDL_Scancode 
 	gui.refreshScreens();
 }
 
+void Configuration::resetInputControlsToDefault()
+{
+	setDefaultControls();
+	gui.refreshScreens();
+}
+
 optCRef<EnemyData> Configuration::getSuitableEnemy()
 {
 	return enemyData[mapRandom.generate() % enemyData.size()];
@@ -349,4 +344,20 @@ void Configuration::loadData()
 			enemyData.emplace_back(data);
 		}
 	}
+}
+
+void Configuration::setDefaultControls()
+{
+	setInputControlScancode(InputControlType::eMoveUp, SDL_SCANCODE_W);
+	setInputControlScancode(InputControlType::eMoveDown, SDL_SCANCODE_S);
+	setInputControlScancode(InputControlType::eMoveLeft, SDL_SCANCODE_A);
+	setInputControlScancode(InputControlType::eMoveRight, SDL_SCANCODE_D);
+	setInputControlScancode(InputControlType::eAttack, (SDL_Scancode)301);
+	setInputControlScancode(InputControlType::ePause, SDL_SCANCODE_SPACE);
+	setInputControlScancode(InputControlType::eSearch, SDL_SCANCODE_Z);
+	setInputControlScancode(InputControlType::eDiscoveries, SDL_SCANCODE_C);
+	setInputControlScancode(InputControlType::eMenu, SDL_SCANCODE_ESCAPE);
+	setInputControlScancode(InputControlType::eDebug, SDL_SCANCODE_F3);
+	setInputControlScancode(InputControlType::eStopTime, SDL_SCANCODE_KP_7);
+	setInputControlScancode(InputControlType::eStepTime, SDL_SCANCODE_KP_8);
 }

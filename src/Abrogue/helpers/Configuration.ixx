@@ -73,6 +73,7 @@ public:
 
 	[[nodiscard]] std::string_view getInputControlName(InputControlType type) const;
 	void setInputControlScancode(InputControlType type, SDL_Scancode scancode);
+	void resetInputControlsToDefault();
 
 	[[nodiscard]] optCRef<EnemyData> getSuitableEnemy();
 
@@ -84,6 +85,8 @@ private:
 	bool loadOptions();
 	bool saveOptionsToFile();
 	void loadData();
+
+	void setDefaultControls();
 
 	std::int64_t windowWidth{800};
 	std::int64_t windowHeight{450};

@@ -65,6 +65,8 @@ void OptionsMenu::onButtonPressed(ButtonType type)
 		inputHandler.setChangingControlType(InputControlType::eStopTime);
 	else if(type == eStepTime)
 		inputHandler.setChangingControlType(InputControlType::eStepTime);
+	else if(type == eResetToDefault)
+		configuration.resetInputControlsToDefault();
 	else if(type == eFullscreen)
 	{
 		auto isFullscreen = configuration.getIsFullscreen();
