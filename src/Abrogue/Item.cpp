@@ -38,13 +38,13 @@ void Item::updateDraw(double deltaTime)
 	}
 }
 
-FixedVector<char, 32> Item::getName() const
+FixedString<32> Item::getName() const
 {
-	FixedVector<char, 32> result;
+	FixedString<32> result;
 	if(type == Type::eFood)
-		result.append("Food"sv);
+		result.fill("Food"sv);
 	else if(type == Type::eAmulet)
-		result.append("Amulet of Yendor"sv);
+		result.fill("Amulet of Yendor"sv);
 
 	return result;
 }

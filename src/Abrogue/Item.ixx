@@ -3,6 +3,7 @@ export module Item;
 export import QuadPool;
 export import PhysicsComponent;
 export import FixedVector;
+export import FixedString;
 
 export class Item: public PhysicsComponent
 {
@@ -22,7 +23,7 @@ public:
 	void updateDraw(double deltaTime);
 
 	Type getType() const { return type; }
-	FixedVector<char, 32> getName() const;
+	FixedString<32> getName() const;
 
 	void setVisible(bool visible);
 

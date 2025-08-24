@@ -18,24 +18,6 @@ public:
 	using value_type = T;
 
 	constexpr FixedVector() = default;
-	constexpr FixedVector(std::string_view str) requires std::same_as<value_type, char>
-	{
-		*this = str;
-	}
-
-	constexpr FixedVector<T, N>& operator=(std::string_view str) requires std::same_as<value_type, char>
-	{
-		currentSize = str.size();
-		for(std::uint64_t i = 0; i < str.size(); i++)
-			data[i] = str[i];
-
-		return *this;
-	}
-
-	constexpr operator std::string_view() const requires std::same_as<value_type, char>
-	{
-		return std::string_view(data.data(), currentSize);
-	}
 
 	constexpr void erase(const_iterator first)
 	{

@@ -21,12 +21,13 @@ add_executable(${PROJECT_NAME}
 	"gui/Label.cpp" 
 	"gui/PauseMenu.cpp" 
 	"gui/Discoveries.cpp" 
-	"gui/DebugMenu.cpp"  
+	"gui/Background.cpp"
 	"gui/PlayArea.cpp" 
 	"gui/MainMenu.cpp"
 	"gui/GameOver.cpp"
-	"gui/Background.cpp"
+	
 	"gui/OptionsMenu.cpp"
+	"gui/DebugMenu.cpp"
 )
 
 target_sources(${PROJECT_NAME} PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES 

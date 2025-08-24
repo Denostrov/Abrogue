@@ -14,6 +14,7 @@ Player::Player(double velocity):PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4
 	setHealth(100);
 
 	weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 0.25, true);
+	gui.setInventory(inventory, gold);
 }
 
 void Player::onMousePressed(std::uint32_t x, std::uint32_t y)

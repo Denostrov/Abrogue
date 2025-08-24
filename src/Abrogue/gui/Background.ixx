@@ -10,6 +10,7 @@ public:
 	Background() = default;
 
 	void updateDraw(double deltaTime);
+
 	void setVisible(bool visible);
 
 private:
@@ -19,3 +20,5 @@ private:
 
 	QuadPool::Reference quad;
 };
+
+

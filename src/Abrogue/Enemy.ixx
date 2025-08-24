@@ -32,6 +32,9 @@ private:
 	double stealthTimer{};
 	double lastCheckedStealthTime{};
 
+	FixedVector<std::int64_t, 128> path;
+	std::int64_t currentPathIndex{};
+
 	QuadPool::Reference quad;
 };
 

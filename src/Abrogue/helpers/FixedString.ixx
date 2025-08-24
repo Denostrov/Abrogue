@@ -111,12 +111,19 @@ public:
 	auto& format(std::format_string<Args...> fmt, Args&&... args)
 	{
 		auto result = std::format_to_n(data.begin(), data.end() - data.begin(), fmt, std::forward<Args>(args)...);
-		logger.extraAssert(result.size <= N, "Formatted string was too big to store in fixed string"sv);
+		logger.extraAssert(result.size <= N, "FixedString format: formatted string exceeded size"sv);
 		currentSize = result.size;
 		return *this;
 	}
 
 	constexpr std::size_t getSize() const { return currentSize; }
+	template<class Self>
+	constexpr char operator[](this Self&& self, std::size_t index) {
+		if !consteval
+		{
+			logger.extraAssert(index < std::forward<Self>(self).currentSize, "FixedString operator[]: index was out of bounds"sv);
+		}
+		return std::forward<Self>(self).data[index]; }
 
 private:
 	std::array<char, N> data{};

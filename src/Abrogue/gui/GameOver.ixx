@@ -2,6 +2,7 @@ export module GameOver;
 
 export import Screen;
 
+//Enum for game over labels
 enum class LabelType
 {
 	eGameOver,
@@ -9,7 +10,7 @@ enum class LabelType
 	COUNT
 };
 
-//Class for game over screen
+//Class for a popup screen with game over text
 export class GameOver : public ScreenComponent<GameOver, LabelType>
 {
 public:

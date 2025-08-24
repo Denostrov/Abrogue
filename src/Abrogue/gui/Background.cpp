@@ -25,7 +25,7 @@ void Background::setVisible(bool visible)
 
 	animationTime = 0.0;
 
-	QuadData quadData{{Constants::screenWidth / 2.0f, Constants::screenHeight / 2.0f}, {Color::pack(0, 0, 0, 0), Color::pack(0, 0, 0, 0)}, ' '};
+	QuadData quadData{{Constants::screenWidth / 2.0f, Constants::screenHeight / 2.0f},{Color::pack(0, 0, 0, 0), Color::pack(0, 0, 0, 0)}, ' '};
 	quadData.setScale(Constants::screenWidth, Constants::screenHeight);
 	quad = quadPool.insert(quadData, QuadPool::ePopupBackground);
 }

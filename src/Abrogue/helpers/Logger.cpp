@@ -7,6 +7,7 @@ module Logger;
 
 import Constants;
 import FixedVector;
+import FixedString;
 
 using namespace std::literals;
 
@@ -32,9 +33,8 @@ void Logger::logError(std::string_view message)
 	if constexpr(isDebugBuild)
 		std::println(std::cerr, "Error: {}\nStacktrace:\n{}"sv, message, stackTrace);
 
-	FixedVector<char, 512> popupMessage(message);
-	popupMessage.append("\nCheck the error log for details. Esc to exit"sv);
-	displayErrorMessage(popupMessage);
+	FixedString<512> popupMessage;
+	displayErrorMessage(popupMessage.fill(message, "\nCheck the error log for details. Esc to exit"sv));
 }
 
 void Logger::logInfo(std::string_view message)
@@ -65,10 +65,8 @@ bool Logger::checkVulkanError(vk::Result result, std::string_view successMessage
 {
 	if(result != vk::Result::eSuccess)
 	{
-		FixedVector<char, 1024> errorString(errorMessage);
-		errorString.append(": "sv);
-		errorString.append(vk::to_string(result));
-		logError(errorString);
+		FixedString<1024> errorString;
+		logError(errorString.fill(errorMessage, ": "sv, std::string_view(vk::to_string(result))));
 		return true;
 	}
 	else if(!successMessage.empty())

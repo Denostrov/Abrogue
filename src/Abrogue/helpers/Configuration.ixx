@@ -41,7 +41,7 @@ export enum class InputControlType
 //Struct for defining an enemy type
 export struct EnemyData
 {
-	FixedVector<char, 16> name;
+	FixedString<16> name;
 	std::uint8_t symbol{};
 	Color color{};
 	double speed{10.0};

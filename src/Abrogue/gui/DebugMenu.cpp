@@ -1,8 +1,8 @@
 module DebugMenu;
 
 import Game;
-import Weapon;
 import Map;
+import Weapon;
 
 using namespace std::literals;
 
@@ -17,30 +17,6 @@ void DebugMenu::init()
 	buttons[eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
 
 	refreshLabels();
-}
-
-void DebugMenu::resetToDefault()
-{
-	using enum ButtonType;
-
-	if(buttons[eStopTime].getPressed())
-		onButtonPressed(eStopTime);
-
-	if(buttons[eShowDamage].getPressed())
-		onButtonPressed(eShowDamage);
-
-	if(buttons[eShowViewcone].getPressed())
-		onButtonPressed(eShowViewcone);
-}
-
-void DebugMenu::refreshLabels()
-{
-	using enum ButtonType;
-
-	FixedString<32> labelText;
-
-	buttons[eStopTime].setText(labelText.fill("Stop time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
-	buttons[eStepTime].setText(labelText.fill("Step time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
 }
 
 void DebugMenu::onButtonPressed(ButtonType type)
@@ -66,4 +42,28 @@ void DebugMenu::onButtonPressed(ButtonType type)
 		buttons[eShowViewcone].togglePressed();
 		Map::setDrawDebugViewcone(buttons[eShowViewcone].getPressed());
 	}
+}
+
+void DebugMenu::resetToDefault()
+{
+	using enum ButtonType;
+
+	if(buttons[eStopTime].getPressed())
+		onButtonPressed(eStopTime);
+
+	if(buttons[eShowDamage].getPressed())
+		onButtonPressed(eShowDamage);
+
+	if(buttons[eShowViewcone].getPressed())
+		onButtonPressed(eShowViewcone);
+}
+
+void DebugMenu::refreshLabels()
+{
+	using enum ButtonType;
+
+	FixedString<32> labelText;
+
+	buttons[eStopTime].setText(labelText.fill("Stop time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
+	buttons[eStepTime].setText(labelText.fill("Step time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
 }

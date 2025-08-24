@@ -337,7 +337,7 @@ void Configuration::loadData()
 			readJSONValue(enemyJSON, "damage"sv, data.damage);
 			readJSONValue(enemyJSON, "attackTime"sv, data.attackTime);
 
-			FixedVector<char, 16> weaponType;
+			FixedString<16> weaponType;
 			readJSONValue(enemyJSON, "weaponType"sv, weaponType);
 			data.weaponType = weaponType == "dagger"sv ? WeaponType::eDagger : weaponType == "club"sv ? WeaponType::eClub : WeaponType::eClaw;
 

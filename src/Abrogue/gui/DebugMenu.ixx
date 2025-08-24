@@ -13,7 +13,7 @@ enum class ButtonType
 	COUNT
 };
 
-//Class for menu screen with debugging options
+//Class for a popup menu with debugging options
 export class DebugMenu: public ScreenComponent<DebugMenu, EmptyEnumType, ButtonType>
 {
 public:

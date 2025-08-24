@@ -21,7 +21,7 @@ void Label::setVisible(bool visible)
 
 	//Invisible label has size 0 to disable collision detection
 	isVisible = visible;
-	size = visible ? text.size() : 0;
+	size = visible ? text.getSize() : 0;
 
 	//Delete invisible quads to avoid overdraw
 	if(!visible)
@@ -66,7 +66,7 @@ void Label::setText(std::string_view newText)
 	if(!isVisible)
 		return;
 
-	size = text.size();
+	size = text.getSize();
 
 	//Create remaining quads when new text is longer
 	for(size_t i = quadReferences.size(); i < size; i++)

@@ -8,7 +8,7 @@ export import Discoveries;
 export import DebugMenu;
 export import GameOver;
 
-//Class for handling buttons and menus
+//Class for handling transitions between screens
 export class GUI
 {
 	//Enum for different screen types

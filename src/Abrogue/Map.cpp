@@ -5,6 +5,8 @@ import Logger;
 import Random;
 import Enemy;
 
+using namespace std::literals;
+
 Map::Tile::Tile(std::int64_t x, std::int64_t y, Type type)
 	:type(type)
 {
@@ -71,37 +73,49 @@ Map::Room const& Map::getRandomRoom() const
 	return levelData.rooms[mapRandom.generate() % levelData.roomCount];
 }
 
+FixedVector<std::int64_t, 128> Map::getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const
+{
+	logger.extraAssert(startX >= 0 && startX < Constants::mapWidth && startY >= 0 && startY < Constants::mapHeight &&
+					   endX >= 0 && endX < Constants::mapWidth && endY >= 0 && endY < Constants::mapHeight, "Requested tile path out of bounds"sv);
+
+	FixedVector<std::int64_t, 128> result;
+
+
+
+	return result;
+}
+
 bool Map::getTileSolid(std::int64_t x, std::int64_t y) const
 {
-	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile solid out of bounds");
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile solid out of bounds"sv);
 
 	return getTile(x, y).getIsSolid();
 }
 
 bool Map::getTileOpaque(std::int64_t x, std::int64_t y) const
 {
-	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile opaque out of bounds");
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile opaque out of bounds"sv);
 
 	return getTile(x, y).getIsOpaque();
 }
 
 bool Map::getTileFloor(std::int64_t x, std::int64_t y) const
 {
-	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile a floor out of bounds");
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile a floor out of bounds"sv);
 
 	return getTile(x, y).getIsFloor();
 }
 
 double Map::getTileBrightness(std::int64_t x, std::int64_t y) const
 {
-	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile brightness out of bounds");
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested tile brightness out of bounds"sv);
 
 	return tileBrightnessMask[x + Constants::mapWidth * y];
 }
 
 bool Map::getTileInLineOfSight(std::int64_t x, std::int64_t y) const
 {
-	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile in line of sight out of bounds");
+	logger.extraAssert(x >= 0 && x < Constants::mapWidth && y >= 0 && y < Constants::mapHeight, "Requested is tile in line of sight out of bounds"sv);
 
 	return tileBrightnessMask[x + Constants::mapWidth * y] >= Constants::mapInLineOfSightValue;
 }
@@ -399,8 +413,8 @@ void Map::updateVisibility(double deltaTime)
 	};
 
 	auto calculateVisibilitySector = [this, playerX, playerY, visionRange, &getSlopesCorrect](this auto&& self, std::int64_t currentCellY, std::int64_t directionY,
-																				 double startSlope, double startEnterX, std::int64_t startCellX,
-																				 double endSlope, double endEnterX, std::int64_t endCellX)
+																							  double startSlope, double startEnterX, std::int64_t startCellX,
+																							  double endSlope, double endEnterX, std::int64_t endCellX)
 	{
 		while(true)
 		{
@@ -641,8 +655,8 @@ void Map::updateVisibilityDebug(double deltaTime)
 	};
 
 	auto calculateVisibilitySector = [this, playerX, playerY, visionRange, &getSlopesCorrect](this auto&& self, std::int64_t currentCellY, std::int64_t directionY,
-																									 double startSlope, double startEnterX, std::int64_t startCellX,
-																									 double endSlope, double endEnterX, std::int64_t endCellX)
+																							  double startSlope, double startEnterX, std::int64_t startCellX,
+																							  double endSlope, double endEnterX, std::int64_t endCellX)
 	{
 		while(true)
 		{

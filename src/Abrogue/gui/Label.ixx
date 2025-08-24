@@ -2,6 +2,7 @@ export module Label;
 
 export import QuadPool;
 export import FixedVector;
+export import FixedString;
 
 //Class for handling clickable text boxes
 export class Label
@@ -43,6 +44,6 @@ private:
 	PackedColor hoveredPressedBackgroundColor{Constants::labelHoveredPressedColor};
 
 	QuadPool::Layer layer{};
-	FixedVector<char, 128> text;
+	FixedString<128> text;
 	FixedVector<QuadPool::Reference, 128> quadReferences;
 };
