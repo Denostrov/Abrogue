@@ -9,8 +9,7 @@ export class Enemy : public PhysicsComponent
 	{
 		eSleeping,
 		eWandering,
-		eHunting,
-		eSearching
+		eHunting
 	};
 
 public:
@@ -26,16 +25,15 @@ private:
 
 	Color color;
 
-	double lastPlayerSeenX{}, lastPlayerSeenY{};
-	double lastPlayerInterpolatedX{}, lastPlayerInterpolatedY{};
-
 	double stealthTimer{};
 	double lastCheckedStealthTime{};
 
-	FixedVector<std::int64_t, 128> path;
+	FixedVector<std::pair<std::int64_t, std::int64_t>, 128> path;
 	std::int64_t currentPathIndex{};
 
 	QuadPool::Reference quad;
+
+	bool isDebugRender{};
 };
 
 export class EnemyHandler

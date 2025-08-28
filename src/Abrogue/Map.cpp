@@ -73,14 +73,30 @@ Map::Room const& Map::getRandomRoom() const
 	return levelData.rooms[mapRandom.generate() % levelData.roomCount];
 }
 
-FixedVector<std::int64_t, 128> Map::getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const
+FixedVector<std::pair<std::int64_t, std::int64_t>, 128> Map::getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const
 {
 	logger.extraAssert(startX >= 0 && startX < Constants::mapWidth && startY >= 0 && startY < Constants::mapHeight &&
 					   endX >= 0 && endX < Constants::mapWidth && endY >= 0 && endY < Constants::mapHeight, "Requested tile path out of bounds"sv);
 
-	FixedVector<std::int64_t, 128> result;
+	FixedVector<std::pair<std::int64_t, std::int64_t>, 128> result;
 
+	std::int64_t directionX{startX < endX ? 1 : -1};
+	std::int64_t directionY{startY < endY ? 1 : -1};
+	while(startX != endX || startY != endY)
+	{
+		if(std::abs(endX - startX) > std::abs(endY - startY))
+		{
+			startX += directionX;
+			result.emplace_back(startX, startY);
+		}
+		else
+		{
+			startY += directionY;
+			result.emplace_back(startX, startY);
+		}
+	}
 
+	result.emplace_back(endX, endY);
 
 	return result;
 }

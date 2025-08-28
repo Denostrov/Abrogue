@@ -107,7 +107,7 @@ public:
 
 	[[nodiscard]] std::int64_t getDepth() const { return 1; }
 	[[nodiscard]] Room const& getRandomRoom() const;
-	[[nodiscard]] FixedVector<std::int64_t, 128> getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const;
+	[[nodiscard]] FixedVector<std::pair<std::int64_t, std::int64_t>, 128> getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const;
 
 	[[nodiscard]] bool getTileSolid(std::int64_t x, std::int64_t y) const;
 	[[nodiscard]] bool getTileOpaque(std::int64_t x, std::int64_t y) const;

@@ -92,14 +92,6 @@ public:
 
 		currentSize++;
 	}
-	constexpr void append(std::string_view str) requires std::same_as<value_type, char>
-	{
-		for(std::size_t i = 0; i < str.size(); i++)
-		{
-			data[currentSize] = str[i];
-			currentSize++;
-		}
-	}
 
 	template<class Self>
 	constexpr decltype(auto) operator[](this Self&& self, std::size_t index)

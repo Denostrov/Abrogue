@@ -53,55 +53,22 @@ void Enemy::update(double playerX, double playerY, double playerVelocityX, doubl
 			setMovementDirection(-distanceX, -distanceY);
 	};
 
-	auto pursuePlayer = [this, playerX, playerY, playerVelocityX, playerVelocityY, x, y, totalDistance, &moveWithinDistance]()
-	{
-		lastPlayerSeenX = playerX;
-		lastPlayerSeenY = playerY;
-
-		lastPlayerInterpolatedX = playerX + playerVelocityX * 1.0;
-		lastPlayerInterpolatedY = playerY + playerVelocityY * 1.0;
-
-		moveWithinDistance(lastPlayerSeenX, lastPlayerSeenY, 1.0);
-
-		if(totalDistance < 1.5 && !weapon.getIsAttacking())
-			weapon.startAttack(x, y, playerX, playerY);
-	};
-
 	if(state == State::eHunting)
 	{
-		if(totalDistance > stealthRange || !map.getTileInLineOfSight(x, y))
-		{
-			if((std::int64_t)x == (std::int64_t)lastPlayerSeenX && (std::int64_t)y == (std::int64_t)lastPlayerSeenY)
-			{
-				state = State::eSearching;
-				moveTowards(lastPlayerInterpolatedX, lastPlayerInterpolatedY);
-			}
-			else
-				moveTowards(lastPlayerSeenX, lastPlayerSeenY);
-		}
-		else
-			pursuePlayer();
-	}
-	else if(state == State::eSearching)
-	{
-		if(totalDistance < stealthRange && map.getTileInLineOfSight(x, y))
-		{
-			state = State::eHunting;
+		auto [targetTileX, targetTileY] = path[currentPathIndex];
 
-			pursuePlayer();
+		if((std::int64_t)x != targetTileX || (std::int64_t)y != targetTileY)
+		{
+			moveTowards(targetTileX + 0.5, targetTileY + 0.5);
 		}
 		else
 		{
-			if((std::int64_t)x == (std::int64_t)lastPlayerInterpolatedX && (std::int64_t)y == (std::int64_t)lastPlayerInterpolatedY)
-			{
+			currentPathIndex++;
+			if(currentPathIndex >= path.size())
 				state = State::eWandering;
-				setMovementDirection(0.0, 0.0);
-			}
-			else
-				moveTowards(lastPlayerInterpolatedX, lastPlayerInterpolatedY);
 		}
 	}
-	else
+	else if(state == State::eSleeping)
 	{
 		if(totalDistance < stealthRange && map.getTileInLineOfSight(x, y))
 		{
@@ -115,9 +82,21 @@ void Enemy::update(double playerX, double playerY, double playerVelocityX, doubl
 					state = State::eHunting;
 					stealthTimer = 0.0;
 					lastCheckedStealthTime = 0.0;
-
-					pursuePlayer();
+					path = map.getPath(x, y, playerX, playerY);
+					currentPathIndex = 0;
 				}
+			}
+		}
+	}
+	else if(state == State::eWandering)
+	{
+		if(totalDistance < stealthRange && map.getTileInLineOfSight(x, y))
+		{
+			if((std::int64_t)x != (std::int64_t)playerX || (std::int64_t)y != (std::int64_t)playerY)
+			{
+				state = State::eHunting;
+				path = map.getPath(x, y, playerX, playerY);
+				currentPathIndex = 0;
 			}
 		}
 	}
