@@ -10,6 +10,7 @@ enum class ButtonType
 	eStepTime,
 	eShowDamage,
 	eShowViewcone,
+	eShowEnemies,
 	COUNT
 };
 

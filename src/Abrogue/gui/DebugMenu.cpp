@@ -3,6 +3,7 @@ module DebugMenu;
 import Game;
 import Map;
 import Weapon;
+import Enemy;
 
 using namespace std::literals;
 
@@ -15,6 +16,7 @@ void DebugMenu::init()
 	buttons[eStepTime].init(""sv, 40, 10, QuadPool::ePopup);
 	buttons[eShowDamage].init("Show damage"sv, 70, 8, QuadPool::ePopup);
 	buttons[eShowViewcone].init("Show viewcone"sv, 70, 10, QuadPool::ePopup);
+	buttons[eShowEnemies].init("Show enemies"sv, 70, 12, QuadPool::ePopup);
 
 	refreshLabels();
 }
@@ -41,6 +43,11 @@ void DebugMenu::onButtonPressed(ButtonType type)
 	{
 		buttons[eShowViewcone].togglePressed();
 		Map::setDrawDebugViewcone(buttons[eShowViewcone].getPressed());
+	}
+	else if(type == eShowEnemies)
+	{
+		buttons[eShowEnemies].togglePressed();
+		enemyHandler.setDrawDebug(buttons[eShowEnemies].getPressed());
 	}
 }
 

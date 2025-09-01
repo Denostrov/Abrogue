@@ -4,13 +4,15 @@ import Player;
 import Map;
 import Random;
 
-Enemy::Enemy(EnemyData const& data, double positionX, double positionY)
-	:PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color)
+EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double positionY, State initialState)
+	:PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color), state(initialState)
 {
 	auto [x, y] = getPosition();
 	quad = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
 									{color.getPacked(), color.getTransparentPacked()}, data.symbol},
 						   QuadPool::eEntity);
+	
+	updateDrawDebug();
 
 	setMass(data.mass);
 	setMaxVelocity(data.speed);
@@ -18,7 +20,7 @@ Enemy::Enemy(EnemyData const& data, double positionX, double positionY)
 	weapon.init(data.weaponType, data.weaponColor, data.damage, data.attackTime, false);
 }
 
-void Enemy::update(double playerX, double playerY, double playerVelocityX, double playerVelocityY, std::int64_t stealthRange)
+void EnemyHandler::Enemy::update(double playerX, double playerY, double playerVelocityX, double playerVelocityY, std::int64_t stealthRange)
 {
 	auto [x, y] = getPosition();
 
@@ -65,7 +67,7 @@ void Enemy::update(double playerX, double playerY, double playerVelocityX, doubl
 		{
 			currentPathIndex++;
 			if(currentPathIndex >= path.size())
-				state = State::eWandering;
+				setState(State::eWandering);
 		}
 	}
 	else if(state == State::eSleeping)
@@ -79,11 +81,10 @@ void Enemy::update(double playerX, double playerY, double playerVelocityX, doubl
 				std::uint64_t detectRoll = mapRandom.generate() % 4;
 				if(detectRoll == 0)
 				{
-					state = State::eHunting;
+					setState(State::eHunting);
 					stealthTimer = 0.0;
 					lastCheckedStealthTime = 0.0;
-					path = map.getPath(x, y, playerX, playerY);
-					currentPathIndex = 0;
+					setPathTo(playerX, playerY);
 				}
 			}
 		}
@@ -94,9 +95,8 @@ void Enemy::update(double playerX, double playerY, double playerVelocityX, doubl
 		{
 			if((std::int64_t)x != (std::int64_t)playerX || (std::int64_t)y != (std::int64_t)playerY)
 			{
-				state = State::eHunting;
-				path = map.getPath(x, y, playerX, playerY);
-				currentPathIndex = 0;
+				setState(State::eHunting);
+				setPathTo(playerX, playerY);
 			}
 		}
 	}
@@ -107,11 +107,14 @@ void Enemy::update(double playerX, double playerY, double playerVelocityX, doubl
 	weapon.update(x, y);
 }
 
-void Enemy::updateDraw(double deltaTime)
+void EnemyHandler::Enemy::updateDraw(double deltaTime)
 {
 	auto [x, y] = getPosition();
 	auto [vx, vy] = getVelocity();
 	quad.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
+
+	if(enemyHandler.isDebugRender)
+		stateQuad.setPosition(Constants::mapOffset + x + vx * deltaTime - 0.25, y + vy * deltaTime + 0.25);
 
 	auto brightness = map.getTileBrightness(x, y);
 	if(brightness < Constants::mapMinBrightness)
@@ -128,6 +131,46 @@ void Enemy::updateDraw(double deltaTime)
 	}
 }
 
+void EnemyHandler::Enemy::updateDrawDebug()
+{
+	pathQuads.clear();
+	stateQuad = QuadPool::Reference{};
+	if(enemyHandler.isDebugRender)
+	{
+		for(auto [pathX, pathY] : path)
+		{
+			pathQuads.emplace_back(quadPool.insert(QuadData{{Constants::mapOffset + pathX + 0.5, pathY + 0.5},
+							{Color::pack(0, 0, 0, 0), Color::pack(255, 0, 0, 128)}, ' '},
+												   QuadPool::eEntity));
+		}
+
+		auto [x, y] = getPosition();
+		QuadData stateData{{Constants::mapOffset + x - 0.25, y + 0.25}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)}, 'S'};
+		stateData.setScale(0.5, 0.5);
+		stateQuad = quadPool.insert(stateData, QuadPool::eEntity);
+		stateQuad.setGlyph(state == State::eSleeping ? 'S' : state == State::eWandering ? 'W' : state == State::eHunting ? 'H' : '?');
+	}
+}
+
+void EnemyHandler::Enemy::setState(State newState)
+{
+	state = newState;
+	if(enemyHandler.isDebugRender)
+	{
+		stateQuad.setGlyph(state == State::eSleeping ? 'S' : state == State::eWandering ? 'W' : state == State::eHunting ? 'H' : '?');
+	}
+}
+
+void EnemyHandler::Enemy::setPathTo(std::int64_t x, std::int64_t y)
+{
+	auto [currentX, currentY] = getPosition();
+
+	path = map.getPath(currentX, currentY, x, y);
+	currentPathIndex = 0;
+
+	updateDrawDebug();
+}
+
 void EnemyHandler::update()
 {
 	currentTime += Constants::tickDuration;
@@ -140,7 +183,7 @@ void EnemyHandler::update()
 			std::int64_t spawnX = spawnRoom.originX + mapRandom.generate() % spawnRoom.width;
 			std::int64_t spawnY = spawnRoom.originY + mapRandom.generate() % spawnRoom.height;
 
-			enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5);
+			enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5, Enemy::State::eWandering);
 		}
 
 		lastEnemySpawnTime = currentTime;
@@ -188,7 +231,14 @@ void EnemyHandler::populateLevel()
 				continue;
 			}
 
-			enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5);
+			enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5, Enemy::State::eSleeping);
 		}
 	}
+}
+
+void EnemyHandler::setDrawDebug(bool draw)
+{
+	enemyHandler.isDebugRender = draw;
+	for(auto& enemy : enemies)
+		enemy.updateDrawDebug();
 }

@@ -96,8 +96,6 @@ FixedVector<std::pair<std::int64_t, std::int64_t>, 128> Map::getPath(std::int64_
 		}
 	}
 
-	result.emplace_back(endX, endY);
-
 	return result;
 }
 
