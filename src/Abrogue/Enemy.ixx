@@ -16,7 +16,23 @@ export class EnemyHandler
 		};
 
 		Enemy() = default;
-		Enemy(EnemyData const& data, double positionX, double positionY, State initialState);
+		template<bool isDrawDebug>
+		Enemy(EnemyData const& data, double positionX, double positionY, State initialState, IsDebugTag<isDrawDebug>)
+			:PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color), state(initialState)
+		{
+			auto [x, y] = getPosition();
+			quad = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
+											{color.getPacked(), color.getTransparentPacked()}, data.symbol},
+								   QuadPool::eEntity);
+
+			if constexpr(isDrawDebug)
+				updateDrawDebug();
+
+			setMass(data.mass);
+			setMaxVelocity(data.speed);
+
+			weapon.init(data.weaponType, data.weaponColor, data.damage, data.attackTime, false);
+		}
 
 		void update(double playerX, double playerY, double playerVelocityX, double playerVelocityY, std::int64_t stealthRange);
 		void updateDraw(double deltaTime);
@@ -55,12 +71,31 @@ public:
 	void setDrawDebug(bool draw);
 
 private:
+	template<bool isDebug>
+	bool spawnEnemy()
+	{
+		auto enemyDataOpt = configuration.getSuitableEnemy();
+		if(!enemyDataOpt)
+			return false;
+
+		auto const& spawnRoom = map.getRandomRoom();
+		std::int64_t spawnX = spawnRoom.originX + mapRandom.generate() % spawnRoom.width;
+		std::int64_t spawnY = spawnRoom.originY + mapRandom.generate() % spawnRoom.height;
+
+		if(map.getTileInLineOfSight(spawnX, spawnY))
+			return false;
+
+		enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5, Enemy::State::eSleeping, IsDebug<isDebug>);
+
+		return true;
+	}
+
 	double currentTime{};
 
 	FixedVector<Enemy, 512> enemies;
 	double lastEnemySpawnTime{};
 
-	bool isDebugRender{};
+	bool isDrawDebug{};
 };
 
 export inline EnemyHandler enemyHandler;

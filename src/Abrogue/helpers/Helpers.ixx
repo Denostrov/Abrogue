@@ -7,6 +7,14 @@ using optRef = std::optional<std::reference_wrapper<T>>;
 export template<class T>
 using optCRef = std::optional<std::reference_wrapper<T const>>;
 
+export template<bool isDebug>
+struct IsDebugTag
+{
+	explicit IsDebugTag() = default;
+};
+export template<bool isDebug>
+constexpr IsDebugTag<isDebug> IsDebug{};
+
 export template<class T, auto N>
 class Array
 {

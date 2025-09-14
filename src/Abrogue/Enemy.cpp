@@ -4,22 +4,6 @@ import Player;
 import Map;
 import Random;
 
-EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double positionY, State initialState)
-	:PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color), state(initialState)
-{
-	auto [x, y] = getPosition();
-	quad = quadPool.insert(QuadData{{Constants::mapOffset + x, y},
-									{color.getPacked(), color.getTransparentPacked()}, data.symbol},
-						   QuadPool::eEntity);
-	
-	updateDrawDebug();
-
-	setMass(data.mass);
-	setMaxVelocity(data.speed);
-
-	weapon.init(data.weaponType, data.weaponColor, data.damage, data.attackTime, false);
-}
-
 void EnemyHandler::Enemy::update(double playerX, double playerY, double playerVelocityX, double playerVelocityY, std::int64_t stealthRange)
 {
 	auto [x, y] = getPosition();
@@ -113,7 +97,7 @@ void EnemyHandler::Enemy::updateDraw(double deltaTime)
 	auto [vx, vy] = getVelocity();
 	quad.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
 
-	if(enemyHandler.isDebugRender)
+	if(enemyHandler.isDrawDebug)
 		stateQuad.setPosition(Constants::mapOffset + x + vx * deltaTime - 0.25, y + vy * deltaTime + 0.25);
 
 	auto brightness = map.getTileBrightness(x, y);
@@ -135,7 +119,7 @@ void EnemyHandler::Enemy::updateDrawDebug()
 {
 	pathQuads.clear();
 	stateQuad = QuadPool::Reference{};
-	if(enemyHandler.isDebugRender)
+	if(enemyHandler.isDrawDebug)
 	{
 		for(auto [pathX, pathY] : path)
 		{
@@ -155,7 +139,7 @@ void EnemyHandler::Enemy::updateDrawDebug()
 void EnemyHandler::Enemy::setState(State newState)
 {
 	state = newState;
-	if(enemyHandler.isDebugRender)
+	if(enemyHandler.isDrawDebug)
 	{
 		stateQuad.setGlyph(state == State::eSleeping ? 'S' : state == State::eWandering ? 'W' : state == State::eHunting ? 'H' : '?');
 	}
@@ -177,14 +161,7 @@ void EnemyHandler::update()
 
 	if(currentTime - lastEnemySpawnTime > 60.0)
 	{
-		if(auto enemyDataOpt = configuration.getSuitableEnemy())
-		{
-			auto const& spawnRoom = map.getRandomRoom();
-			std::int64_t spawnX = spawnRoom.originX + mapRandom.generate() % spawnRoom.width;
-			std::int64_t spawnY = spawnRoom.originY + mapRandom.generate() % spawnRoom.height;
-
-			enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5, Enemy::State::eWandering);
-		}
+		spawnEnemy<isDebug>();
 
 		lastEnemySpawnTime = currentTime;
 	}
@@ -217,28 +194,21 @@ void EnemyHandler::inflictDamage(double damageX, double damageY)
 
 void EnemyHandler::populateLevel()
 {
-	for(std::int64_t i = 0; i < 20; i++)
+	auto spawnEnemies = [this]<bool isDebug>(IsDebugTag<isDebug>)
 	{
-		if(auto enemyDataOpt = configuration.getSuitableEnemy())
+		for(std::int64_t i = 0; i < 20; i++)
 		{
-			auto const& spawnRoom = map.getRandomRoom();
-			std::int64_t spawnX = spawnRoom.originX + mapRandom.generate() % spawnRoom.width;
-			std::int64_t spawnY = spawnRoom.originY + mapRandom.generate() % spawnRoom.height;
-
-			if(map.getTileInLineOfSight(spawnX, spawnY))
-			{
+			if(!spawnEnemy<isDebug>()) 
 				i--;
-				continue;
-			}
-
-			enemies.emplace_back(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5, Enemy::State::eSleeping);
 		}
-	}
+	};
+
+	isDrawDebug ? spawnEnemies(IsDebugTag<true>{}) : spawnEnemies(IsDebugTag<false>{});
 }
 
 void EnemyHandler::setDrawDebug(bool draw)
 {
-	enemyHandler.isDebugRender = draw;
+	enemyHandler.isDrawDebug = draw;
 	for(auto& enemy : enemies)
 		enemy.updateDrawDebug();
 }
