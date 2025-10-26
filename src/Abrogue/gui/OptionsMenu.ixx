@@ -1,41 +1,39 @@
-export module OptionsMenu;
+module Abrogue:OptionsMenu;
 
-export import Screen;
+import :ScreenComponent;
 
-enum class LabelType
+enum class OptionsMenuLabelType
 {
-	eControls,
-	eVideo,
-	eResolution,
-	COUNT
+    eControls,
+    eVideo,
+    eResolution,
+    COUNT
 };
 
-enum class ButtonType
+enum class OptionsMenuButtonType
 {
-	eMoveUp,
-	eMoveDown,
-	eMoveLeft,
-	eMoveRight,
-	eAttack,
-	ePause,
-	eSearch,
-	eDiscoveries,
-	eMenu,
-	eDebug,
-	eStopTime,
-	eStepTime,
-	eResetToDefault,
-	eFullscreen,
-	COUNT
+    eMoveUp,
+    eMoveDown,
+    eMoveLeft,
+    eMoveRight,
+    eAttack,
+    ePause,
+    eSearch,
+    eDiscoveries,
+    eDebug,
+    eStopTime,
+    eStepTime,
+    eResetToDefault,
+    eFullscreen,
+    COUNT
 };
 
-export class OptionsMenu: public ScreenComponent<OptionsMenu, LabelType, ButtonType>
+class OptionsMenu: public ScreenComponent<OptionsMenu, OptionsMenuLabelType, OptionsMenuButtonType>
 {
 public:
-	OptionsMenu() = default;
-	void init();
+    void init();
 
-	void onButtonPressed(ButtonType type);
+    void onButtonPressed(ButtonType type);
 
-	void refreshLabels();
+    void refreshLabels();
 };

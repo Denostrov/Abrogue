@@ -1,36 +1,37 @@
-export module Item;
+module Abrogue:Item;
 
-export import QuadPool;
-export import PhysicsComponent;
-export import FixedVector;
-export import FixedString;
+import :PhysicsComponent;
+import :QuadPool;
 
-export class Item: public PhysicsComponent
+/*
+ * Item - class for handling items
+ */
+class Item : public PhysicsComponent
 {
 public:
-	enum class Type
-	{
-		eGold,
-		eFood,
-		eAmulet,
-		COUNT
-	};
+    enum class Type
+    {
+        eGold,
+        eFood,
+        eAmulet,
+        COUNT
+    };
 
-	Item() = default;
-	Item(Type newType, double x, double y);
+    Item() = default;
+    Item(Type newType, double x, double y);
 
-	void update();
-	void updateDraw(double deltaTime);
+    void update();
+    void updateDraw(double deltaTime);
 
-	Type getType() const { return type; }
-	FixedString<32> getName() const;
+    [[nodiscard]] Type getType() const { return type; }
+    [[nodiscard]] FixedString<32> getName() const;
 
-	void setVisible(bool visible);
+    void setVisible(bool visible);
 
 private:
-	static constexpr std::array<std::uint32_t, (size_t)Type::COUNT> typeGlyphs{42, 59, 157};
+    static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157};
 
-	Type type{};
+    Type type{};
 
-	QuadPool::Reference quad;
+    QuadReference<QuadLayer::eItem> quad;
 };

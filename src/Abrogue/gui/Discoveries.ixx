@@ -1,18 +1,17 @@
-export module Discoveries;
+module Abrogue:Discoveries;
 
-export import Screen;
+import :ScreenComponent;
 
 //Enum for discovery labels
-enum class LabelType
+enum class DiscoveriesLabelType
 {
-	eTitle,
-	COUNT
+    eTitle,
+    COUNT
 };
 
 //Class for a popup menu with discovered items
-export class Discoveries : public ScreenComponent<Discoveries, LabelType>
+class Discoveries : public ScreenComponent<Discoveries, DiscoveriesLabelType>
 {
 public:
-	Discoveries() = default;
-	void init();
+    void init();
 };

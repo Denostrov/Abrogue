@@ -1,29 +1,28 @@
-export module DebugMenu;
+module Abrogue:DebugMenu;
 
-export import Screen;
+import :ScreenComponent;
 
 //Enum for debug menu buttons
-enum class ButtonType
+enum class DebugMenuButtonType
 {
-	eTitle,
-	eStopTime,
-	eStepTime,
-	eShowDamage,
-	eShowViewcone,
-	eShowEnemies,
-	COUNT
+    eTitle,
+    eStopTime,
+    eStepTime,
+    eShowDamage,
+    eShowViewcone,
+    eShowEnemies,
+    COUNT
 };
 
 //Class for a popup menu with debugging options
-export class DebugMenu: public ScreenComponent<DebugMenu, EmptyEnumType, ButtonType>
+class DebugMenu: public ScreenComponent<DebugMenu, EmptyEnumType, DebugMenuButtonType>
 {
 public:
-	DebugMenu() = default;
-	void init();
+    void init();
 
-	void onButtonPressed(ButtonType type);
+    void onButtonPressed(ButtonType type);
 
-	void resetToDefault();
+    void resetToDefault();
 
-	void refreshLabels();
+    void refreshLabels();
 };

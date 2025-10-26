@@ -1,45 +1,44 @@
-export module PlayArea;
+module Abrogue:PlayArea;
 
-export import Screen;
-export import Item;
+import :ScreenComponent;
+import :Item;
 
-enum class ButtonType
+enum class PlayAreaButtonType
 {
-	ePause,
-	eHealth,
-	eNutrition,
-	eGold,
-	eInventory,
-	eInventorySlotFirst = eInventory + 1,
-	eInventorySlotLast = eInventorySlotFirst + 19,
-	eDepth,
-	eSearch,
-	COUNT
+    ePause,
+    eHealth,
+    eNutrition,
+    eGold,
+    eInventory,
+    eInventorySlotFirst = eInventory + 1,
+    eInventorySlotLast = eInventorySlotFirst + 19,
+    eDepth,
+    eSearch,
+    COUNT
 };
 
-enum class TabButtonType
+enum class PlayAreaTabButtonType
 {
-	eDebug,
-	eDiscoveries,
-	eMenu,
-	COUNT
+    eDebug,
+    eDiscoveries,
+    eMenu,
+    COUNT
 };
 
-export class PlayArea : public ScreenComponent<PlayArea, EmptyEnumType, ButtonType, TabButtonType>
+class PlayArea : public ScreenComponent<PlayArea, EmptyEnumType, PlayAreaButtonType, PlayAreaTabButtonType, QuadLayer::eMap>
 {
 public:
-	PlayArea() = default;
-	void init();
+    void init();
 
-	void onButtonPressed(ButtonType type);
-	void onTabButtonPressed(TabButtonType type);
+    void onButtonPressed(ButtonType type);
+    void onTabButtonPressed(TabButtonType type) const;
 
-	void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
+    void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 
-	bool getPaused() const { return buttons[(size_t)ButtonType::ePause].getPressed(); }
-	void setPaused(bool paused);
+    [[nodiscard]] bool getPaused() const { return buttons[ButtonType::ePause].getPressed(); }
+    void setPaused(bool paused);
 
-	void setPlayerHealth(double percentage);
+    void setPlayerHealth(double percentage);
 
-	void refreshLabels();
+    void refreshLabels();
 };

@@ -1,15 +1,20 @@
-export module GUI;
+module Abrogue:GUI;
 
-export import MainMenu;
-export import OptionsMenu;
-export import PlayArea;
-export import PauseMenu;
-export import Discoveries;
-export import DebugMenu;
-export import GameOver;
+import :Item;
+import :Background;
+import :Label;
+import :MainMenu;
+import :OptionsMenu;
+import :PlayArea;
+import :PauseMenu;
+import :Discoveries;
+import :DebugMenu;
+import :GameOver;
 
-//Class for handling transitions between screens
-export class GUI
+/*
+ * GUI - class for handling transitions between screens
+ */
+class GUI
 {
 	//Enum for different screen types
 	enum class ScreenType
@@ -25,7 +30,7 @@ export class GUI
 	};
 
 public:
-	GUI() = default;
+	GUI() {}
 	void init();
 
 	void showPlayArea();
@@ -64,8 +69,8 @@ private:
 				func(mainMenu);
 				break;
 			case ScreenType::eOptionsMenu:
-				func(optionsMenu);
-				break;
+			 	func(optionsMenu);
+			 	break;
 			case ScreenType::ePlayArea:
 				func(playArea);
 				break;
@@ -92,15 +97,14 @@ private:
 
 	//Available screens
 	MainMenu mainMenu;
-	OptionsMenu optionsMenu;
+    OptionsMenu optionsMenu;
 	PlayArea playArea;
-	PauseMenu pauseMenu;
+    PauseMenu pauseMenu;
 	Discoveries discoveries;
 	DebugMenu debugMenu;
 	GameOver gameOver;
 
 	Background popupBackground;	//Semi transparent black box behind popup screens
-	Label fpsLabel;				//Debug label for showing fps
+	Label<QuadLayer::eMap> fpsLabel;				//Debug label for showing fps
 };
-
-export inline GUI gui;
+inline GUI gui;

@@ -1,21 +1,20 @@
-export module MainMenu;
+module Abrogue:MainMenu;
 
-export import Screen;
+import :ScreenComponent;
 
-enum class ButtonType
+enum class MainMenuButtonType
 {
-	eStartGame,
-	eOptions,
-	eQuitToDesktop,
-	COUNT
+    eStartGame,
+    eOptions,
+    eQuitToDesktop,
+    COUNT
 };
 
 //Class for main menu screen
-export class MainMenu: public ScreenComponent<MainMenu, EmptyEnumType, ButtonType>
+class MainMenu: public ScreenComponent<MainMenu, EmptyEnumType, MainMenuButtonType>
 {
 public:
-	MainMenu() = default;
-	void init();
+    void init();
 
-	void onButtonPressed(ButtonType type);
+    void onButtonPressed(ButtonType type);
 };

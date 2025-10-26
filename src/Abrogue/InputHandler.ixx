@@ -1,28 +1,25 @@
-module;
+export module Abrogue:InputHandler;
 
-#include <SDL3/SDL_scancode.h>
+import :Constants;
 
-export module InputHandler;
-
-export import Configuration;
-
-//Class for processing user input
+/*
+ * InputHandler - class for handling user input
+ */
 export class InputHandler
 {
 public:
-	InputHandler() = default;
+    InputHandler() = default;
 
-	void setChangingControlType(InputControlType type) { changingControlType = type; }
+    void setChangingControlType(InputControlType type) { changingControlType = type; }
 
-	std::pair<float, float> getMousePosition() const;
-	void onMouseMoved(float x, float y);
-	void onMousePressed(uint8_t buttonIndex, float x, float y);
+    [[nodiscard]] std::pair<float, float> getMousePosition() const;
+    void onMouseMoved(float x, float y);
+    void onMousePressed(std::uint8_t buttonIndex, float x, float y);
 
-	void onButtonPressed(SDL_Scancode scancode, bool pressed);
+    void onButtonPressed(SDL_Scancode scancode, bool pressed);
 
 private:
-	std::array<bool, SDL_Scancode::SDL_SCANCODE_COUNT> pressedButtons{};
-	InputControlType changingControlType{InputControlType::COUNT};
+    std::array<bool, SDL_SCANCODE_COUNT> pressedButtons{};
+    InputControlType changingControlType{InputControlType::COUNT};
 };
-
 export inline InputHandler inputHandler;

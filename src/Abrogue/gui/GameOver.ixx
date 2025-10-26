@@ -1,23 +1,22 @@
-export module GameOver;
+module Abrogue:GameOver;
 
-export import Screen;
+import :ScreenComponent;
 
 //Enum for game over labels
-enum class LabelType
+enum class GameOverLabelType
 {
-	eGameOver,
-	ePressSpace,
-	COUNT
+    eGameOver,
+    ePressSpace,
+    COUNT
 };
 
 //Class for a popup screen with game over text
-export class GameOver : public ScreenComponent<GameOver, LabelType>
+class GameOver : public ScreenComponent<GameOver, GameOverLabelType>
 {
 public:
-	GameOver() = default;
-	void init();
+    void init();
 
-	void setWinner(bool winner);
+    void setWinner(bool winner);
 
-	void refreshLabels();
+    void refreshLabels();
 };

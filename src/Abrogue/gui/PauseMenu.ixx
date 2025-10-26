@@ -1,23 +1,21 @@
-export module PauseMenu;
+module Abrogue:PauseMenu;
 
-export import Screen;
-export import Background;
+import :ScreenComponent;
 
-enum class ButtonType
+enum class PauseMenuButtonType
 {
-	eResume,
-	eOptions,
-	eAbandonGame,
-	eSaveAndQuit,
-	COUNT
+    eResume,
+    eOptions,
+    eAbandonGame,
+    eSaveAndQuit,
+    COUNT
 };
 
 //Class for pause menu
-export class PauseMenu: public ScreenComponent<PauseMenu, EmptyEnumType, ButtonType>
+class PauseMenu: public ScreenComponent<PauseMenu, EmptyEnumType, PauseMenuButtonType>
 {
 public:
-	PauseMenu() = default;
-	void init();
+    void init();
 
-	void onButtonPressed(ButtonType type);
+    void onButtonPressed(ButtonType type) const;
 };

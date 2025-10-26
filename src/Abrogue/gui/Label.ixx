@@ -1,49 +1,160 @@
-export module Label;
+module Abrogue:Label;
 
-export import QuadPool;
-export import FixedVector;
-export import FixedString;
+import :QuadPool;
 
 //Class for handling clickable text boxes
-export class Label
+template <QuadLayer layer>
+class Label
 {
 public:
-	Label() = default;
-	void init(std::string_view text, std::int64_t x, std::int64_t y, QuadPool::Layer drawLayer, bool visible = false);
+    Label() = default;
+    void init(std::string_view text, std::int64_t x, std::int64_t y, bool visible = false)
+    {
+        setPosition(x, y);
+        setText(text);
 
-	[[nodiscard]] bool checkCollision(std::int64_t checkX, std::int64_t checkY) const;
+        setVisible(visible);
+    }
 
-	void togglePressed() { setPressed(!isPressed); }
+    [[nodiscard]] bool checkCollision(std::int64_t checkX, std::int64_t checkY) const
+    {
+        return x <= checkX && checkX < x + size && y <= checkY && checkY < y + 1;
+    }
 
-	[[nodiscard]] auto getPressed() const { return isPressed; }
+    void togglePressed() { setPressed(!isPressed); }
 
-	void setVisible(bool visible);
-	void setHovered(bool hovered);
-	void setPressed(bool pressed);
+    [[nodiscard]] auto getPressed() const { return isPressed; }
 
-	void setText(std::string_view text);
-	void setPosition(std::int64_t newX, std::int64_t newY);
-	void setBackgroundColor(PackedColor color, PackedColor hoverColor);
-	void setPressedBackgroundColor(PackedColor color, PackedColor hoverColor);
-	void setProgress(double percentage);
+    void setVisible(bool visible)
+    {
+        if (isVisible == visible)
+            return;
+
+        //Invisible label has size 0 to disable collision detection
+        isVisible = visible;
+        size = visible ? text.getSize() : 0;
+
+        //Delete invisible quads to avoid overdraw
+        if (!visible)
+        {
+            quadReferences.clear();
+            return;
+        }
+
+        //Recreate quads
+        for (std::size_t i = 0; i < size; i++)
+        {
+            quadReferences.emplaceBack(QuadData{
+                {x + i + 0.5f, y + 0.5f},
+                {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (std::uint32_t)text[i]
+            });
+        }
+    }
+    void setHovered(bool hovered)
+    {
+        if (isHovered == hovered)
+            return;
+
+        isHovered = hovered;
+
+        for (std::size_t i = 0; i < size; i++)
+            quadReferences[i].setBackgroundColor(getBackgroundColor(i));
+    }
+    void setPressed(bool pressed)
+    {
+        if (isPressed == pressed)
+            return;
+
+        isPressed = pressed;
+
+        for (std::size_t i = 0; i < size; i++)
+            quadReferences[i].setBackgroundColor(getBackgroundColor(i));
+    }
+
+    void setText(std::string_view newText)
+    {
+        text = newText;
+        if (!isVisible)
+            return;
+
+        size = text.getSize();
+
+        //Create remaining quads when new text is longer
+        for (std::size_t i = quadReferences.getSize(); i < size; ++i)
+        {
+            quadReferences.emplaceBack(QuadData{
+                {x + i + 0.5f, y + 0.5f},
+                {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (std::uint32_t)text[i]
+            });
+        }
+
+        //Set existing quad parameters
+        for (std::size_t i = 0; i < size; i++)
+        {
+            quadReferences[i].setGlyph(text[i]);
+            quadReferences[i].setBackgroundColor(getBackgroundColor(i));
+        }
+
+        //Erase extra quads when new text is shorter
+        quadReferences.resize(size);
+    }
+    void setPosition(std::int64_t newX, std::int64_t newY)
+    {
+        x = newX;
+        y = newY;
+        for (std::size_t i = 0; i < size; i++)
+            quadReferences[i].setPosition(x + i + 0.5f, y + 0.5f);
+    }
+    void setBackgroundColor(PackedColor color, PackedColor hoverColor)
+    {
+        backgroundColor = color;
+        hoveredBackgroundColor = hoverColor;
+
+        for (std::size_t i = 0; i < size; i++)
+            quadReferences[i].setBackgroundColor(getBackgroundColor(i));
+    }
+    void setPressedBackgroundColor(PackedColor color, PackedColor hoverColor)
+    {
+        pressedBackgroundColor = color;
+        hoveredPressedBackgroundColor = hoverColor;
+
+        for (std::size_t i = 0; i < size; i++)
+            quadReferences[i].setBackgroundColor(getBackgroundColor(i));
+    }
+    void setProgress(double percentage)
+    {
+        progress = percentage;
+
+        for (std::size_t i = 0; i < size; i++)
+            quadReferences[i].setBackgroundColor(getBackgroundColor(i));
+    }
 
 private:
-	PackedColor getBackgroundColor(std::int64_t index) const;
+    [[nodiscard]] PackedColor getBackgroundColor(std::int64_t index) const
+    {
+        Color color = isPressed
+                          ? (isHovered ? hoveredPressedBackgroundColor : pressedBackgroundColor)
+                          : (isHovered ? hoveredBackgroundColor : backgroundColor);
 
-	bool isVisible{};
-	bool isHovered{};
-	bool isPressed{};
-	double progress{1.0};
+        //Adjust colors to form a gradient from left to right depending on progress
+        double colorCoefficient = std::clamp(progress * size - index, 0.0, 1.0);
+        color.multiplyRGB(colorCoefficient);
+        return color.getPacked();
+    }
 
-	std::int64_t x{}, y{};
-	std::size_t size{};
+    bool isVisible{};
+    bool isHovered{};
+    bool isPressed{};
+    double progress{1.0};
 
-	PackedColor backgroundColor{Constants::labelBackgroundColor};
-	PackedColor hoveredBackgroundColor{Constants::labelHoveredColor};
-	PackedColor pressedBackgroundColor{Constants::labelPressedColor};
-	PackedColor hoveredPressedBackgroundColor{Constants::labelHoveredPressedColor};
+    std::int64_t x{}, y{};
+    std::size_t size{};
 
-	QuadPool::Layer layer{};
-	FixedString<128> text;
-	FixedVector<QuadPool::Reference, 128> quadReferences;
+    PackedColor backgroundColor{Constants::labelBackgroundColor};
+    PackedColor hoveredBackgroundColor{Constants::labelHoveredColor};
+    PackedColor pressedBackgroundColor{Constants::labelPressedColor};
+    PackedColor hoveredPressedBackgroundColor{Constants::labelHoveredPressedColor};
+
+    FixedString<128> text;
+    FixedVector<QuadReference<layer>, 128> quadReferences;
 };
