@@ -107,8 +107,6 @@ bool Game::update()
     }
 
     double deltaTimeInSec = static_cast<double>(currentTime - lastUpdateTime) / 1.e9;
-    gui.updateDraw(deltaTimeInSec);
-
     if (!updateDraw(deltaTimeInSec * speedMultiplier))
         return false;
 
@@ -126,14 +124,13 @@ bool Game::update()
 }
 void Game::advanceStep()
 {
+    gui.update();
     if (state == State::eRunning)
     {
         currentTick++;
 
         player.update();
-
         map.update();
-
         enemyHandler.update();
     }
 }
@@ -194,6 +191,7 @@ void Game::resetTickTimer()
 }
 bool Game::updateDraw(double deltaTime) const
 {
+    gui.updateDraw(deltaTime);
     if (state == State::eRunning)
     {
         player.updateDraw(deltaTime);

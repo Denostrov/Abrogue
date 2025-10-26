@@ -43,10 +43,17 @@ void GUI::showGameOver(bool winner)
 
 	setCurrentScreen(ScreenType::eGameOver);
 }
+
+void GUI::update()
+{
+    popupBackground.update();
+}
+
 void GUI::updateDraw(double deltaTime)
 {
 	popupBackground.updateDraw(deltaTime);
 }
+
 void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 {
 	executeOnScreen(activeScreenType, [x, y](auto& screen) { screen.updateMouseMoved(x, y); });

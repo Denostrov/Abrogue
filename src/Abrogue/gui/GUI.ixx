@@ -38,6 +38,7 @@ public:
 	void showOptionsMenu();
 	void showGameOver(bool winner);
 
+    void update();
 	void updateDraw(double deltaTime);
 
 	void onMouseMoved(std::int64_t x, std::int64_t y);

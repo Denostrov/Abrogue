@@ -9,37 +9,58 @@ import :QuadPool;
 class Background
 {
 public:
-    void updateDraw(double deltaTime)
+    void update()
     {
-        if (!quad || animationTime > animationEndTime)
+        if (isAnimationFinished)
             return;
 
-        animationTime += deltaTime;
-        quad.setBackgroundColor(Color::pack(0, 0, 0, std::min(animationTime / animationEndTime * 240.0, 240.0)));
+        animationTime += Constants::tickDuration * fadingDirection;
     }
-    void setVisible(bool visible)
+    void updateDraw(double deltaTime)
     {
-        if (!visible)
+        if (isAnimationFinished)
+            return;
+
+        double currentColor = (animationTime + deltaTime * fadingDirection) / animationEndTime * 240.0;
+        if (currentColor < 0.0)
         {
+            animationTime = 0.0;
+            isAnimationFinished = true;
             quad.clearData();
             return;
         }
 
-        if (quad)
+        if (currentColor > 240.0)
+        {
+            currentColor = 240.0;
+            animationTime = animationEndTime;
+            isAnimationFinished = true;
+        }
+        quad.setBackgroundColor(Color::pack(0, 0, 0, currentColor));
+    }
+    void setVisible(bool visible)
+    {
+        std::int64_t newFadingDirection = visible ? 1 : -1;
+        if (newFadingDirection == fadingDirection)
             return;
 
-        animationTime = 0.0;
-
-        quad.setData(QuadData{
-            {Constants::screenWidth / 2.0f, Constants::screenHeight / 2.0f},
-            {Color::pack(0, 0, 0, 0), Color::pack(0, 0, 0, 0)}, ' ',
-            {Constants::screenWidth, Constants::screenHeight}
-        });
+        fadingDirection = newFadingDirection;
+        isAnimationFinished = false;
+        if (!quad)
+        {
+            quad.setData(QuadData{
+                {Constants::screenWidth / 2.0f, Constants::screenHeight / 2.0f},
+                {Color::pack(0, 0, 0, 0), Color::pack(0, 0, 0, 0)}, ' ',
+                {Constants::screenWidth, Constants::screenHeight}
+            });
+        }
     }
 
 private:
-    static constexpr double animationEndTime{2.0};
+    static constexpr double animationEndTime{0.05};
 
+    std::int64_t fadingDirection{-1};
+    bool isAnimationFinished{true};
     double animationTime{};
     QuadReference<QuadLayer::ePopupBackground> quad;
 };
