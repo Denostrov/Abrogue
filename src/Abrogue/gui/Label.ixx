@@ -16,6 +16,41 @@ public:
         setVisible(visible);
     }
 
+    void update()
+    {
+        if (isAnimationFinished)
+            return;
+
+        animationTime += Constants::tickDuration * movingDirection;
+    }
+    void updateDraw(double deltaTime)
+    {
+        if (isAnimationFinished)
+            return;
+
+        double currentOffset = (animationTime + deltaTime * movingDirection) / animationEndTime * Constants::mapHeight;
+
+        if (currentOffset > Constants::mapHeight)
+        {
+            animationTime = animationEndTime;
+            quadReferences.clear();
+            isAnimationFinished = true;
+            return;
+        }
+
+        if (currentOffset < 0.0)
+        {
+            currentOffset = 0.0;
+            animationTime = 0.0;
+            isAnimationFinished = true;
+        }
+
+        for (std::size_t i = 0; i < quadReferences.getSize(); i++)
+        {
+            quadReferences[i].setPosition(x + i + 0.5f, y + 0.5f + currentOffset);
+        }
+    }
+
     [[nodiscard]] bool checkCollision(std::int64_t checkX, std::int64_t checkY) const
     {
         return x <= checkX && checkX < x + size && y <= checkY && checkY < y + 1;
@@ -33,19 +68,18 @@ public:
         //Invisible label has size 0 to disable collision detection
         isVisible = visible;
         size = visible ? text.getSize() : 0;
+        movingDirection = visible ? -1 : 1;
+        isAnimationFinished = false;
 
         //Delete invisible quads to avoid overdraw
-        if (!visible)
-        {
-            quadReferences.clear();
+        if (!quadReferences.isEmpty())
             return;
-        }
 
         //Recreate quads
         for (std::size_t i = 0; i < size; i++)
         {
             quadReferences.emplaceBack(QuadData{
-                {x + i + 0.5f, y + 0.5f},
+                {x + i + 0.5f, y + 0.5f + animationTime / animationEndTime * Constants::mapHeight},
                 {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (std::uint32_t)text[i]
             });
         }
@@ -141,6 +175,11 @@ private:
         color.multiplyRGB(colorCoefficient);
         return color.getPacked();
     }
+
+    static constexpr double animationEndTime{0.1};
+    double animationTime{animationEndTime};
+    std::int64_t movingDirection{-1};
+    bool isAnimationFinished{true};
 
     bool isVisible{};
     bool isHovered{};

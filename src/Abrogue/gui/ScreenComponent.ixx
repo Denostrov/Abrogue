@@ -25,6 +25,48 @@ public:
     using ButtonType = DerivedButtonType;
     using TabButtonType = DerivedTabButtonType;
 
+    void update()
+    {
+        if constexpr (HasButtons<LabelType>)
+        {
+            for (auto& label : labels)
+                label.update();
+        }
+
+        if constexpr (HasButtons<ButtonType>)
+        {
+            for (auto& button : buttons)
+                button.update();
+        }
+
+        if constexpr (HasButtons<TabButtonType>)
+        {
+            for (auto& tabButton : tabButtons)
+                tabButton.update();
+        }
+    }
+
+    void updateDraw(double deltaTime)
+    {
+        if constexpr (HasButtons<LabelType>)
+        {
+            for (auto& label : labels)
+                label.updateDraw(deltaTime);
+        }
+
+        if constexpr (HasButtons<ButtonType>)
+        {
+            for (auto& button : buttons)
+                button.updateDraw(deltaTime);
+        }
+
+        if constexpr (HasButtons<TabButtonType>)
+        {
+            for (auto& tabButton : tabButtons)
+                tabButton.updateDraw(deltaTime);
+        }
+    }
+
     void setVisible(bool visible)
     {
         if constexpr (HasButtons<LabelType>)

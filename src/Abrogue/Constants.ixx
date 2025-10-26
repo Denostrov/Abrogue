@@ -23,7 +23,7 @@ public:
     static constexpr std::uint32_t vkAppMinorVersion{1u};
     static constexpr std::uint32_t vkAppPatchVersion{0u};
 
-    static constexpr std::int64_t ticksPerSecond{32};
+    static constexpr std::int64_t ticksPerSecond{16};
     static constexpr std::int64_t tickDurationNS{1000000000 / ticksPerSecond};
     static constexpr double tickDuration{1.0 / ticksPerSecond};
 

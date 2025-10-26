@@ -57,7 +57,7 @@ public:
     }
 
 private:
-    static constexpr double animationEndTime{0.05};
+    static constexpr double animationEndTime{0.1};
 
     std::int64_t fadingDirection{-1};
     bool isAnimationFinished{true};
