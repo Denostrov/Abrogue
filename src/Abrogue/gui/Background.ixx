@@ -1,6 +1,7 @@
 module Abrogue:Background;
 
 import :QuadPool;
+import :AnimationHandler;
 
 /*
  * Class for a semi transparent rectangle that covers the whole screen
@@ -11,41 +12,28 @@ class Background
 public:
     void update()
     {
-        if (isAnimationFinished)
-            return;
-
-        animationTime += Constants::tickDuration * fadingDirection;
+        animationHandler.update();
     }
     void updateDraw(double deltaTime)
     {
-        if (isAnimationFinished)
+        auto [isUpdated, extrapolatedTime] = animationHandler.updateDraw(deltaTime);
+        if (!isUpdated)
             return;
 
-        double currentColor = (animationTime + deltaTime * fadingDirection) / animationEndTime * 240.0;
-        if (currentColor < 0.0)
+        if (animationHandler.getIsFinished() && extrapolatedTime <= 0.0)
         {
-            animationTime = 0.0;
-            isAnimationFinished = true;
             quad.clearData();
             return;
         }
 
-        if (currentColor > 240.0)
-        {
-            currentColor = 240.0;
-            animationTime = animationEndTime;
-            isAnimationFinished = true;
-        }
+        double currentColor = extrapolatedTime * 240.0;
         quad.setBackgroundColor(Color::pack(0, 0, 0, currentColor));
     }
     void setVisible(bool visible)
     {
-        std::int64_t newFadingDirection = visible ? 1 : -1;
-        if (newFadingDirection == fadingDirection)
+        if (!animationHandler.setTimeDirection(visible))
             return;
 
-        fadingDirection = newFadingDirection;
-        isAnimationFinished = false;
         if (!quad)
         {
             quad.setData(QuadData{
@@ -57,10 +45,6 @@ public:
     }
 
 private:
-    static constexpr double animationEndTime{0.1};
-
-    std::int64_t fadingDirection{-1};
-    bool isAnimationFinished{true};
-    double animationTime{};
+    AnimationHandler animationHandler{0.1};
     QuadReference<QuadLayer::ePopupBackground> quad;
 };

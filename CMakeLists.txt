@@ -95,6 +95,7 @@ target_sources(Abrogue PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABRO
         src/Abrogue/PhysicsComponentImpl.ixx
         src/Abrogue/Map.ixx
         src/Abrogue/MapImpl.ixx
+        src/Abrogue/AnimationHandler.ixx
         src/Abrogue/InputHandler.ixx
         src/Abrogue/InputHandlerImpl.ixx
         src/Abrogue/Abrogue.ixx
