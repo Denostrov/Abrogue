@@ -5,37 +5,37 @@ import :Constants;
 class AnimationHandler
 {
 public:
-    AnimationHandler(double endTime) :endTime(endTime) {}
+    AnimationHandler(double endTime) :timeMultiplier(1.0 / endTime) {}
 
     void update()
     {
         if (isFinished)
             return;
 
-        currentTime += Constants::tickDuration * timeDirection;
+        currentTime += Constants::tickDuration * timeMultiplier * timeDirection;
     }
 
-    std::pair<bool, double> updateDraw(double deltaTime)
+    double updateDraw(double deltaTime)
     {
         if (isFinished)
-            return {false, currentTime / endTime};
+            return -1.0;
 
-        double extrapolatedTime = (currentTime + deltaTime * timeDirection) / endTime;
+        double extrapolatedTime = currentTime + deltaTime * timeMultiplier * timeDirection;
         if (extrapolatedTime < 0.0)
         {
             currentTime = 0.0;
             isFinished = true;
-            return {true, currentTime / endTime};
+            return 0.0;
         }
 
         if (extrapolatedTime > 1.0)
         {
-            currentTime = endTime;
+            currentTime = 1.0;
             isFinished = true;
-            return {true, currentTime / endTime};
+            return 1.0;
         }
 
-        return {true, extrapolatedTime};
+        return extrapolatedTime;
     }
 
     bool setTimeDirection(bool forward)
@@ -49,11 +49,12 @@ public:
         return true;
     }
 
-    [[nodiscard]] bool getIsFinished() const { return isFinished; }
+    [[nodiscard]] auto getIsFinished() const { return isFinished; }
+    [[nodiscard]] auto getCurrentDirection() const { return timeDirection; }
 
 private:
     double currentTime{};
-    double endTime{1.0};
+    double timeMultiplier{1.0};
     std::int64_t timeDirection{-1};
     bool isFinished{true};
 };

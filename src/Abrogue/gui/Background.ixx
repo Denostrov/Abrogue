@@ -16,11 +16,11 @@ public:
     }
     void updateDraw(double deltaTime)
     {
-        auto [isUpdated, extrapolatedTime] = animationHandler.updateDraw(deltaTime);
-        if (!isUpdated)
+        auto extrapolatedTime = animationHandler.updateDraw(deltaTime);
+        if (extrapolatedTime <= -1.0)
             return;
 
-        if (animationHandler.getIsFinished() && extrapolatedTime <= 0.0)
+        if (extrapolatedTime <= 0.0 && animationHandler.getCurrentDirection() == -1)
         {
             quad.clearData();
             return;
