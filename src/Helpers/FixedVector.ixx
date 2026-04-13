@@ -71,6 +71,12 @@ public:
         return currentSize == N;
     }
 
+    template<class Self>
+    constexpr auto getData(this Self&& self)
+    {
+        return std::forward<Self>(self).data;
+    }
+
     template <class Self>
     constexpr auto&& getFront(this Self&& self)
     {

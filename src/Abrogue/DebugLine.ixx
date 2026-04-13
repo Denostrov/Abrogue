@@ -17,7 +17,7 @@ public:
         QuadData quadData{{startX + distanceX / 2.0, startY + distanceY / 4.0}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 255)}, 179};
         quadData.setRotation(static_cast<float>(-sin), static_cast<float>(cos));
         quadData.setScale(0.1f, static_cast<float>(distance / 2.0));
-        quad.setData(quadData);
+        quad.init(quadData);
     }
 
 private:

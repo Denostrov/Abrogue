@@ -26,7 +26,7 @@ void DebugMenu::onButtonPressed(ButtonType type)
     if(type == eStopTime)
     {
         buttons[eStopTime].togglePressed();
-        game.setSpeedMultiplier(buttons[eStopTime].getPressed() ? 0.0 : 1.0);
+        game.setSpeedPercentage(buttons[eStopTime].getPressed() ? 0 : 100);
     }
     else if(type == eStepTime && buttons[eStopTime].getPressed())
     {

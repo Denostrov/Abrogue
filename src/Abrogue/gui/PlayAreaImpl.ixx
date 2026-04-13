@@ -25,7 +25,7 @@ void PlayArea::init()
 
 	buttons[eDepth].init("Depth:"sv, 0, 35);
 
-	tabButtons[TabButtonType::eDebug].init(""sv, 11, 0);
+	tabButtons[TabButtonType::eDebug].init(""sv, 15, 0);
 	tabButtons[TabButtonType::eDiscoveries].init(""sv, 22, 35);
 	tabButtons[TabButtonType::eMenu].init(""sv, 38, 35);
 

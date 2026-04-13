@@ -242,10 +242,12 @@ bool GUI::isScreenAPopup(ScreenType screenType) const
     return screenType == ScreenType::ePauseMenu || screenType == ScreenType::eDiscoveries || screenType == ScreenType::eDebugMenu ||
         screenType == ScreenType::eGameOver || screenType == ScreenType::eOptionsMenu;
 }
-void GUI::setFPS(std::int64_t fps)
+void GUI::setFPS(std::int64_t fps, std::int64_t minFPS)
 {
     Array<char, 32> buf{"FPS:"};
-    std::to_chars(buf.data + 4, buf.data + 15, fps);
+    auto index = std::to_chars(buf.data + 4, buf.data + 14, fps).ptr - buf.data;
+    buf[index] = '/';
+    std::to_chars(buf.data + index + 1, buf.data + index + 10, minFPS);
 
     fpsLabel.setText(buf.data);
 }

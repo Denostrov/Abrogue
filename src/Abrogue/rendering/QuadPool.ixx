@@ -64,21 +64,18 @@ class QuadReference
 public:
     QuadReference() = default;
 
-    //Create a reference to quad with data
-    template <IsSameType<QuadData> T>
-    QuadReference(T&& quadData);
-    //Destroy a reference to quad if it exists
-    ~QuadReference();
-
     //Swap reference indices and pointers in the pool
     QuadReference(QuadReference&& rhs) noexcept { *this = std::move(rhs); }
     QuadReference& operator=(QuadReference&& rhs) noexcept;
 
+    //Destroy a reference to quad if it exists
+    ~QuadReference();
+
     //Create a reference if it doesn't exist and set its data
     template <IsSameType<QuadData> T>
-    void setData(T&& quadData);
+    void init(T&& quadData);
     //Destroy a reference if it exists
-    void clearData();
+    void clear();
 
     operator bool() const { return index != -1; }
 
@@ -89,12 +86,6 @@ public:
     void setBackgroundColor(std::uint32_t packedColor) const;
 
 private:
-    //Creation and destruction helpers
-    template<bool isConstructor, IsSameType<QuadData> T>
-    void init(T&& quadData);
-    template<bool isDestructor>
-    void cleanup();
-
     std::int64_t index{-1}; //Index of quad data in the pool
 };
 
@@ -131,16 +122,10 @@ private:
 inline QuadPool quadPool;
 
 template <QuadLayer layer>
-template <IsSameType<QuadData> T>
-QuadReference<layer>::QuadReference(T&& quadData)
-{
-    init<true>(std::forward<T>(quadData));
-}
-
-template <QuadLayer layer>
 QuadReference<layer>::~QuadReference()
 {
-    cleanup<true>();
+    if (index != -1)
+        clear();
 }
 
 template <QuadLayer layer>
@@ -156,19 +141,6 @@ QuadReference<layer>& QuadReference<layer>::operator=(QuadReference&& rhs) noexc
 
     std::swap(index, rhs.index);
     return *this;
-}
-
-template <QuadLayer layer>
-template <IsSameType<QuadData> T>
-void QuadReference<layer>::setData(T&& quadData)
-{
-    init<false>(std::forward<T>(quadData));
-}
-
-template <QuadLayer layer>
-void QuadReference<layer>::clearData()
-{
-    cleanup<false>();
 }
 
 template <QuadLayer layer>
@@ -207,21 +179,15 @@ void QuadReference<layer>::setBackgroundColor(std::uint32_t packedColor) const
     data[index].setBackgroundColor(packedColor);
 }
 
-template<QuadLayer layer>
-template<bool isConstructor, IsSameType<QuadData> T>
+template <QuadLayer layer>
+template <IsSameType<QuadData> T>
 void QuadReference<layer>::init(T&& quadData)
 {
-    auto& [data, references] = quadPool.getStorage<layer>();
-    if constexpr (!isConstructor)
-    {
-        if (index != -1)
-        {
-            data[index] = std::forward<T>(quadData);
-            return;
-        }
-    }
+    logger.extraAssert(index == -1, "QuadReference::init() - initialized already existing reference");
 
-    logger.extraAssert(data.getSize() < data.getCapacity(), "Inserted quad into full quad pool");
+    auto& [data, references] = quadPool.getStorage<layer>();
+
+    logger.extraAssert(data.getSize() < data.getCapacity(), "QuadReference::init() - quad pool was full");
 
     //Append reference to the end of the quad pool
     index = (std::int64_t)data.getSize();
@@ -229,12 +195,10 @@ void QuadReference<layer>::init(T&& quadData)
     references.emplaceBack(this);
 }
 
-template<QuadLayer layer>
-template<bool isDestructor>
-void QuadReference<layer>::cleanup()
+template <QuadLayer layer>
+void QuadReference<layer>::clear()
 {
-    //Reference isn't valid
-    if (index == -1) return;
+    logger.extraAssert(index != -1, "Clearing invalid QuadReference");
 
     auto& [data, references] = quadPool.getStorage<layer>();
 
@@ -247,8 +211,5 @@ void QuadReference<layer>::cleanup()
     references[index]->index = index;
     references.popBack();
 
-    if constexpr (!isDestructor)
-    {
-        index = -1;
-    }
+    index = -1;
 }

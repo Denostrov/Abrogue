@@ -12,31 +12,33 @@ class Background
 public:
     void update()
     {
-        animationHandler.update();
+        if (animationHandler.getIsFinished())
+            return;
+
+        auto result = animationHandler.update();
+        if (result == 0 && !animationHandler.getIsForward())
+            quad.clear();
     }
+
     void updateDraw(double deltaTime)
     {
+        if (animationHandler.getIsFinished())
+            return;
+
         auto extrapolatedTime = animationHandler.updateDraw(deltaTime);
-        if (extrapolatedTime <= -1.0)
-            return;
-
-        if (extrapolatedTime <= 0.0 && animationHandler.getCurrentDirection() == -1)
-        {
-            quad.clearData();
-            return;
-        }
-
-        double currentColor = extrapolatedTime * 240.0;
+        auto currentColor = extrapolatedTime * 240.0;
         quad.setBackgroundColor(Color::pack(0, 0, 0, currentColor));
     }
+
     void setVisible(bool visible)
     {
-        if (!animationHandler.setTimeDirection(visible))
+        if (animationHandler.getIsForward() == visible)
             return;
 
+        animationHandler.startAnimation(visible);
         if (!quad)
         {
-            quad.setData(QuadData{
+            quad.init(QuadData{
                 {Constants::screenWidth / 2.0f, Constants::screenHeight / 2.0f},
                 {Color::pack(0, 0, 0, 0), Color::pack(0, 0, 0, 0)}, ' ',
                 {Constants::screenWidth, Constants::screenHeight}
@@ -45,6 +47,6 @@ public:
     }
 
 private:
-    AnimationHandler animationHandler{0.1};
+    AnimationHandler animationHandler{100'000'000};
     QuadReference<QuadLayer::ePopupBackground> quad;
 };

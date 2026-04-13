@@ -10,7 +10,7 @@ import :Map;
 Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4)
 {
     auto [x, y] = getPosition();
-    quadReference.setData(QuadData{
+    quadReference.init(QuadData{
         {Constants::mapOffset + x, y},
         {Color::pack(64, 255, 0, 255), Color::pack(64, 255, 0, 0)}, 64
     });
@@ -62,7 +62,7 @@ void Player::updateDraw(double deltaTime)
     float guiOffset = 48.0f;
 
     auto [x, y] = getPosition();
-    auto [vx, vy] = getVelocity();
+    auto [vx, vy] = getIntermediateVelocity();
     double drawPositionX = guiOffset + x + vx * deltaTime;
     double drawPositionY = y + vy * deltaTime;
     quadReference.setPosition(drawPositionX, drawPositionY);

@@ -53,7 +53,7 @@ public:
 
 	void refreshScreens();
 
-	void setFPS(std::int64_t fps);
+	void setFPS(std::int64_t fps, std::int64_t minFPS);
 	void setPlayerHealth(double percentage);
 	void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 

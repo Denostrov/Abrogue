@@ -13,7 +13,7 @@ Item::Item(Type newType, double x, double y)
 {
     type = newType;
 
-    quad.setData(QuadData{
+    quad.init(QuadData{
         {Constants::mapOffset + x, y},
         {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)}, typeGlyphs[(std::size_t)newType]
     });
@@ -57,7 +57,7 @@ void Item::setVisible(bool visible)
     if (visible)
     {
         auto [x, y] = getPosition();
-        quad.setData(QuadData{
+        quad.init(QuadData{
             {Constants::mapOffset + x, y},
             {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)}, typeGlyphs[(std::size_t)type]
         });

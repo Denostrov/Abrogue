@@ -1,6 +1,7 @@
 module Abrogue:Label;
 
 import :QuadPool;
+import :AnimationHandler;
 
 //Class for handling clickable text boxes
 template <QuadLayer layer>
@@ -8,6 +9,7 @@ class Label
 {
 public:
     Label() = default;
+
     void init(std::string_view text, std::int64_t x, std::int64_t y, bool visible = false)
     {
         setPosition(x, y);
@@ -18,36 +20,29 @@ public:
 
     void update()
     {
-        if (isAnimationFinished)
+        if (animationHandler.getIsFinished())
             return;
 
-        animationTime += Constants::tickDuration * movingDirection;
+        animationHandler.update();
     }
     void updateDraw(double deltaTime)
     {
-        if (isAnimationFinished)
+        if (animationHandler.getIsFinished())
             return;
 
-        double currentOffset = (animationTime + deltaTime * movingDirection) / animationEndTime * Constants::mapHeight;
+        auto extrapolatedTime = animationHandler.updateDraw(deltaTime);
+        if (extrapolatedTime <= -1.0)
+            return;
 
-        if (currentOffset > Constants::mapHeight)
+        if (extrapolatedTime <= 0.0 && !animationHandler.getIsForward())
         {
-            animationTime = animationEndTime;
             quadReferences.clear();
-            isAnimationFinished = true;
             return;
-        }
-
-        if (currentOffset < 0.0)
-        {
-            currentOffset = 0.0;
-            animationTime = 0.0;
-            isAnimationFinished = true;
         }
 
         for (std::size_t i = 0; i < quadReferences.getSize(); i++)
         {
-            quadReferences[i].setPosition(x + i + 0.5f, y + 0.5f + currentOffset);
+            quadReferences[i].setPosition(x + i + 0.5f, y + 0.5f + Constants::mapHeight * (1.0 - extrapolatedTime));
         }
     }
 
@@ -62,14 +57,14 @@ public:
 
     void setVisible(bool visible)
     {
-        if (isVisible == visible)
+        if (animationHandler.getIsForward() == visible)
             return;
+
+        animationHandler.startAnimation(visible);
 
         //Invisible label has size 0 to disable collision detection
         isVisible = visible;
         size = visible ? text.getSize() : 0;
-        movingDirection = visible ? -1 : 1;
-        isAnimationFinished = false;
 
         //Delete invisible quads to avoid overdraw
         if (!quadReferences.isEmpty())
@@ -78,8 +73,9 @@ public:
         //Recreate quads
         for (std::size_t i = 0; i < size; i++)
         {
-            quadReferences.emplaceBack(QuadData{
-                {x + i + 0.5f, y + 0.5f + animationTime / animationEndTime * Constants::mapHeight},
+            quadReferences.emplaceBack();
+            quadReferences.getBack().init(QuadData{
+                {x + i + 0.5f, y + 0.5f},
                 {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (std::uint32_t)text[i]
             });
         }
@@ -116,7 +112,8 @@ public:
         //Create remaining quads when new text is longer
         for (std::size_t i = quadReferences.getSize(); i < size; ++i)
         {
-            quadReferences.emplaceBack(QuadData{
+            quadReferences.emplaceBack();
+            quadReferences.getBack().init(QuadData{
                 {x + i + 0.5f, y + 0.5f},
                 {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (std::uint32_t)text[i]
             });
@@ -176,10 +173,7 @@ private:
         return color.getPacked();
     }
 
-    static constexpr double animationEndTime{0.1};
-    double animationTime{animationEndTime};
-    std::int64_t movingDirection{-1};
-    bool isAnimationFinished{true};
+    AnimationHandler animationHandler{2'000'000'000};
 
     bool isVisible{};
     bool isHovered{};

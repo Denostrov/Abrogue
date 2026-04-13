@@ -4,6 +4,8 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
 
 project(AbrogueFull LANGUAGES CXX)
 
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,stack-size=16777216")
+
 set(CMAKE_CXX_MODULE_STD 1)
 
 set(ABROGUE_BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
@@ -79,6 +81,7 @@ set_target_properties(Abrogue PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ABROGUE_BIN_
 set_target_properties(Abrogue PROPERTIES CXX_STANDARD 26)
 target_sources(Abrogue PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES
         src/Abrogue/Game.ixx
+        src/Abrogue/GameImpl.ixx
         src/Abrogue/Constants.ixx
         src/Abrogue/DebugLine.ixx
         src/Abrogue/Configuration.ixx

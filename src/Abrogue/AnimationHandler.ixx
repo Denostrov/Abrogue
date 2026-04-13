@@ -5,56 +5,55 @@ import :Constants;
 class AnimationHandler
 {
 public:
-    AnimationHandler(double endTime) :timeMultiplier(1.0 / endTime) {}
+    AnimationHandler(std::uint64_t endTimeNS) : endTimeNS(endTimeNS), endTime(endTimeNS / 1.e9) {}
 
-    void update()
+    std::uint64_t update()
     {
-        if (isFinished)
-            return;
+        logger.extraAssert(!isFinished, "AnimationHandler updated after finishing");
 
-        currentTime += Constants::tickDuration * timeMultiplier * timeDirection;
+        currentTimeNS += Constants::tickDurationNS * timeDirection;
+        currentTime = currentTimeNS / 1.e9;
+        if (currentTimeNS > endTimeNS)
+        {
+            currentTimeNS = endTimeNS;
+            isFinished = true;
+        }
+        else if (currentTimeNS < 0)
+        {
+            currentTimeNS = 0;
+            isFinished = true;
+        }
+
+        return currentTimeNS * 1000 / endTimeNS;
     }
 
     double updateDraw(double deltaTime)
     {
-        if (isFinished)
-            return -1.0;
+        logger.extraAssert(!isFinished, "AnimationHandler updated draw after finishing");
 
-        double extrapolatedTime = currentTime + deltaTime * timeMultiplier * timeDirection;
-        if (extrapolatedTime < 0.0)
-        {
-            currentTime = 0.0;
-            isFinished = true;
-            return 0.0;
-        }
-
-        if (extrapolatedTime > 1.0)
-        {
-            currentTime = 1.0;
-            isFinished = true;
-            return 1.0;
-        }
-
-        return extrapolatedTime;
+        double extrapolatedTime = (currentTime + deltaTime * timeDirection) / endTime;
+        return std::clamp(extrapolatedTime, 0.0, 1.0);
     }
 
-    bool setTimeDirection(bool forward)
+    void startAnimation(bool forward)
     {
         std::int64_t newTimeDirection = forward ? 1 : -1;
-        if (newTimeDirection == timeDirection)
-            return false;
+        logger.extraAssert(newTimeDirection != timeDirection, "AnimationHandler started animation in same direction");
 
         timeDirection = newTimeDirection;
         isFinished = false;
-        return true;
     }
 
     [[nodiscard]] auto getIsFinished() const { return isFinished; }
-    [[nodiscard]] auto getCurrentDirection() const { return timeDirection; }
+    [[nodiscard]] auto getIsForward() const { return timeDirection == 1; }
 
 private:
+    std::int64_t endTimeNS{};
+    double endTime{};
+
+    std::int64_t currentTimeNS{};
     double currentTime{};
-    double timeMultiplier{1.0};
+
     std::int64_t timeDirection{-1};
     bool isFinished{true};
 };

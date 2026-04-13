@@ -9,7 +9,7 @@ using namespace std::literals;
 Map::Tile::Tile(std::int64_t x, std::int64_t y, Type type)
     : type(type)
 {
-    quad.setData(QuadData{
+    quad.init(QuadData{
         {Constants::mapOffset + x + 0.5f, y + 0.5f},
         {Color::pack(0, 0, 0, 255), Color::pack(0, 0, 0, 255)}, info[(std::size_t)type].glyph
     });

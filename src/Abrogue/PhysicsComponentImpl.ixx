@@ -7,7 +7,7 @@ import :Map;
  * Implementation of PhysicsComponent methods
  */
 PhysicsComponent::PhysicsComponent(double x, double y, double leftScaleX, double rightScaleX, double topScaleY, double bottomScaleY)
-    : x(x), y(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)
+    : x(x), y(y), intermediateX(x), intermediateY(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)
 {}
 void PhysicsComponent::setMaxVelocity(double newMaxSpeed)
 {
@@ -55,11 +55,11 @@ void PhysicsComponent::update()
     double movementY = directionAmplitude <= 0.001 ? 0 : movementDirectionY / directionAmplitude;
 
     //Do forward euler integration in two steps to reflect coordinate change on same tick
-    std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementX);
-    std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementY);
+    std::tie(x, velocityX) = calculateNextStep(intermediateX, intermediateVelocityX, 1.0, movementX);
+    std::tie(y, velocityY) = calculateNextStep(intermediateY, intermediateVelocityY, Constants::tileAspectRatio, movementY);
 
-    std::tie(x, velocityX) = calculateNextStep(x, velocityX, 1.0, movementX);
-    std::tie(y, velocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementY);
+    std::tie(intermediateX, intermediateVelocityX) = calculateNextStep(x, velocityX, 1.0, movementX);
+    std::tie(intermediateY, intermediateVelocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementY);
 
     //No collisions possible if no movement
     if (x == previousX && y == previousY)

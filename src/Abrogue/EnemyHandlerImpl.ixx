@@ -10,7 +10,7 @@ EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double posit
     : PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color), state(initialState)
 {
     auto [x, y] = getPosition();
-    quad.setData(QuadData{
+    quad.init(QuadData{
         {Constants::mapOffset + x, y},
         {color.getPacked(), color.getTransparentPacked()}, data.symbol
     });
@@ -147,7 +147,8 @@ void EnemyHandler::Enemy::updateDrawDebug()
     {
         for (auto [pathX, pathY] : path)
         {
-            pathQuads.emplaceBack(QuadData{
+            pathQuads.emplaceBack();
+            pathQuads.getBack().init(QuadData{
                 {Constants::mapOffset + pathX + 0.5, pathY + 0.5},
                 {Color::pack(0, 0, 0, 0), Color::pack(255, 0, 0, 128)}, ' '
             });
@@ -156,7 +157,7 @@ void EnemyHandler::Enemy::updateDrawDebug()
         auto [x, y] = getPosition();
         QuadData stateData{{Constants::mapOffset + x - 0.25, y + 0.25}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)}, 'S'};
         stateData.setScale(0.5, 0.5);
-        stateQuad.setData(stateData);
+        stateQuad.init(stateData);
         stateQuad.setGlyph(state == State::eSleeping ? 'S' : state == State::eWandering ? 'W' : state == State::eHunting ? 'H' : '?');
     }
 }

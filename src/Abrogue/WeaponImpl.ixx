@@ -33,7 +33,7 @@ void Weapon::update(double positionX, double positionY)
 		if(drawDebugInfo)
 		{
 			auto quadData = QuadData{{Constants::mapOffset + weaponX, weaponY}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)}, 249};
-			damageReference.setData(quadData);
+			damageReference.init(quadData);
 		}
 
 		if(isFriendly)
@@ -82,5 +82,5 @@ void Weapon::startAttack(double positionX, double positionY, double targetPositi
 	attackAngleSin = distanceY / distance;
 	weaponData.setRotation(-attackAngleSin, attackAngleCos);
 
-	weaponReference.setData(weaponData);
+	weaponReference.init(weaponData);
 }

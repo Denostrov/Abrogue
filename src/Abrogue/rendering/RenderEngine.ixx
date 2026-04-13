@@ -17,33 +17,27 @@ class RenderEngine
     struct PhysicalDeviceInfo
     {
         FixedString<256> name;
-        std::vector<vk::SurfaceFormatKHR> surfaceFormats;
-        std::vector<vk::PresentModeKHR> presentModes;
+        std::uint32_t surfaceFormatCount{};
+        Array<vk::SurfaceFormatKHR, 16> surfaceFormats;
+        std::uint32_t presentModeCount{};
+        Array<vk::PresentModeKHR, 16> presentModes;
         vk::SurfaceCapabilitiesKHR surfaceCapabilities;
         std::uint32_t graphicsIndex{}, presentationIndex{};
         vk::PhysicalDeviceProperties properties;
         vk::PhysicalDeviceMemoryProperties memoryProperties;
     };
 
-    //Class for handling swapchain creation
-    class SwapchainResources
+    //Struct for storing swapchain resources
+    struct SwapchainResources
     {
-    public:
-        SwapchainResources() = default;
-
-        SwapchainResources(SwapchainResources&& rhs) noexcept { *this = std::move(rhs); }
-        SwapchainResources& operator=(SwapchainResources&& rhs) noexcept;
-
-        //Initialize swapchain resources
-        [[nodiscard]] bool createSwapchain(RenderEngine const& engine);
-
-        vk::UniqueSwapchainKHR swapchain;
-        std::vector<vk::Image> images;
+        vk::SwapchainKHR swapchain;
+        std::uint32_t imageCount{};
+        Array<vk::Image, 16> images;
         vk::Format imageFormat{};
         vk::Extent2D imageExtent;
-        std::vector<vk::UniqueImageView> imageViews;
-        vk::UniqueRenderPass renderPass;
-        std::vector<vk::UniqueFramebuffer> framebuffers;
+        Array<vk::ImageView, 16> imageViews;
+        vk::RenderPass renderPass;
+        Array<vk::Framebuffer, 16> framebuffers;
     };
 
     //Class for handling buffer creation
@@ -115,6 +109,7 @@ private:
     template<std::size_t currentIndex = 0>
     std::size_t copyQuadPools(std::size_t instanceCount = 0);
 
+    [[nodiscard]] bool createSwapchain();
     //Create new swapchain and mark old one for deletion
     [[nodiscard]] bool recreateSwapchain();
 
@@ -123,7 +118,7 @@ private:
 
     //Get physical device suitability score and its properties(-1 score - device not suitable)
     [[nodiscard]] std::pair<std::int32_t, PhysicalDeviceInfo> getPhysicalDeviceInfo(vk::PhysicalDevice device,
-                                                                                    std::vector<char const*> const& requiredExtensions) const;
+                                                                                    FixedVector<char const*, 64> const& requiredExtensions) const;
 
     //Get index of memory type that fits requirements(-1 index - no fitting type found)
     [[nodiscard]] std::int32_t getMemoryType(vk::MemoryRequirements const& requirements, vk::MemoryPropertyFlags properties) const;
@@ -139,12 +134,12 @@ private:
 
     static constexpr std::uint32_t maxFramesInFlight{2};
 
-    vk::UniqueInstance instance;
-    vk::UniqueDebugUtilsMessengerEXT debugMessenger;
-    vk::UniqueSurfaceKHR surface;
+    vk::Instance instance;
+    vk::DebugUtilsMessengerEXT debugMessenger;
+    vk::SurfaceKHR surface;
     vk::PhysicalDevice physicalDevice;
     PhysicalDeviceInfo physicalDeviceInfo;
-    vk::UniqueDevice device;
+    vk::Device device;
     vk::Queue graphicsQueue;
     vk::Queue presentationQueue;
     SwapchainResources swapchainResources;

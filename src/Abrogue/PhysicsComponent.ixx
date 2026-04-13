@@ -13,6 +13,7 @@ public:
 
     [[nodiscard]] std::pair<double, double> getPosition() const { return {x, y}; }
     [[nodiscard]] std::pair<double, double> getVelocity() const { return {velocityX, velocityY}; }
+    [[nodiscard]] std::pair<double, double> getIntermediateVelocity() const { return {intermediateVelocityX, intermediateVelocityY}; }
 
 protected:
     void setMass(double newMass) { mass = newMass; }
@@ -30,6 +31,9 @@ private:
     double maxVelocity{1.0};                                  //Speed when in equilibrium with friction
     double resistanceCoefficient{20.0};                       //Controls effectiveness of deceleration due to velocity
     double walkingForce{maxVelocity * resistanceCoefficient}; //Force necessary to achieve max velocity
+
+    double intermediateX{}, intermediateY{};
+    double intermediateVelocityX{}, intermediateVelocityY{};
 
     double leftScaleX{0.48}, rightScaleX{0.48}; //Horizontal hitbox extents
     double topScaleY{0.48}, bottomScaleY{0.48}; //Vertical hitbox extents
