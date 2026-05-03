@@ -122,6 +122,7 @@ public:
         return *this;
     }
 
+    [[nodiscard]] constexpr auto getData() const { return data; }
     [[nodiscard]] constexpr auto getSize() const { return currentSize; }
     [[nodiscard]] static constexpr auto getCapacity() { return N; }
 

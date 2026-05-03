@@ -1,6 +1,8 @@
 import Abrogue;
 import SDL3;
 
+import std;
+
 SDL_AppResult SDL_AppInit(void**, int, char**)
 {
     if (!game.init())
@@ -49,5 +51,5 @@ SDL_AppResult SDL_AppEvent(void*, SDL_Event* event)
 
 void SDL_AppQuit(void*, SDL_AppResult)
 {
-    GameSystems::cleanup();
+    game.cleanup();
 }

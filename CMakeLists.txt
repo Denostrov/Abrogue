@@ -65,9 +65,16 @@ target_sources(HelpersModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS 
 )
 set_target_properties(HelpersModule PROPERTIES CXX_STANDARD 26)
 target_link_libraries(HelpersModule SDL3Module stdc++exp)
-if(EXTRA_ASSERTS)
+if (EXTRA_ASSERTS)
     target_compile_definitions(HelpersModule PUBLIC EXTRA_ASSERTS)
-endif()
+endif ()
+
+add_library(RenderEngineModule)
+target_sources(RenderEngineModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES
+        src/RenderEngine/RenderEngine.ixx
+)
+set_target_properties(RenderEngineModule PROPERTIES CXX_STANDARD 26)
+target_link_libraries(RenderEngineModule VulkanHppModule HelpersModule GLMModule STBModule)
 
 add_executable(BitmapGenerator src/BitmapGenerator/main.cpp)
 target_include_directories(BitmapGenerator PUBLIC ${ABROGUE_INCLUDE_DIR})
@@ -80,57 +87,10 @@ target_include_directories(Abrogue PUBLIC ${ABROGUE_INCLUDE_DIR})
 set_target_properties(Abrogue PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${ABROGUE_BIN_DIR})
 set_target_properties(Abrogue PROPERTIES CXX_STANDARD 26)
 target_sources(Abrogue PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES
-        src/Abrogue/Game.ixx
-        src/Abrogue/GameImpl.ixx
-        src/Abrogue/Constants.ixx
-        src/Abrogue/DebugLine.ixx
-        src/Abrogue/Configuration.ixx
-        src/Abrogue/ConfigurationImpl.ixx
-        src/Abrogue/Item.ixx
-        src/Abrogue/ItemImpl.ixx
-        src/Abrogue/Player.ixx
-        src/Abrogue/PlayerImpl.ixx
-        src/Abrogue/EnemyHandler.ixx
-        src/Abrogue/EnemyHandlerImpl.ixx
-        src/Abrogue/Weapon.ixx
-        src/Abrogue/WeaponImpl.ixx
-        src/Abrogue/PhysicsComponent.ixx
-        src/Abrogue/PhysicsComponentImpl.ixx
-        src/Abrogue/Map.ixx
-        src/Abrogue/MapImpl.ixx
-        src/Abrogue/AnimationHandler.ixx
-        src/Abrogue/InputHandler.ixx
-        src/Abrogue/InputHandlerImpl.ixx
         src/Abrogue/Abrogue.ixx
-
-        src/Abrogue/rendering/QuadPool.ixx
-        src/Abrogue/rendering/RenderWindow.ixx
-        src/Abrogue/rendering/RenderWindowImpl.ixx
-        src/Abrogue/rendering/RenderEngine.ixx
-        src/Abrogue/rendering/RenderEngineImpl.ixx
-
-        src/Abrogue/gui/GUI.ixx
-        src/Abrogue/gui/GUIImpl.ixx
-        src/Abrogue/gui/Label.ixx
-        src/Abrogue/gui/ScreenComponent.ixx
-        src/Abrogue/gui/Background.ixx
-        src/Abrogue/gui/MainMenu.ixx
-        src/Abrogue/gui/MainMenuImpl.ixx
-        src/Abrogue/gui/OptionsMenu.ixx
-        src/Abrogue/gui/OptionsMenuImpl.ixx
-        src/Abrogue/gui/PlayArea.ixx
-        src/Abrogue/gui/PlayAreaImpl.ixx
-        src/Abrogue/gui/PauseMenu.ixx
-        src/Abrogue/gui/PauseMenuImpl.ixx
-        src/Abrogue/gui/Discoveries.ixx
-        src/Abrogue/gui/DiscoveriesImpl.ixx
-        src/Abrogue/gui/DebugMenu.ixx
-        src/Abrogue/gui/DebugMenuImpl.ixx
-        src/Abrogue/gui/GameOver.ixx
-        src/Abrogue/gui/GameOverImpl.ixx
 )
 target_link_directories(Abrogue PUBLIC ${ABROGUE_LIB_DIR})
-target_link_libraries(Abrogue HelpersModule JSONModule VulkanHppModule STBModule GLMModule)
+target_link_libraries(Abrogue JSONModule RenderEngineModule)
 target_compile_options(Abrogue PRIVATE -fno-module-lazy)
 
 file(MAKE_DIRECTORY ${ABROGUE_BIN_DIR})

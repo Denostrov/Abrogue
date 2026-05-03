@@ -25,25 +25,32 @@ public:
         return true;
     }
 
-    void logError(std::string_view message)
+    template<class... Args>
+    void logError(std::format_string<Args...> fmt, Args&&... args)
     {
+        std::array<char, 2048> errorMessageArr{};
         auto stackTrace = std::stacktrace::current();
-        std::println(errorLog, "Error: {}\nStacktrace:\n{}", message, stackTrace);
+
+        std::format_to_n(errorMessageArr.data(), errorMessageArr.size() - 1, fmt, std::forward<Args>(args)...);
+        std::string_view errorMessage = errorMessageArr.data();
+
+        std::println(errorLog, "Error: {}\nStacktrace:\n{}", errorMessage, stackTrace);
 
         if constexpr (isDebugBuild)
-            std::println(std::cerr, "Error: {}\nStacktrace:\n{}", message, stackTrace);
+            std::println(std::cerr, "Error: {}\nStacktrace:\n{}", errorMessage, stackTrace);
 
-        std::array<char, 2048> popupMessage{};
-        std::format_to_n(popupMessage.data(), popupMessage.size() - 1, "{}\nCheck the error log for details. Esc to exit", message);
+        std::array<char, 2048 + 128> popupMessage{};
+        std::format_to_n(popupMessage.data(), popupMessage.size() - 1, "{}\nCheck the error log for details. Esc to exit", errorMessage);
         displayErrorMessage(popupMessage.data());
     }
 
-    void logInfo(std::string_view message)
+    template<class... Args>
+    void logInfo(std::format_string<Args...> fmt, Args&&... args)
     {
-        std::println(infoLog, "{}", message);
+        std::println(infoLog, fmt, std::forward<Args>(args)...);
 
         if constexpr (isDebugBuild)
-            std::println(std::cout, "{}", message);
+            std::println(std::cout, fmt, std::forward<Args>(args)...);
     }
 
     void extraAssert(bool condition, std::string_view message)
@@ -53,15 +60,15 @@ public:
             if (condition)
                 return;
 
-            logError(message);
+            logError("{}", message);
             std::abort();
         }
     }
 
 private:
-    static void displayErrorMessage(std::string_view message)
+    static void displayErrorMessage(char const* message)
     {
-        SDL_ShowSimpleMessageBox(sdlMessageboxError, "Application Error", message.data(), nullptr);
+        SDL_ShowSimpleMessageBox(sdlMessageboxError, "Application Error", message, nullptr);
     }
 
     std::ofstream infoLog;

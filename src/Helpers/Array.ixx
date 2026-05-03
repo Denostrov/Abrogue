@@ -9,9 +9,9 @@ using namespace std::literals;
 export template <class T, auto N>
 class Array
 {
-public:
-    static constexpr std::size_t size = static_cast<std::size_t>(N);
+    static constexpr std::uint64_t size = static_cast<std::uint64_t>(N);
 
+public:
     constexpr Array() = default;
     template<class FillVal>
     constexpr Array(FillVal&& value, FillTag) { fill(std::forward<FillVal>(value)); }
@@ -20,37 +20,31 @@ public:
     constexpr Array(T const (&other)[OtherSize])
     {
         static_assert(OtherSize <= (std::size_t)N);
-        for (std::size_t i = 0; i < OtherSize; i++)
-            data[i] = other[i];
+        for (std::size_t i{}; i < OtherSize; i++)
+            arr[i] = other[i];
     }
 
     template <class... Args>
-    constexpr Array(Args&&... args) : data{T{std::forward<Args>(args)}...}
+    constexpr Array(Args&&... args) : arr{T{std::forward<Args>(args)}...}
     {
         static_assert(sizeof...(args) >= size, "Array variadic initializer has too few elements");
         static_assert(sizeof...(args) <= size, "Array variadic initializer has too many elements");
     }
 
-    template<IsLikePair... Args>
-    constexpr Array(Args&&... args)
-    {
-        static_assert(sizeof...(args) >= size, "Array variadic pair initializer has too few elements");
-        static_assert(sizeof...(args) <= size, "Array variadic pair initializer has too many elements");
-
-        fillWithPairs(std::forward<Args>(args)...);
-    }
-
     template <class Self>
     [[nodiscard]] constexpr auto begin(this Self&& self)
     {
-        return std::forward<Self>(self).data;
+        return std::forward<Self>(self).arr;
     }
 
     template <class Self>
     [[nodiscard]] constexpr auto end(this Self&& self)
     {
-        return std::forward<Self>(self).data + size;
+        return std::forward<Self>(self).arr + size;
     }
+
+    [[nodiscard]] constexpr auto getData() { return arr; }
+    [[nodiscard]] constexpr auto getSize() { return size;}
 
     template <class Self, class Index>
     [[nodiscard]] constexpr auto&& operator[](this Self&& self, Index index)
@@ -61,26 +55,18 @@ public:
             logger.extraAssert(castIndex < size, "Array index out of bounds"sv);
         }
 
-        return std::forward<Self>(self).data[castIndex];
+        return std::forward<Self>(self).arr[castIndex];
     }
 
     template <class Self>
     constexpr void fill(this Self&& self, T const& value)
     {
-        for (std::size_t i = 0; i < size; ++i)
-            std::forward<Self>(self).data[i] = value;
+        for (std::uint64_t i{}; i < size; ++i)
+            std::forward<Self>(self).arr[i] = value;
     }
-
-    T data[size]{};
 
 private:
-    template<class Pair, class... Args>
-    constexpr void fillWithPairs(Pair&& pair, Args&&... args)
-    {
-        data[static_cast<std::size_t>(std::forward<Pair>(pair).first)] = std::forward<Pair>(pair).second;
-        if constexpr (sizeof...(args) > 0)
-            fillWithPairs(std::forward<Args>(args)...);
-    }
+    T arr[size]{};
 };
 
 template<class... Args>
