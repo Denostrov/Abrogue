@@ -41,6 +41,7 @@ export
     using ::SDL_free;
     using ::SDL_Vulkan_GetInstanceExtensions;
     using ::SDL_Vulkan_CreateSurface;
+    using ::SDL_Vulkan_DestroySurface;
 
     using ::SDL_Scancode;
     using enum ::SDL_Scancode;

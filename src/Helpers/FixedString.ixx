@@ -50,7 +50,14 @@ public:
 
         currentSize = StrSize - 1;
         for (std::size_t i = 0; i < currentSize; i++)
+        {
+            if (str[i] == 0)
+            {
+                currentSize = i;
+                break;
+            }
             data[i] = str[i];
+        }
 
         return *this;
     }

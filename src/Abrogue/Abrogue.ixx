@@ -256,7 +256,11 @@ public:
 
     [[nodiscard]] std::pair<double, double> getPosition() const { return {x, y}; }
     [[nodiscard]] std::pair<double, double> getVelocity() const { return {velocityX, velocityY}; }
-    [[nodiscard]] std::pair<double, double> getIntermediateVelocity() const { return {intermediateVelocityX, intermediateVelocityY}; }
+    [[nodiscard]] std::pair<double, double> getPredictedPosition(double deltaTime) const
+    {
+        auto interpolationCoefficient = deltaTime / Constants::tickDuration;
+        return {x + (nextX - x) * interpolationCoefficient, y + (nextY - y) * interpolationCoefficient};
+    }
 
 protected:
     void setMass(double newMass) { mass = newMass; }
@@ -267,6 +271,8 @@ protected:
     void update();
 
 private:
+    void calculateNextStep();
+
     double x{}, y{};                                          // Coordinates in [0.0, mapWidth]x[0.0, mapHeight] space
     double velocityX{}, velocityY{};                          // Velocity in horizontal tiles per second
     double mass{1.0};                                         // Measures resistance to acceleration
@@ -275,13 +281,11 @@ private:
     double resistanceCoefficient{20.0};                       // Controls effectiveness of deceleration due to velocity
     double walkingForce{maxVelocity * resistanceCoefficient}; // Force necessary to achieve max velocity
 
-    double intermediateX{}, intermediateY{};
-    double intermediateVelocityX{}, intermediateVelocityY{};
+    double nextX{}, nextY{};
+    double nextVelocityX{}, nextVelocityY{};
 
-    double leftScaleX{0.48}, rightScaleX{0.48}; // Horizontal hitbox extents
-    double topScaleY{0.48}, bottomScaleY{0.48}; // Vertical hitbox extents
-
-    double previousX{x}, previousY{y}; // Coordinates on last update frame
+    double leftScaleX{0.45}, rightScaleX{0.45}; // Horizontal hitbox extents
+    double topScaleY{0.45}, bottomScaleY{0.45}; // Vertical hitbox extents
 
     double movementDirectionX{}, movementDirectionY{}; // Unscaled directions of applied movement forces
 };
@@ -646,10 +650,7 @@ public:
     };
 
     [[nodiscard]] bool init();
-    void cleanup()
-    {
-        renderEngine.cleanup();
-    }
+    void cleanup() { renderEngine.cleanup(); }
 
     [[nodiscard]] bool update();
     void advanceStep() const;
@@ -1294,7 +1295,7 @@ enum class OptionsMenuButtonType
 /*
  * Class for an options menu
  */
-class OptionsMenu: public ScreenComponent<OptionsMenu, OptionsMenuLabelType, OptionsMenuButtonType>
+class OptionsMenu : public ScreenComponent<OptionsMenu, OptionsMenuLabelType, OptionsMenuButtonType>
 {
 public:
     void init();
@@ -1309,97 +1310,97 @@ public:
  */
 class GUI
 {
-	//Enum for different screen types
-	enum class ScreenType
-	{
-		eNone,
-		eMainMenu,
-		eOptionsMenu,
-		ePlayArea,
-		ePauseMenu,
-		eDiscoveries,
-		eDebugMenu,
-		eGameOver
-	};
+    // Enum for different screen types
+    enum class ScreenType
+    {
+        eNone,
+        eMainMenu,
+        eOptionsMenu,
+        ePlayArea,
+        ePauseMenu,
+        eDiscoveries,
+        eDebugMenu,
+        eGameOver
+    };
 
 public:
-	GUI() {}
-	void init();
+    GUI() {}
+    void init();
 
-	void showPlayArea();
-	void showMainMenu();
-	void showOptionsMenu();
-	void showGameOver(bool winner);
+    void showPlayArea();
+    void showMainMenu();
+    void showOptionsMenu();
+    void showGameOver(bool winner);
 
     void update();
-	void updateDraw(double deltaTime);
+    void updateDraw(double deltaTime);
 
-	void onMouseMoved(std::int64_t x, std::int64_t y);
-	void onMousePressed(std::int64_t x, std::int64_t y);
+    void onMouseMoved(std::int64_t x, std::int64_t y);
+    void onMousePressed(std::int64_t x, std::int64_t y);
 
-	void onPauseMenuHotkeyPressed();
-	void onDebugHotkeyPressed();
-	void onDiscoveriesHotkeyPressed();
-	void onPauseHotkeyPressed();
-	void onStopTimeHotkeyPressed();
-	void onStepTimeHotkeyPressed();
+    void onPauseMenuHotkeyPressed();
+    void onDebugHotkeyPressed();
+    void onDiscoveriesHotkeyPressed();
+    void onPauseHotkeyPressed();
+    void onStopTimeHotkeyPressed();
+    void onStepTimeHotkeyPressed();
 
-	void refreshScreens();
+    void refreshScreens();
 
-	void setFPS(std::int64_t fps, std::int64_t minFPS);
-	void setPlayerHealth(double percentage);
-	void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
+    void setFPS(std::int64_t fps, std::int64_t minFPS);
+    void setPlayerHealth(double percentage);
+    void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
 
 private:
-	void setCurrentScreen(ScreenType screenType);
-	void setScreenVisible(ScreenType screenType, bool visible);
-	bool isScreenAPopup(ScreenType screenType) const;
+    void setCurrentScreen(ScreenType screenType);
+    void setScreenVisible(ScreenType screenType, bool visible);
+    bool isScreenAPopup(ScreenType screenType) const;
 
-	void executeOnScreen(ScreenType screenType, auto func)
-	{
-		switch(screenType)
-		{
-			case ScreenType::eMainMenu:
-				func(mainMenu);
-				break;
-			case ScreenType::eOptionsMenu:
-			 	func(optionsMenu);
-			 	break;
-			case ScreenType::ePlayArea:
-				func(playArea);
-				break;
-			case ScreenType::ePauseMenu:
-				func(pauseMenu);
-				break;
-			case ScreenType::eDiscoveries:
-				func(discoveries);
-				break;
-			case ScreenType::eDebugMenu:
-				func(debugMenu);
-				break;
-			case ScreenType::eGameOver:
-				func(gameOver);
-				break;
-			default:
-				break;
-		}
-	}
+    void executeOnScreen(ScreenType screenType, auto func)
+    {
+        switch (screenType)
+        {
+        case ScreenType::eMainMenu:
+            func(mainMenu);
+            break;
+        case ScreenType::eOptionsMenu:
+            func(optionsMenu);
+            break;
+        case ScreenType::ePlayArea:
+            func(playArea);
+            break;
+        case ScreenType::ePauseMenu:
+            func(pauseMenu);
+            break;
+        case ScreenType::eDiscoveries:
+            func(discoveries);
+            break;
+        case ScreenType::eDebugMenu:
+            func(debugMenu);
+            break;
+        case ScreenType::eGameOver:
+            func(gameOver);
+            break;
+        default:
+            break;
+        }
+    }
 
-	ScreenType activeScreenType{ScreenType::eNone};		//Screen that's currently active and receiving input
-	ScreenType backgroundScreenType{ScreenType::eNone};	//Screen that's behind the currently active screen
-	bool previouslyPaused{};							//Pause state before the popup screen was shown
+    ScreenType activeScreenType{ScreenType::eNone};     // Screen that's currently active and receiving input
+    ScreenType backgroundScreenType{ScreenType::eNone}; // Screen that's behind the currently active screen
+    bool previouslyPaused{};                            // Pause state before the popup screen was shown
 
-	//Available screens
-	MainMenu mainMenu;
+    // Available screens
+    MainMenu mainMenu;
     OptionsMenu optionsMenu;
-	PlayArea playArea;
+    PlayArea playArea;
     PauseMenu pauseMenu;
-	Discoveries discoveries;
-	DebugMenu debugMenu;
-	GameOver gameOver;
+    Discoveries discoveries;
+    DebugMenu debugMenu;
+    GameOver gameOver;
 
-	Background popupBackground;	//Semi transparent black box behind popup screens
-	Label<QuadLayer::eMap> fpsLabel;				//Debug label for showing fps
+    Background popupBackground;      // Semi transparent black box behind popup screens
+    Label<QuadLayer::eMap> fpsLabel; // Debug label for showing fps
 };
 inline GUI gui;
 
@@ -1492,8 +1493,10 @@ void Weapon::startAttack(double positionX, double positionY, double targetPositi
  * PhysicsComponent implementation
  */
 PhysicsComponent::PhysicsComponent(double x, double y, double leftScaleX, double rightScaleX, double topScaleY, double bottomScaleY) :
-    x(x), y(y), intermediateX(x), intermediateY(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)
-{}
+    x(x), y(y), leftScaleX(leftScaleX), rightScaleX(rightScaleX), topScaleY(topScaleY), bottomScaleY(bottomScaleY)
+{
+    calculateNextStep();
+}
 void PhysicsComponent::setMaxVelocity(double newMaxSpeed)
 {
     maxVelocity = newMaxSpeed;
@@ -1503,12 +1506,23 @@ void PhysicsComponent::setMovementDirection(double directionX, double directionY
 {
     movementDirectionX = directionX;
     movementDirectionY = directionY;
+
+    calculateNextStep();
 }
 void PhysicsComponent::update()
 {
-    auto calculateNextStep = [this](double coordinate, double velocity, double tileScale, double movementDirection)
+    x = nextX;
+    y = nextY;
+    velocityX = nextVelocityX;
+    velocityY = nextVelocityY;
+
+    calculateNextStep();
+}
+void PhysicsComponent::calculateNextStep()
+{
+    auto integrate = [this](double coordinate, double velocity, double tileScale, double movementDirection)
     {
-        std::pair<double, double> result{coordinate, velocity};
+        std::pair result{coordinate, velocity};
 
         // Advance coordinate by half of time step
         result.first += velocity * Constants::tickDuration / 2.0;
@@ -1540,19 +1554,19 @@ void PhysicsComponent::update()
     double movementY = directionAmplitude <= 0.001 ? 0 : movementDirectionY / directionAmplitude;
 
     // Do forward euler integration in two steps to reflect coordinate change on same tick
-    std::tie(x, velocityX) = calculateNextStep(intermediateX, intermediateVelocityX, 1.0, movementX);
-    std::tie(y, velocityY) = calculateNextStep(intermediateY, intermediateVelocityY, Constants::tileAspectRatio, movementY);
+    std::tie(nextX, nextVelocityX) = integrate(x, velocityX, 1.0, movementX);
+    std::tie(nextY, nextVelocityY) = integrate(y, velocityY, Constants::tileAspectRatio, movementY);
 
-    std::tie(intermediateX, intermediateVelocityX) = calculateNextStep(x, velocityX, 1.0, movementX);
-    std::tie(intermediateY, intermediateVelocityY) = calculateNextStep(y, velocityY, Constants::tileAspectRatio, movementY);
+    std::tie(nextX, nextVelocityX) = integrate(nextX, nextVelocityX, 1.0, movementX);
+    std::tie(nextY, nextVelocityY) = integrate(nextY, nextVelocityY, Constants::tileAspectRatio, movementY);
 
     // No collisions possible if no movement
-    if (x == previousX && y == previousY)
+    if (nextX == x && nextY == y)
         return;
 
     // Calculate coefficients that convert orthogonal distances to distance along movement direction
-    auto dx2 = (x - previousX) * (x - previousX);
-    auto dy2 = (y - previousY) * (y - previousY);
+    auto dx2 = (nextX - x) * (nextX - x);
+    auto dy2 = (nextY - y) * (nextY - y);
 
     auto distanceCoefficientX = dx2 < 1.e-10 ? 100000.0 : std::sqrt(1 + dy2 / dx2);
     auto distanceCoefficientY = dy2 < 1.e-10 ? 100000.0 : std::sqrt(1 + dx2 / dy2);
@@ -1572,8 +1586,8 @@ void PhysicsComponent::update()
     };
 
     // Current movement directions
-    std::int32_t directionX = x >= previousX ? 1 : -1;
-    std::int32_t directionY = y >= previousY ? 1 : -1;
+    std::int32_t directionX = nextX >= x ? 1 : -1;
+    std::int32_t directionY = nextY >= y ? 1 : -1;
 
     // Offsets for corners towards movement direction
     double positiveOffsetX = directionX == 1 ? rightScaleX : -leftScaleX;
@@ -1582,17 +1596,17 @@ void PhysicsComponent::update()
     double negativeOffsetY = directionY == 1 ? -topScaleY : bottomScaleY;
 
     // Coordinates of corners towards movement direction
-    double previousPositiveX = previousX + positiveOffsetX;
-    double positiveX = x + positiveOffsetX;
+    double previousPositiveX = x + positiveOffsetX;
+    double positiveX = nextX + positiveOffsetX;
 
-    double previousNegativeX = previousX + negativeOffsetX;
-    double negativeX = x + negativeOffsetX;
+    double previousNegativeX = x + negativeOffsetX;
+    double negativeX = nextX + negativeOffsetX;
 
-    double previousPositiveY = previousY + positiveOffsetY;
-    double positiveY = y + positiveOffsetY;
+    double previousPositiveY = y + positiveOffsetY;
+    double positiveY = nextY + positiveOffsetY;
 
-    double previousNegativeY = previousY + negativeOffsetY;
-    double negativeY = y + negativeOffsetY;
+    double previousNegativeY = y + negativeOffsetY;
+    double negativeY = nextY + negativeOffsetY;
 
     auto calculateMinCollision = [this, directionX, directionY](double startX, double startY, double endX, double endY, double distanceCoefficientX,
                                                                 double distanceCoefficientY, double offsetX, double offsetY, Collision& minCollision)
@@ -1675,16 +1689,16 @@ void PhysicsComponent::update()
         minCollision.distance = std::numeric_limits<double>::max();
 
         // Set position along the wall
-        velocityX = 0.0;
-        x = minCollision.positionX;
+        nextVelocityX = 0.0;
+        nextX = minCollision.positionX;
 
         // Cast ray from corner and check collision again
-        calculateMinCollision(x + positiveOffsetX, minCollision.positionY + positiveOffsetY, x + positiveOffsetX, positiveY, 100000.0, 1.0, positiveOffsetX,
+        calculateMinCollision(nextX + positiveOffsetX, minCollision.positionY + positiveOffsetY, nextX + positiveOffsetX, positiveY, 100000.0, 1.0, positiveOffsetX,
                               positiveOffsetY, minCollision);
         if (minCollision.type == Collision::eHorizontal)
         {
-            velocityY = 0.0;
-            y = minCollision.positionY;
+            nextVelocityY = 0.0;
+            nextY = minCollision.positionY;
         }
     }
     else if (minCollision.type == Collision::eHorizontal)
@@ -1692,21 +1706,17 @@ void PhysicsComponent::update()
         minCollision.type = Collision::eNone;
         minCollision.distance = std::numeric_limits<double>::max();
 
-        velocityY = 0.0;
-        y = minCollision.positionY;
+        nextVelocityY = 0.0;
+        nextY = minCollision.positionY;
 
         calculateMinCollision(minCollision.positionX + positiveOffsetX, y + positiveOffsetY, positiveX, y + positiveOffsetY, 1.0, 100000.0, positiveOffsetX,
                               positiveOffsetY, minCollision);
         if (minCollision.type == Collision::eVertical)
         {
-            velocityX = 0.0;
-            x = minCollision.positionX;
+            nextVelocityX = 0.0;
+            nextX = minCollision.positionX;
         }
     }
-
-    // Update previous values
-    previousX = x;
-    previousY = y;
 }
 /*
  * Item implementation
@@ -2757,10 +2767,7 @@ void Map::updateVisibility(double deltaTime)
     }
     lastVisibleTiles.clear();
 
-    auto [playerX, playerY] = player.getPosition();
-    auto [playerVx, playerVy] = player.getVelocity();
-    playerX += playerVx * deltaTime;
-    playerY += playerVy * deltaTime;
+    auto [playerX, playerY] = player.getPredictedPosition(deltaTime);
 
     double visionRange = 8.0;
     std::int64_t lookupRange = std::ceil(visionRange);
@@ -2816,10 +2823,7 @@ void Map::updateVisibilityDebug(double deltaTime)
     }
     lastVisibleTiles.clear();
 
-    auto [playerX, playerY] = player.getPosition();
-    auto [playerVx, playerVy] = player.getVelocity();
-    playerX += playerVx * deltaTime;
-    playerY += playerVy * deltaTime;
+    auto [playerX, playerY] = player.getPredictedPosition(deltaTime);
 
     double visionRange = 8.0;
     std::int64_t lookupRange = std::ceil(visionRange);
@@ -3301,13 +3305,9 @@ void Player::updateDraw(double deltaTime)
 {
     float guiOffset = 48.0f;
 
-    auto [x, y] = getPosition();
-    auto [vx, vy] = getIntermediateVelocity();
-    double drawPositionX = guiOffset + x + vx * deltaTime;
-    double drawPositionY = y + vy * deltaTime;
-    quadReference.setPosition(drawPositionX, drawPositionY);
-
-    weapon.updateDraw(drawPositionX, drawPositionY);
+    auto [x, y] = getPredictedPosition(deltaTime);
+    quadReference.setPosition(guiOffset + x, y);
+    weapon.updateDraw(guiOffset + x, y);
 }
 void Player::takeDamage(std::int64_t damage)
 {
@@ -3750,11 +3750,11 @@ void MainMenu::onButtonPressed(MainMenuButtonType type)
 {
     using enum MainMenuButtonType;
 
-    if(type == eStartGame)
+    if (type == eStartGame)
         game.startGame();
-    else if(type == eOptions)
+    else if (type == eOptions)
         gui.showOptionsMenu();
-    else if(type == eQuitToDesktop)
+    else if (type == eQuitToDesktop)
         game.quitToDesktop();
 }
 /*
@@ -3762,88 +3762,85 @@ void MainMenu::onButtonPressed(MainMenuButtonType type)
  */
 void PlayArea::init()
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	buttons[ePause].init(""sv, 26, 1);
-	buttons[eHealth].init("       Health       "sv, 0, 1);
-	buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
-	buttons[eNutrition].init("     Nutrition      "sv, 0, 2);
-	buttons[eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
-	buttons[eGold].init("Gold:0"sv, 0, 5);
-	buttons[eSearch].init(""sv, 11, 35);
-	buttons[eInventory].init("Inventory"sv, 0, 6);
+    buttons[ePause].init(""sv, 26, 1);
+    buttons[eHealth].init("       Health       "sv, 0, 1);
+    buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
+    buttons[eNutrition].init("     Nutrition      "sv, 0, 2);
+    buttons[eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
+    buttons[eGold].init("Gold:0"sv, 0, 5);
+    buttons[eSearch].init(""sv, 11, 35);
+    buttons[eInventory].init("Inventory"sv, 0, 6);
 
-	for(std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst; i++)
-		buttons[(std::size_t)eInventorySlotFirst + i].init(""sv, 0, 7 + i);
+    for (std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst; i++)
+        buttons[(std::size_t)eInventorySlotFirst + i].init(""sv, 0, 7 + i);
 
-	buttons[eDepth].init("Depth:"sv, 0, 35);
+    buttons[eDepth].init("Depth:"sv, 0, 35);
 
-	tabButtons[TabButtonType::eDebug].init(""sv, 15, 0);
-	tabButtons[TabButtonType::eDiscoveries].init(""sv, 22, 35);
-	tabButtons[TabButtonType::eMenu].init(""sv, 38, 35);
+    tabButtons[TabButtonType::eDebug].init(""sv, 15, 0);
+    tabButtons[TabButtonType::eDiscoveries].init(""sv, 22, 35);
+    tabButtons[TabButtonType::eMenu].init(""sv, 38, 35);
 
-	refreshLabels();
+    refreshLabels();
 }
 void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold)
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	Array<char, 32> goldString{"Gold:"};
-	std::to_chars(goldString.getData() + 5, goldString.getData() + 31, gold);
-	buttons[eGold].setText(goldString.getData());
+    Array<char, 32> goldString{"Gold:"};
+    std::to_chars(goldString.getData() + 5, goldString.getData() + 31, gold);
+    buttons[eGold].setText(goldString.getData());
 
-	for(std::size_t i = 0; i < inventory.getSize(); i++)
-		buttons[(std::size_t)eInventorySlotFirst + i].setText(inventory[i].getName());
+    for (std::size_t i = 0; i < inventory.getSize(); i++)
+        buttons[(std::size_t)eInventorySlotFirst + i].setText(inventory[i].getName());
 
-	for(std::size_t i = inventory.getSize(); i < 20; i++)
-		buttons[(std::size_t)eInventorySlotFirst + i].setText(""sv);
+    for (std::size_t i = inventory.getSize(); i < 20; i++)
+        buttons[(std::size_t)eInventorySlotFirst + i].setText(""sv);
 }
 void PlayArea::setPaused(bool paused)
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	if(buttons[ePause].getPressed() == paused)
-		return;
+    if (buttons[ePause].getPressed() == paused)
+        return;
 
-	FixedString<16> pauseText;
+    FixedString<16> pauseText;
 
-	buttons[ePause].setPressed(paused);
+    buttons[ePause].setPressed(paused);
     buttons[ePause].setText(pauseText.fill(paused ? "PAUSED"sv : "Pause"sv, configuration.getInputControlName(InputControlType::ePause)));
-	game.setPaused(paused);
+    game.setPaused(paused);
 }
-void PlayArea::setPlayerHealth(double percentage)
-{
-	buttons[ButtonType::eHealth].setProgress(percentage);
-}
+void PlayArea::setPlayerHealth(double percentage) { buttons[ButtonType::eHealth].setProgress(percentage); }
 void PlayArea::onButtonPressed(ButtonType type)
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	if(type == ePause)
-		setPaused(!getPaused());
+    if (type == ePause)
+        setPaused(!getPaused());
 }
 void PlayArea::onTabButtonPressed(TabButtonType type) const
 {
-	using enum TabButtonType;
+    using enum TabButtonType;
 
-	if(type == eMenu)
-		gui.onPauseMenuHotkeyPressed();
-	else if(type == eDiscoveries)
-		gui.onDiscoveriesHotkeyPressed();
-	else if(type == eDebug)
-		gui.onDebugHotkeyPressed();
+    if (type == eMenu)
+        gui.onPauseMenuHotkeyPressed();
+    else if (type == eDiscoveries)
+        gui.onDiscoveriesHotkeyPressed();
+    else if (type == eDebug)
+        gui.onDebugHotkeyPressed();
 }
 void PlayArea::refreshLabels()
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	FixedString<32> labelText;
+    FixedString<32> labelText;
 
     buttons[ePause].setText(labelText.fill(buttons[ePause].getPressed() ? "PAUSED"sv : "Pause"sv, configuration.getInputControlName(InputControlType::ePause)));
-	buttons[eSearch].setText(labelText.fill("Search"sv, configuration.getInputControlName(InputControlType::eSearch)));
-	tabButtons[TabButtonType::eDebug].setText(labelText.fill("Debug"sv, configuration.getInputControlName(InputControlType::eDebug)));
-	tabButtons[TabButtonType::eDiscoveries].setText(labelText.fill("Discoveries"sv, configuration.getInputControlName(InputControlType::eDiscoveries)));
-	tabButtons[TabButtonType::eMenu].setText(labelText.fill("Menu[ESC]"sv));
+    buttons[eSearch].setText(labelText.fill("Search"sv, configuration.getInputControlName(InputControlType::eSearch)));
+    tabButtons[TabButtonType::eDebug].setText(labelText.fill("Debug"sv, configuration.getInputControlName(InputControlType::eDebug)));
+    tabButtons[TabButtonType::eDiscoveries].setText(labelText.fill("Discoveries"sv, configuration.getInputControlName(InputControlType::eDiscoveries)));
+    tabButtons[TabButtonType::eMenu].setText(labelText.fill("Menu[ESC]"sv));
 }
 /*
  * GameOver implementation
@@ -3886,26 +3883,26 @@ void DebugMenu::onButtonPressed(ButtonType type)
 {
     using enum ButtonType;
 
-    if(type == eStopTime)
+    if (type == eStopTime)
     {
         buttons[eStopTime].togglePressed();
         game.setSpeedPercentage(buttons[eStopTime].getPressed() ? 0 : 100);
     }
-    else if(type == eStepTime && buttons[eStopTime].getPressed())
+    else if (type == eStepTime && buttons[eStopTime].getPressed())
     {
         game.advanceStep();
     }
-    else if(type == eShowDamage)
+    else if (type == eShowDamage)
     {
         buttons[eShowDamage].togglePressed();
         Weapon::setDrawDebug(buttons[eShowDamage].getPressed());
     }
-    else if(type == eShowViewcone)
+    else if (type == eShowViewcone)
     {
         buttons[eShowViewcone].togglePressed();
         Map::setDrawDebugViewcone(buttons[eShowViewcone].getPressed());
     }
-    else if(type == eShowEnemies)
+    else if (type == eShowEnemies)
     {
         buttons[eShowEnemies].togglePressed();
         enemyHandler.setDrawDebug(buttons[eShowEnemies].getPressed());
@@ -3915,13 +3912,13 @@ void DebugMenu::resetToDefault()
 {
     using enum ButtonType;
 
-    if(buttons[eStopTime].getPressed())
+    if (buttons[eStopTime].getPressed())
         onButtonPressed(eStopTime);
 
-    if(buttons[eShowDamage].getPressed())
+    if (buttons[eShowDamage].getPressed())
         onButtonPressed(eShowDamage);
 
-    if(buttons[eShowViewcone].getPressed())
+    if (buttons[eShowViewcone].getPressed())
         onButtonPressed(eShowViewcone);
 }
 void DebugMenu::refreshLabels()
@@ -3938,101 +3935,101 @@ void DebugMenu::refreshLabels()
  */
 void OptionsMenu::init()
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	labels[LabelType::eControls].init("Controls"sv, 60, 5);
-	labels[LabelType::eVideo].init("Video"sv, 82, 5);
-	labels[LabelType::eResolution].init(""sv, 80, 7);
+    labels[LabelType::eControls].init("Controls"sv, 60, 5);
+    labels[LabelType::eVideo].init("Video"sv, 82, 5);
+    labels[LabelType::eResolution].init(""sv, 80, 7);
 
-	buttons[eMoveUp].init(""sv, 58, 7);
-	buttons[eMoveDown].init(""sv, 58, 9);
-	buttons[eMoveLeft].init(""sv, 58, 11);
-	buttons[eMoveRight].init(""sv, 58, 13);
-	buttons[eAttack].init(""sv, 58, 15);
-	buttons[ePause].init(""sv, 58, 17);
-	buttons[eSearch].init(""sv, 58, 19);
-	buttons[eDiscoveries].init(""sv, 58, 21);
-	buttons[eDebug].init(""sv, 58, 23);
-	buttons[eStopTime].init(""sv, 58, 25);
-	buttons[eStepTime].init(""sv, 58, 27);
+    buttons[eMoveUp].init(""sv, 58, 7);
+    buttons[eMoveDown].init(""sv, 58, 9);
+    buttons[eMoveLeft].init(""sv, 58, 11);
+    buttons[eMoveRight].init(""sv, 58, 13);
+    buttons[eAttack].init(""sv, 58, 15);
+    buttons[ePause].init(""sv, 58, 17);
+    buttons[eSearch].init(""sv, 58, 19);
+    buttons[eDiscoveries].init(""sv, 58, 21);
+    buttons[eDebug].init(""sv, 58, 23);
+    buttons[eStopTime].init(""sv, 58, 25);
+    buttons[eStepTime].init(""sv, 58, 27);
 
-	buttons[eResetToDefault].init("Reset To Default"sv, 58, 32);
+    buttons[eResetToDefault].init("Reset To Default"sv, 58, 32);
 
-	buttons[eFullscreen].init(""sv, 78, 9);
+    buttons[eFullscreen].init(""sv, 78, 9);
 
-	refreshLabels();
+    refreshLabels();
 }
 void OptionsMenu::onButtonPressed(ButtonType type)
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	if(type <= eStepTime)
-		buttons[type].setPressed(true);
+    if (type <= eStepTime)
+        buttons[type].setPressed(true);
 
-	if(type == eMoveUp)
-		inputHandler.setChangingControlType(InputControlType::eMoveUp);
-	else if(type == eMoveDown)
-		inputHandler.setChangingControlType(InputControlType::eMoveDown);
-	else if(type == eMoveLeft)
-		inputHandler.setChangingControlType(InputControlType::eMoveLeft);
-	else if(type == eMoveRight)
-		inputHandler.setChangingControlType(InputControlType::eMoveRight);
-	else if(type == eAttack)
-		inputHandler.setChangingControlType(InputControlType::eAttack);
-	else if(type == ePause)
-		inputHandler.setChangingControlType(InputControlType::ePause);
-	else if(type == eSearch)
-		inputHandler.setChangingControlType(InputControlType::eSearch);
-	else if(type == eDiscoveries)
-		inputHandler.setChangingControlType(InputControlType::eDiscoveries);
-	else if(type == eDebug)
-		inputHandler.setChangingControlType(InputControlType::eDebug);
-	else if(type == eStopTime)
-		inputHandler.setChangingControlType(InputControlType::eStopTime);
-	else if(type == eStepTime)
-		inputHandler.setChangingControlType(InputControlType::eStepTime);
-	else if(type == eResetToDefault)
-		configuration.resetInputControlsToDefault();
-	else if(type == eFullscreen)
-	{
-		auto isFullscreen = configuration.getIsFullscreen();
-		if(isFullscreen)
-			renderWindow.setIsMaximized(configuration.getIsMaximized());
+    if (type == eMoveUp)
+        inputHandler.setChangingControlType(InputControlType::eMoveUp);
+    else if (type == eMoveDown)
+        inputHandler.setChangingControlType(InputControlType::eMoveDown);
+    else if (type == eMoveLeft)
+        inputHandler.setChangingControlType(InputControlType::eMoveLeft);
+    else if (type == eMoveRight)
+        inputHandler.setChangingControlType(InputControlType::eMoveRight);
+    else if (type == eAttack)
+        inputHandler.setChangingControlType(InputControlType::eAttack);
+    else if (type == ePause)
+        inputHandler.setChangingControlType(InputControlType::ePause);
+    else if (type == eSearch)
+        inputHandler.setChangingControlType(InputControlType::eSearch);
+    else if (type == eDiscoveries)
+        inputHandler.setChangingControlType(InputControlType::eDiscoveries);
+    else if (type == eDebug)
+        inputHandler.setChangingControlType(InputControlType::eDebug);
+    else if (type == eStopTime)
+        inputHandler.setChangingControlType(InputControlType::eStopTime);
+    else if (type == eStepTime)
+        inputHandler.setChangingControlType(InputControlType::eStepTime);
+    else if (type == eResetToDefault)
+        configuration.resetInputControlsToDefault();
+    else if (type == eFullscreen)
+    {
+        auto isFullscreen = configuration.getIsFullscreen();
+        if (isFullscreen)
+            renderWindow.setIsMaximized(configuration.getIsMaximized());
 
-		renderWindow.setIsFullscreen(!isFullscreen);
-	}
+        renderWindow.setIsFullscreen(!isFullscreen);
+    }
 }
 void OptionsMenu::refreshLabels()
 {
-	using enum ButtonType;
+    using enum ButtonType;
 
-	FixedString<32> labelText;
+    FixedString<32> labelText;
 
-	buttons[eMoveUp].setText(labelText.fill("Move Up"sv, configuration.getInputControlName(InputControlType::eMoveUp)));
-	buttons[eMoveDown].setText(labelText.fill("Move Down"sv, configuration.getInputControlName(InputControlType::eMoveDown)));
-	buttons[eMoveLeft].setText(labelText.fill("Move Left"sv, configuration.getInputControlName(InputControlType::eMoveLeft)));
-	buttons[eMoveRight].setText(labelText.fill("Move Right"sv, configuration.getInputControlName(InputControlType::eMoveRight)));
-	buttons[eAttack].setText(labelText.fill("Attack"sv, configuration.getInputControlName(InputControlType::eAttack)));
-	buttons[ePause].setText(labelText.fill("Pause"sv, configuration.getInputControlName(InputControlType::ePause)));
-	buttons[eSearch].setText(labelText.fill("Search"sv, configuration.getInputControlName(InputControlType::eSearch)));
-	buttons[eDiscoveries].setText(labelText.fill("Discoveries"sv, configuration.getInputControlName(InputControlType::eDiscoveries)));
-	buttons[eDebug].setText(labelText.fill("Debug"sv, configuration.getInputControlName(InputControlType::eDebug)));
-	buttons[eStopTime].setText(labelText.fill("Stop Time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
-	buttons[eStepTime].setText(labelText.fill("Step Time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
+    buttons[eMoveUp].setText(labelText.fill("Move Up"sv, configuration.getInputControlName(InputControlType::eMoveUp)));
+    buttons[eMoveDown].setText(labelText.fill("Move Down"sv, configuration.getInputControlName(InputControlType::eMoveDown)));
+    buttons[eMoveLeft].setText(labelText.fill("Move Left"sv, configuration.getInputControlName(InputControlType::eMoveLeft)));
+    buttons[eMoveRight].setText(labelText.fill("Move Right"sv, configuration.getInputControlName(InputControlType::eMoveRight)));
+    buttons[eAttack].setText(labelText.fill("Attack"sv, configuration.getInputControlName(InputControlType::eAttack)));
+    buttons[ePause].setText(labelText.fill("Pause"sv, configuration.getInputControlName(InputControlType::ePause)));
+    buttons[eSearch].setText(labelText.fill("Search"sv, configuration.getInputControlName(InputControlType::eSearch)));
+    buttons[eDiscoveries].setText(labelText.fill("Discoveries"sv, configuration.getInputControlName(InputControlType::eDiscoveries)));
+    buttons[eDebug].setText(labelText.fill("Debug"sv, configuration.getInputControlName(InputControlType::eDebug)));
+    buttons[eStopTime].setText(labelText.fill("Stop Time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
+    buttons[eStepTime].setText(labelText.fill("Step Time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
 
-	auto [windowWidth, windowHeight] = renderWindow.getWindowSize();
-	labels[LabelType::eResolution].setText(labelText.format("{}x{}", windowWidth, windowHeight));
-	buttons[eFullscreen].setText(renderWindow.getIsFullscreen() ? "[X]Fullscreen"sv : "[ ]Fullscreen"sv);
+    auto [windowWidth, windowHeight] = renderWindow.getWindowSize();
+    labels[LabelType::eResolution].setText(labelText.format("{}x{}", windowWidth, windowHeight));
+    buttons[eFullscreen].setText(renderWindow.getIsFullscreen() ? "[X]Fullscreen"sv : "[ ]Fullscreen"sv);
 
-	for(auto i = (std::size_t)eMoveUp; i <= (std::size_t)eStepTime; i++)
-		buttons[i].setPressed(false);
+    for (auto i = (std::size_t)eMoveUp; i <= (std::size_t)eStepTime; i++)
+        buttons[i].setPressed(false);
 }
 /*
  * GUI implementation
  */
 void GUI::init()
 {
-    //Initialize all available screens
+    // Initialize all available screens
     mainMenu.init();
     optionsMenu.init();
     playArea.init();
@@ -4045,22 +4042,16 @@ void GUI::init()
 
     setCurrentScreen(ScreenType::eMainMenu);
 }
-void GUI::showPlayArea()
-{
-    setCurrentScreen(ScreenType::ePlayArea);
-}
+void GUI::showPlayArea() { setCurrentScreen(ScreenType::ePlayArea); }
 void GUI::showMainMenu()
 {
-    //Restore default GUI state
+    // Restore default GUI state
     playArea.setPaused(false);
     debugMenu.resetToDefault();
 
     setCurrentScreen(ScreenType::eMainMenu);
 }
-void GUI::showOptionsMenu()
-{
-    setCurrentScreen(ScreenType::eOptionsMenu);
-}
+void GUI::showOptionsMenu() { setCurrentScreen(ScreenType::eOptionsMenu); }
 void GUI::showGameOver(bool winner)
 {
     gameOver.setWinner(winner);
@@ -4097,7 +4088,7 @@ void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 }
 void GUI::onMousePressed(std::int64_t x, std::int64_t y)
 {
-    //Handle player actions when pressing on the map
+    // Handle player actions when pressing on the map
     if (activeScreenType == ScreenType::ePlayArea && !playArea.getPaused() && x >= Constants::mapOffset)
         player.onMousePressed(x - Constants::mapOffset, y);
 
@@ -4105,18 +4096,18 @@ void GUI::onMousePressed(std::int64_t x, std::int64_t y)
 }
 void GUI::onPauseMenuHotkeyPressed()
 {
-    //Requesting the pause menu before the game starts does nothing
+    // Requesting the pause menu before the game starts does nothing
     if (activeScreenType == ScreenType::eMainMenu)
         return;
 
-    //Requesting the pause menu after game over returns to the main menu
+    // Requesting the pause menu after game over returns to the main menu
     if (activeScreenType == ScreenType::eGameOver)
     {
         game.quitToMainMenu();
         return;
     }
 
-    //Close a popup if it's the current screen
+    // Close a popup if it's the current screen
     if (isScreenAPopup(activeScreenType))
     {
         playArea.setPaused(previouslyPaused);
@@ -4125,18 +4116,18 @@ void GUI::onPauseMenuHotkeyPressed()
         return;
     }
 
-    //Show the pause menu
+    // Show the pause menu
     playArea.setPaused(true);
     playArea.setTabButtonPressed(PlayArea::TabButtonType::eMenu);
     setCurrentScreen(ScreenType::ePauseMenu);
 }
 void GUI::onDebugHotkeyPressed()
 {
-    //Requesting the debug menu only works during play
+    // Requesting the debug menu only works during play
     if (activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::ePauseMenu || activeScreenType == ScreenType::eGameOver)
         return;
 
-    //Close debug menu if its already open
+    // Close debug menu if its already open
     if (activeScreenType == ScreenType::eDebugMenu)
     {
         playArea.setPaused(previouslyPaused);
@@ -4145,18 +4136,18 @@ void GUI::onDebugHotkeyPressed()
         return;
     }
 
-    //Show debug options
+    // Show debug options
     playArea.setPaused(true);
     playArea.setTabButtonPressed(PlayArea::TabButtonType::eDebug);
     setCurrentScreen(ScreenType::eDebugMenu);
 }
 void GUI::onDiscoveriesHotkeyPressed()
 {
-    //Requesting the discoveries menu only works during play
+    // Requesting the discoveries menu only works during play
     if (activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::ePauseMenu || activeScreenType == ScreenType::eGameOver)
         return;
 
-    //Close discoveries menu if its already open
+    // Close discoveries menu if its already open
     if (activeScreenType == ScreenType::eDiscoveries)
     {
         playArea.setPaused(previouslyPaused);
@@ -4165,14 +4156,14 @@ void GUI::onDiscoveriesHotkeyPressed()
         return;
     }
 
-    //Show discoveries menu
+    // Show discoveries menu
     playArea.setPaused(true);
     playArea.setTabButtonPressed(PlayArea::TabButtonType::eDiscoveries);
     setCurrentScreen(ScreenType::eDiscoveries);
 }
 void GUI::onPauseHotkeyPressed()
 {
-    //Pausing only allowed during active play
+    // Pausing only allowed during active play
     if (activeScreenType != ScreenType::ePlayArea)
         return;
 
@@ -4181,7 +4172,7 @@ void GUI::onPauseHotkeyPressed()
 }
 void GUI::onStopTimeHotkeyPressed()
 {
-    //Stopping time not allowed in main menu or during game over
+    // Stopping time not allowed in main menu or during game over
     if (activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::eGameOver)
         return;
 
@@ -4189,7 +4180,7 @@ void GUI::onStopTimeHotkeyPressed()
 }
 void GUI::onStepTimeHotkeyPressed()
 {
-    //Stepping time not allowed in main menu or during game over
+    // Stepping time not allowed in main menu or during game over
     if (activeScreenType == ScreenType::eMainMenu || activeScreenType == ScreenType::eGameOver)
         return;
 
@@ -4204,16 +4195,16 @@ void GUI::refreshScreens()
 }
 void GUI::setCurrentScreen(ScreenType screenType)
 {
-    //Do nothing if the old and new screens are the same
+    // Do nothing if the old and new screens are the same
     if (activeScreenType == screenType)
         return;
 
     auto isOldScreenAPopup = isScreenAPopup(activeScreenType);
     auto isNewScreenAPopup = isScreenAPopup(screenType);
 
-    //Show popup on top of the already visible screen
-    //If the old screen was a popup too, simply switch to the new one
-    //Else keep the old screen visible in the background
+    // Show popup on top of the already visible screen
+    // If the old screen was a popup too, simply switch to the new one
+    // Else keep the old screen visible in the background
     if (isNewScreenAPopup)
     {
         if (isOldScreenAPopup)
@@ -4226,8 +4217,8 @@ void GUI::setCurrentScreen(ScreenType screenType)
 
         setScreenVisible(screenType, true);
     }
-    //Hide the popup and its background
-    //If the new and background screens are different, hide the old background too
+    // Hide the popup and its background
+    // If the new and background screens are different, hide the old background too
     else if (isOldScreenAPopup)
     {
         popupBackground.setVisible(false);
@@ -4241,7 +4232,7 @@ void GUI::setCurrentScreen(ScreenType screenType)
 
         backgroundScreenType = ScreenType::eNone;
     }
-    //Hide the old screen and show the new one
+    // Hide the old screen and show the new one
     else
     {
         setScreenVisible(activeScreenType, false);
@@ -4250,7 +4241,7 @@ void GUI::setCurrentScreen(ScreenType screenType)
 
     activeScreenType = screenType;
 
-    //Refresh mouse position for the newly shown screen
+    // Refresh mouse position for the newly shown screen
     auto [x, y] = inputHandler.getMousePosition();
     onMouseMoved(x, y);
 }
@@ -4272,11 +4263,5 @@ void GUI::setFPS(std::int64_t fps, std::int64_t minFPS)
 
     fpsLabel.setText(buf.getData());
 }
-void GUI::setPlayerHealth(double percentage)
-{
-    playArea.setPlayerHealth(percentage);
-}
-void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold)
-{
-    playArea.updateInventory(inventory, gold);
-}
+void GUI::setPlayerHealth(double percentage) { playArea.setPlayerHealth(percentage); }
+void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold) { playArea.updateInventory(inventory, gold); }

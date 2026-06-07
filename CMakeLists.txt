@@ -15,18 +15,6 @@ set(ABROGUE_BIN_DIR ${CMAKE_CURRENT_BINARY_DIR}/bin)
 
 option(EXTRA_ASSERTS ON)
 
-add_library(VulkanHppModule src/VulkanStorage.cpp)
-target_sources(VulkanHppModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES ${ABROGUE_INCLUDE_DIR}/vulkan/vulkan.cppm)
-set_target_properties(VulkanHppModule PROPERTIES CXX_STANDARD 26)
-target_include_directories(VulkanHppModule PUBLIC ${ABROGUE_INCLUDE_DIR})
-target_link_directories(VulkanHppModule PUBLIC ${ABROGUE_LIB_DIR})
-target_link_libraries(VulkanHppModule vulkan)
-target_compile_definitions(VulkanHppModule PRIVATE
-        VULKAN_HPP_NO_EXCEPTIONS
-        VULKAN_HPP_ASSERT_ON_RESULT=
-)
-target_compile_definitions(VulkanHppModule PUBLIC VULKAN_HPP_DISPATCH_LOADER_DYNAMIC=1)
-
 add_library(SDL3Module)
 target_sources(SDL3Module PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${ABROGUE_BASE_DIR} FILES ${ABROGUE_BASE_DIR}/src/SDL3.ixx)
 set_target_properties(SDL3Module PROPERTIES CXX_STANDARD 26)
@@ -74,7 +62,7 @@ target_sources(RenderEngineModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_
         src/RenderEngine/RenderEngine.ixx
 )
 set_target_properties(RenderEngineModule PROPERTIES CXX_STANDARD 26)
-target_link_libraries(RenderEngineModule VulkanHppModule HelpersModule GLMModule STBModule)
+target_link_libraries(RenderEngineModule HelpersModule GLMModule STBModule)
 
 add_executable(BitmapGenerator src/BitmapGenerator/main.cpp)
 target_include_directories(BitmapGenerator PUBLIC ${ABROGUE_INCLUDE_DIR})
