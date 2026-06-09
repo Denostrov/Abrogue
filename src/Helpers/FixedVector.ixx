@@ -5,7 +5,7 @@ import :Logger;
 
 using namespace std::literals;
 
-//Class for storing a dynamically sized array with fixed capacity on the stack
+// Class for storing a dynamically sized array with fixed capacity on the stack
 export template <class T, std::size_t N>
 class FixedVector
 {
@@ -26,10 +26,7 @@ public:
         currentSize--;
     }
 
-    constexpr void popBack()
-    {
-        erase(currentSize - 1);
-    }
+    constexpr void popBack() { erase(currentSize - 1); }
 
     constexpr void clear()
     {
@@ -51,27 +48,15 @@ public:
         return std::forward<Self>(self).data + std::forward<Self>(self).currentSize;
     }
 
-    constexpr auto getSize() const
-    {
-        return currentSize;
-    }
+    constexpr auto getSize() const { return currentSize; }
 
-    static constexpr auto getCapacity()
-    {
-        return N;
-    }
+    static constexpr auto getCapacity() { return N; }
 
-    constexpr auto isEmpty() const
-    {
-        return currentSize == 0;
-    }
+    constexpr auto isEmpty() const { return currentSize == 0; }
 
-    constexpr auto isFull() const
-    {
-        return currentSize == N;
-    }
+    constexpr auto isFull() const { return currentSize == N; }
 
-    template<class Self>
+    template <class Self>
     constexpr auto getData(this Self&& self)
     {
         return std::forward<Self>(self).data;
@@ -99,10 +84,7 @@ public:
         return std::forward<Self>(self).data[std::forward<Self>(self).currentSize - 1];
     }
 
-    constexpr auto getSpan() const
-    {
-        return std::span<T const>(data, currentSize);
-    }
+    constexpr auto getSpan() const { return std::span<T const>(data, currentSize); }
 
     constexpr void resize(std::size_t newSize)
     {
@@ -120,7 +102,7 @@ public:
     {
         if !consteval
         {
-            logger.extraAssert(!isFull(), "FixedVector emplaceBack(): container was empty"sv);
+            logger.extraAssert(!isFull(), "FixedVector emplaceBack(): container was full"sv);
         }
         data[currentSize] = T(std::forward<Args>(args)...);
 
@@ -136,6 +118,20 @@ public:
         }
 
         return std::forward<Self>(self).data[index];
+    }
+
+    constexpr std::int64_t find(T const& key) const
+    {
+        std::int64_t result{-1};
+        for (std::int64_t i = 0; i < currentSize; i++)
+        {
+            if (data[i] != key)
+                continue;
+
+            result = i;
+            break;
+        }
+        return result;
     }
 
 private:

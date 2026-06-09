@@ -101,7 +101,7 @@ public:
     static constexpr std::uint32_t vkAppMinorVersion{1u};
     static constexpr std::uint32_t vkAppPatchVersion{0u};
 
-    static constexpr std::int64_t ticksPerSecond{8};
+    static constexpr std::int64_t ticksPerSecond{16};
     static constexpr std::int64_t tickDurationNS{1000000000 / ticksPerSecond};
     static constexpr double tickDuration{1.0 / ticksPerSecond};
 
@@ -495,8 +495,8 @@ public:
 
     [[nodiscard]] std::int64_t getDepth() const { return 1; }
     [[nodiscard]] Room const& getRandomRoom() const;
-    [[nodiscard]] FixedVector<std::pair<std::int64_t, std::int64_t>, 128> getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX,
-                                                                                  std::int64_t endY) const;
+    [[nodiscard]] FixedVector<std::pair<std::int64_t, std::int64_t>, 32> getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX,
+                                                                                 std::int64_t endY) const;
 
     [[nodiscard]] bool getTileSolid(std::int64_t x, std::int64_t y) const;
     [[nodiscard]] bool getTileOpaque(std::int64_t x, std::int64_t y) const;
@@ -583,8 +583,7 @@ class EnemyHandler
         };
 
         Enemy() = default;
-        template <bool isDebug>
-        Enemy(EnemyData const& data, double positionX, double positionY, State initialState, BoolSequence<isDebug>);
+        Enemy(EnemyData const& data, double positionX, double positionY, State initialState, bool isDrawDebug);
 
         void update(double playerX, double playerY, double playerVelocityX, double playerVelocityY, std::int64_t stealthRange);
         void updateDraw(double deltaTime);
@@ -603,7 +602,7 @@ class EnemyHandler
         double stealthTimer{};
         double lastCheckedStealthTime{};
 
-        FixedVector<std::pair<std::int64_t, std::int64_t>, 128> path;
+        FixedVector<std::pair<std::int64_t, std::int64_t>, 32> path;
         std::int64_t currentPathIndex{};
 
         QuadReference<QuadLayer::eEntity> quad;
@@ -624,7 +623,6 @@ public:
     void setDrawDebug(bool draw);
 
 private:
-    template <bool isDebug>
     bool spawnEnemy();
 
     double currentTime{};
@@ -1693,8 +1691,8 @@ void PhysicsComponent::calculateNextStep()
         nextX = minCollision.positionX;
 
         // Cast ray from corner and check collision again
-        calculateMinCollision(nextX + positiveOffsetX, minCollision.positionY + positiveOffsetY, nextX + positiveOffsetX, positiveY, 100000.0, 1.0, positiveOffsetX,
-                              positiveOffsetY, minCollision);
+        calculateMinCollision(nextX + positiveOffsetX, minCollision.positionY + positiveOffsetY, nextX + positiveOffsetX, positiveY, 100000.0, 1.0,
+                              positiveOffsetX, positiveOffsetY, minCollision);
         if (minCollision.type == Collision::eHorizontal)
         {
             nextVelocityY = 0.0;
@@ -2472,28 +2470,104 @@ std::optional<Item> Map::pickupItem(std::int64_t x, std::int64_t y, bool onlyGol
     return std::nullopt;
 }
 Map::Room const& Map::getRandomRoom() const { return levelData.rooms[mapRandom.generate() % levelData.roomCount]; }
-FixedVector<std::pair<std::int64_t, std::int64_t>, 128> Map::getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const
+FixedVector<std::pair<std::int64_t, std::int64_t>, 32> Map::getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const
 {
     logger.extraAssert(startX >= 0 && startX < Constants::mapWidth && startY >= 0 && startY < Constants::mapHeight && endX >= 0 && endX < Constants::mapWidth &&
                            endY >= 0 && endY < Constants::mapHeight,
                        "Requested tile path out of bounds"sv);
 
-    FixedVector<std::pair<std::int64_t, std::int64_t>, 128> result;
+    FixedVector<std::pair<std::int64_t, std::int64_t>, 32> result;
 
-    std::int64_t directionX{startX < endX ? 1 : -1};
-    std::int64_t directionY{startY < endY ? 1 : -1};
-    while (startX != endX || startY != endY)
+    struct VisitedData
     {
-        if (std::abs(endX - startX) > std::abs(endY - startY))
+        std::int64_t x{};
+        std::int64_t y{};
+        std::int64_t previousIndex{};
+    };
+    FixedVector<VisitedData, 32> visitedTiles;
+
+    auto distance = (endX - startX) * (endX - startX) + (endY - startY) * (endY - startY);
+    struct AStarData
+    {
+        std::int64_t x{};
+        std::int64_t y{};
+        std::int64_t index{};
+        std::int64_t currentScore{};
+        std::int64_t predictedScore{};
+    };
+    FixedVector<AStarData, 32> searchTiles;
+
+    visitedTiles.emplaceBack(startX, startY, 0);
+    searchTiles.emplaceBack(startX, startY, 0, 0, distance);
+
+    while (!searchTiles.isEmpty())
+    {
+        auto minScore = std::numeric_limits<std::int64_t>::max();
+        std::int64_t tileIndex{};
+        for (std::int64_t i = 0; i < searchTiles.getSize(); i++)
         {
-            startX += directionX;
-            result.emplaceBack(startX, startY);
+            if (searchTiles[i].predictedScore < minScore)
+            {
+                tileIndex = i;
+                minScore = searchTiles[i].predictedScore;
+            }
         }
-        else
+
+        auto currentTile = searchTiles[tileIndex];
+        searchTiles.erase(tileIndex);
+
+        auto checkNeighbor = [this, &visitedTiles, &searchTiles, &currentTile, &result, endX, endY](std::int64_t x, std::int64_t y)
         {
-            startY += directionY;
-            result.emplaceBack(startX, startY);
-        }
+            if (getTileSolid(x, y))
+                return;
+
+            if (x == endX && y == endY)
+            {
+                std::int64_t visitedIndex{currentTile.index};
+                FixedVector<std::int64_t, 32> visitedIndices;
+                while (visitedTiles[visitedIndex].previousIndex != 0)
+                {
+                    visitedIndices.emplaceBack(visitedIndex);
+                    visitedIndex = visitedTiles[visitedIndex].previousIndex;
+                }
+                visitedIndices.emplaceBack(visitedIndex);
+
+                for (std::int64_t i = visitedIndices.getSize() - 1; i >= 0; i--)
+                {
+                    auto index = visitedIndices[i];
+                    result.emplaceBack(visitedTiles[index].x, visitedTiles[index].y);
+                }
+                result.emplaceBack(endX, endY);
+                return;
+            }
+
+            std::int64_t neighborIndex{-1};
+            for (std::int64_t i = 0; i < visitedTiles.getSize(); i++)
+            {
+                if (visitedTiles[i].x == x && visitedTiles[i].y == y)
+                    neighborIndex = i;
+            }
+
+            if (neighborIndex == -1)
+            {
+                neighborIndex = visitedTiles.getSize();
+                visitedTiles.emplaceBack(x, y, currentTile.index);
+                auto neighborDistance = (endX - x) * (endX - x) + (endY - y) * (endY - y);
+                searchTiles.emplaceBack(x, y, neighborIndex, currentTile.currentScore + 1, neighborDistance);
+            }
+        };
+        checkNeighbor(currentTile.x + 1, currentTile.y);
+        if (visitedTiles.isFull() || !result.isEmpty())
+            break;
+        checkNeighbor(currentTile.x - 1, currentTile.y);
+        if (visitedTiles.isFull() || !result.isEmpty())
+            break;
+        checkNeighbor(currentTile.x, currentTile.y + 1);
+        if (visitedTiles.isFull() || !result.isEmpty())
+            break;
+        checkNeighbor(currentTile.x, currentTile.y - 1);
+        if (visitedTiles.isFull() || !result.isEmpty())
+            break;
     }
 
     return result;
@@ -3341,14 +3415,13 @@ void Player::setHealth(std::int64_t newHealth)
 /*
  * EnemyHandler implementation
  */
-template <bool isDebug>
-EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double positionY, State initialState, BoolSequence<isDebug>) :
+EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double positionY, State initialState, bool isDrawDebug) :
     PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color), state(initialState)
 {
     auto [x, y] = getPosition();
     quad.init(QuadData{{Constants::mapOffset + x, y}, {color.getPacked(), color.getTransparentPacked()}, data.symbol});
 
-    if constexpr (isDebug)
+    if (isDrawDebug)
         updateDrawDebug();
 
     setMass(data.mass);
@@ -3356,7 +3429,6 @@ EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double posit
 
     weapon.init(data.weaponType, data.weaponColor, data.damage, data.attackTime, false);
 }
-template <bool isDebug>
 bool EnemyHandler::spawnEnemy()
 {
     auto enemyDataOpt = configuration.getSuitableEnemy();
@@ -3370,7 +3442,7 @@ bool EnemyHandler::spawnEnemy()
     if (map.getTileInLineOfSight(spawnX, spawnY))
         return false;
 
-    enemies.emplaceBack(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5, Enemy::State::eSleeping, BoolSequence<isDebug>{});
+    enemies.emplaceBack(*enemyDataOpt, spawnX + 0.5, spawnY + 0.5, Enemy::State::eSleeping, isDrawDebug);
 
     return true;
 }
@@ -3386,19 +3458,17 @@ void EnemyHandler::Enemy::update(double playerX, double playerY, double playerVe
     {
         double distanceX = (targetX - x) / 2.0;
         double distanceY = targetY - y;
-        if (std::abs(distanceX) > std::abs(distanceY))
-            setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(1.0, distanceX),
-                                 std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(0.5, distanceY));
-        else
-            setMovementDirection(std::abs(distanceX) < 0.05 ? 0.0 : std::copysign(0.5, distanceX),
-                                 std::abs(distanceY) < 0.05 ? 0.0 : std::copysign(1.0, distanceY));
+        setMovementDirection(distanceX, distanceY);
     };
 
     if (state == State::eHunting)
     {
+        if (path.getBack().first != (std::int64_t)playerX || path.getBack().second != (std::int64_t)playerY)
+            setPathTo(playerX, playerY);
+
         auto [targetTileX, targetTileY] = path[currentPathIndex];
 
-        if ((std::int64_t)x != targetTileX || (std::int64_t)y != targetTileY)
+        if (std::abs(targetTileX + 0.5 - x) > 1.0 || std::abs(targetTileY + 0.5 - y) > 1.0)
         {
             moveTowards(targetTileX + 0.5, targetTileY + 0.5);
         }
@@ -3406,7 +3476,10 @@ void EnemyHandler::Enemy::update(double playerX, double playerY, double playerVe
         {
             currentPathIndex++;
             if (currentPathIndex >= path.getSize())
+            {
                 setState(State::eWandering);
+                setMovementDirection(0.0, 0.0);
+            }
         }
     }
     else if (state == State::eSleeping)
@@ -3502,6 +3575,9 @@ void EnemyHandler::Enemy::setPathTo(std::int64_t x, std::int64_t y)
     path = map.getPath(currentX, currentY, x, y);
     currentPathIndex = 0;
 
+    if (path.isEmpty())
+        path.emplaceBack(currentX, currentY);
+
     updateDrawDebug();
 }
 void EnemyHandler::update()
@@ -3510,7 +3586,7 @@ void EnemyHandler::update()
 
     if (currentTime - lastEnemySpawnTime > 60.0)
     {
-        spawnEnemy<false>();
+        spawnEnemy();
 
         lastEnemySpawnTime = currentTime;
     }
@@ -3540,16 +3616,11 @@ void EnemyHandler::inflictDamage(double damageX, double damageY)
 }
 void EnemyHandler::populateLevel()
 {
-    auto spawnEnemies = [this]<bool isDebug>(BoolSequence<isDebug>)
+    for (std::int64_t i = 0; i < 20; i++)
     {
-        for (std::int64_t i = 0; i < 20; i++)
-        {
-            if (!spawnEnemy<isDebug>())
-                i--;
-        }
-    };
-
-    BoolFlag::call(spawnEnemies, std::array{isDrawDebug});
+        if (!spawnEnemy())
+            i--;
+    }
 }
 void EnemyHandler::setDrawDebug(bool draw)
 {

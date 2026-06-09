@@ -1,3 +1,7 @@
+module;
+
+#include <dlfcn.h>
+
 export module Helpers;
 
 export import SDL3;
@@ -12,7 +16,6 @@ export import :FixedVector;
 export import :Random;
 export import :Tags;
 export import :Literals;
-#include <dlfcn.h>
 
 // Helper template aliases
 export template <class T>
