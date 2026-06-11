@@ -134,7 +134,7 @@ public:
     [[nodiscard]] static constexpr auto getCapacity() { return N; }
 
     template <class Self>
-    [[nodiscard]] constexpr char operator[](this Self&& self, std::size_t index)
+    [[nodiscard]] constexpr auto&& operator[](this Self&& self, std::size_t index)
     {
         if !consteval
         {

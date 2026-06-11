@@ -300,6 +300,9 @@ public:
         eGold,
         eFood,
         eAmulet,
+        eWeapon,
+        eArmor,
+        ePotion,
         COUNT
     };
 
@@ -311,13 +314,16 @@ public:
 
     [[nodiscard]] Type getType() const { return type; }
     [[nodiscard]] FixedString<32> getName() const;
+    [[nodiscard]] std::uint32_t getGlyph() const { return typeGlyphs[(std::size_t)type]; }
 
+    void setEnchantmentLevel(std::int64_t level) { enchantmentLevel = level; }
     void setVisible(bool visible);
 
 private:
-    static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157};
+    static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157, 24, 91, 33};
 
     Type type{};
+    std::int64_t enchantmentLevel{};
 
     QuadReference<QuadLayer::eItem> quad;
 };
@@ -401,7 +407,7 @@ private:
 };
 inline Configuration configuration;
 /*
- * Map - class for handling gameplay area
+ * Class for handling gameplay area
  */
 class Map
 {
@@ -534,7 +540,7 @@ private:
 };
 inline Map map;
 /*
- * Player - class for handling the main character
+ * Class for handling the main character
  */
 class Player : public PhysicsComponent
 {
@@ -562,6 +568,10 @@ public:
     std::int64_t lastTileX{}, lastTileY{};
 
     FixedVector<Item, 20> inventory;
+    std::int64_t weaponIndex{-1};
+    std::int64_t armorIndex{-1};
+    std::int64_t item1Index{-1};
+    std::int64_t item2Index{-1};
     bool hasAmulet{};
 
     QuadReference<QuadLayer::eEntity> quadReference;
@@ -614,6 +624,8 @@ class EnemyHandler
 public:
     EnemyHandler() = default;
 
+    void clear();
+
     void update();
     void updateDraw(double deltaTime);
 
@@ -634,7 +646,7 @@ private:
 };
 inline EnemyHandler enemyHandler;
 /*
- * Game - class for handling game initialization and logic
+ * Class for handling game initialization and logic
  */
 export class Game
 {
@@ -1171,6 +1183,18 @@ public:
     void onButtonPressed(ButtonType type);
 };
 
+enum class PlayAreaLabelType
+{
+    eWeaponIcon,
+    eWeaponSlot,
+    eArmorIcon,
+    eArmorSlot,
+    eItem1Icon,
+    eItem1Slot,
+    eItem2Icon,
+    eItem2Slot,
+    COUNT
+};
 enum class PlayAreaButtonType
 {
     ePause,
@@ -1194,7 +1218,7 @@ enum class PlayAreaTabButtonType
 /*
  * Class for play area
  */
-class PlayArea : public ScreenComponent<PlayArea, EmptyEnumType, PlayAreaButtonType, PlayAreaTabButtonType, QuadLayer::eMap>
+class PlayArea : public ScreenComponent<PlayArea, PlayAreaLabelType, PlayAreaButtonType, PlayAreaTabButtonType, QuadLayer::eMap>
 {
 public:
     void init();
@@ -1202,7 +1226,8 @@ public:
     void onButtonPressed(ButtonType type);
     void onTabButtonPressed(TabButtonType type) const;
 
-    void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
+    void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
+                         std::int64_t item2Index);
 
     [[nodiscard]] bool getPaused() const { return buttons[ButtonType::ePause].getPressed(); }
     void setPaused(bool paused);
@@ -1347,7 +1372,8 @@ public:
 
     void setFPS(std::int64_t fps, std::int64_t minFPS);
     void setPlayerHealth(double percentage);
-    void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold);
+    void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
+                      std::int64_t item2Index);
 
 private:
     void setCurrentScreen(ScreenType screenType);
@@ -1485,6 +1511,8 @@ void Weapon::startAttack(double positionX, double positionY, double targetPositi
     attackAngleSin = distanceY / distance;
     weaponData.setRotation(-attackAngleSin, attackAngleCos);
 
+    if (weaponReference)
+        weaponReference.clear();
     weaponReference.init(weaponData);
 }
 /*
@@ -1753,6 +1781,12 @@ FixedString<32> Item::getName() const
         result.fill("Food"sv);
     else if (type == Type::eAmulet)
         result.fill("Amulet of Yendor"sv);
+    else if (type == Type::eWeapon)
+        result.format("Dagger +{}"sv, enchantmentLevel);
+    else if (type == Type::eArmor)
+        result.format("Leather armor +{}"sv, enchantmentLevel);
+    else if (type == Type::ePotion)
+        result.fill("Potion"sv);
 
     return result;
 }
@@ -2804,8 +2838,16 @@ void Map::generateLevel()
         std::int64_t spawnY = room.originY + mapRandom.generate() % room.height;
 
         std::int64_t itemTypeVal = mapRandom.generate() % 10;
-        Item::Type itemType = itemTypeVal == 0 ? Item::Type::eFood : Item::Type::eGold;
+        Item::Type itemType = itemTypeVal == 0 ? Item::Type::eFood
+            : itemTypeVal == 1                 ? Item::Type::eWeapon
+            : itemTypeVal == 2                 ? Item::Type::eArmor
+            : itemTypeVal == 3                 ? Item::Type::ePotion
+                                               : Item::Type::eGold;
         items.emplaceBack(itemType, spawnX + 0.5, spawnY + 0.5);
+        if (itemType == Item::Type::eWeapon || itemType == Item::Type::eArmor)
+        {
+            items.getBack().setEnchantmentLevel(mapRandom.generate() % 10);
+        }
     }
 
     auto const& room = getRandomRoom();
@@ -3336,8 +3378,19 @@ Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0
     setMaxVelocity(velocity);
     setHealth(100);
 
+    inventory.emplaceBack(Item(Item::Type::eWeapon, 0.0, 0.0));
+    inventory.getBack().setVisible(false);
+    inventory.emplaceBack(Item(Item::Type::eArmor, 0.0, 0.0));
+    inventory.getBack().setVisible(false);
+    inventory.emplaceBack(Item(Item::Type::eFood, 0.0, 0.0));
+    inventory.getBack().setVisible(false);
+
+    weaponIndex = 0;
+    armorIndex = 1;
+    item1Index = 2;
+
     weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 0.25, true);
-    gui.setInventory(inventory, gold);
+    gui.setInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
 }
 void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
 {
@@ -3368,7 +3421,7 @@ void Player::update()
                 inventory.emplaceBack(std::move(*itemOpt));
             }
 
-            gui.setInventory(inventory, gold);
+            gui.setInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
         }
 
         if (hasAmulet && lastTileX == 40 && lastTileY == 33)
@@ -3481,6 +3534,12 @@ void EnemyHandler::Enemy::update(double playerX, double playerY, double playerVe
                 setMovementDirection(0.0, 0.0);
             }
         }
+
+        if (totalDistance < 1.5)
+        {
+            if (!weapon.getIsAttacking())
+                weapon.startAttack(x, y, playerX, playerY);
+        }
     }
     else if (state == State::eSleeping)
     {
@@ -3579,6 +3638,12 @@ void EnemyHandler::Enemy::setPathTo(std::int64_t x, std::int64_t y)
         path.emplaceBack(currentX, currentY);
 
     updateDrawDebug();
+}
+void EnemyHandler::clear()
+{
+    enemies.clear();
+    currentTime = 0.0;
+    lastEnemySpawnTime = 0.0;
 }
 void EnemyHandler::update()
 {
@@ -3761,7 +3826,7 @@ void Game::quitToMainMenu()
     state = State::eNotStarted;
     map = Map();
     player = Player();
-    enemyHandler = EnemyHandler();
+    enemyHandler.clear();
 }
 void Game::refreshWindowState() const
 {
@@ -3835,6 +3900,15 @@ void PlayArea::init()
 {
     using enum ButtonType;
 
+    labels[LabelType::eWeaponIcon].init(""sv, 4, 29);
+    labels[LabelType::eWeaponSlot].init("Weapon[1]"sv, 1, 30);
+    labels[LabelType::eArmorIcon].init(""sv, 15, 29);
+    labels[LabelType::eArmorSlot].init("Armor[2]"sv, 12, 30);
+    labels[LabelType::eItem1Icon].init(""sv, 25, 29);
+    labels[LabelType::eItem1Slot].init("Item[3]"sv, 22, 30);
+    labels[LabelType::eItem2Icon].init(""sv, 34, 29);
+    labels[LabelType::eItem2Slot].init("Item[4]"sv, 31, 30);
+
     buttons[ePause].init(""sv, 26, 1);
     buttons[eHealth].init("       Health       "sv, 0, 1);
     buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
@@ -3845,7 +3919,7 @@ void PlayArea::init()
     buttons[eInventory].init("Inventory"sv, 0, 6);
 
     for (std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst; i++)
-        buttons[(std::size_t)eInventorySlotFirst + i].init(""sv, 0, 7 + i);
+        buttons[(std::size_t)eInventorySlotFirst + i].init(""sv, 1, 7 + i);
 
     buttons[eDepth].init("Depth:"sv, 0, 35);
 
@@ -3855,19 +3929,44 @@ void PlayArea::init()
 
     refreshLabels();
 }
-void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold)
+void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex,
+                               std::int64_t item1Index, std::int64_t item2Index)
 {
     using enum ButtonType;
 
-    Array<char, 32> goldString{"Gold:"};
-    std::to_chars(goldString.getData() + 5, goldString.getData() + 31, gold);
-    buttons[eGold].setText(goldString.getData());
+    FixedString<32> goldString;
+    goldString.format("Gold:{}", gold);
+    buttons[eGold].setText(goldString);
 
+    FixedString<32> itemString;
     for (std::size_t i = 0; i < inventory.getSize(); i++)
-        buttons[(std::size_t)eInventorySlotFirst + i].setText(inventory[i].getName());
+    {
+        itemString.format("{}|{}", (char)inventory[i].getGlyph(), inventory[i].getName());
+        buttons[(std::size_t)eInventorySlotFirst + i].setText(itemString);
+    }
 
     for (std::size_t i = inventory.getSize(); i < 20; i++)
         buttons[(std::size_t)eInventorySlotFirst + i].setText(""sv);
+
+    FixedString iconString{" "};
+    if (weaponIndex != -1)
+        iconString[0] = inventory[weaponIndex].getGlyph();
+    labels[LabelType::eWeaponIcon].setText(iconString);
+    iconString[0] = ' ';
+
+    if (armorIndex != -1)
+        iconString[0] = inventory[armorIndex].getGlyph();
+    labels[LabelType::eArmorIcon].setText(iconString);
+    iconString[0] = ' ';
+
+    if (item1Index != -1)
+        iconString[0] = inventory[item1Index].getGlyph();
+    labels[LabelType::eItem1Icon].setText(iconString);
+    iconString[0] = ' ';
+
+    if (item2Index != -1)
+        iconString[0] = inventory[item2Index].getGlyph();
+    labels[LabelType::eItem2Icon].setText(iconString);
 }
 void PlayArea::setPaused(bool paused)
 {
@@ -4335,4 +4434,8 @@ void GUI::setFPS(std::int64_t fps, std::int64_t minFPS)
     fpsLabel.setText(buf.getData());
 }
 void GUI::setPlayerHealth(double percentage) { playArea.setPlayerHealth(percentage); }
-void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold) { playArea.updateInventory(inventory, gold); }
+void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
+                       std::int64_t item2Index)
+{
+    playArea.updateInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
+}
