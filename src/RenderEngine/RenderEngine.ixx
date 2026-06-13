@@ -2887,6 +2887,11 @@ public:
         lib.cleanup();
     }
 
+    [[nodiscard]] std::string_view getDeviceName()
+    {
+        return physicalDeviceInfo.name;
+    }
+
     // Submit drawing commands for current frame
     [[nodiscard]] bool drawFrame()
     {
