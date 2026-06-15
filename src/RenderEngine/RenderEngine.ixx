@@ -1596,6 +1596,154 @@ export class RenderEngine
     // Struct for storing physical device properties
     struct PhysicalDeviceInfo
     {
+        [[nodiscard]] bool init(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, std::span<char const*> requiredExtensions)
+        {
+            device = physicalDevice;
+            score = -1;
+
+            // Get physical device properties
+            VkPhysicalDeviceProperties deviceProperties;
+            lib.getPhysicalDeviceProperties(device, &deviceProperties);
+            name = deviceProperties.deviceName;
+            maxSamplerAnisotropy = deviceProperties.limits.maxSamplerAnisotropy;
+            logger.logInfo("Checking {} suitability:", name);
+
+            // Get queue family properties
+            Array<VkQueueFamilyProperties, 16> queueFamilyProperties;
+            std::uint32_t queueFamilyPropertiesCount{16};
+            lib.getPhysicalDeviceQueueFamilyProperties(device, &queueFamilyPropertiesCount, queueFamilyProperties.getData());
+            logger.logInfo("\t{} queue families available", queueFamilyPropertiesCount);
+
+            // Check queue graphics, surface and presentation support
+            bool hasGraphicsQueueFamily{};
+            bool hasPresentationQueueFamily{};
+            for (std::uint32_t j{}; j < queueFamilyPropertiesCount; j++)
+            {
+                if (queueFamilyProperties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+                {
+                    hasGraphicsQueueFamily = true;
+                    graphicsIndex = j;
+                    logger.logInfo("\tQueue family with index {} supports graphics", j);
+                }
+
+                VkBool32 surfaceSupport;
+                if (!lib.getPhysicalDeviceSurfaceSupport(device, j, surface, &surfaceSupport))
+                    return false;
+
+                if (surfaceSupport)
+                {
+                    hasPresentationQueueFamily = true;
+                    presentationIndex = j;
+                    logger.logInfo("\tQueue family with index {} supports presentation", j);
+                }
+
+                if (hasGraphicsQueueFamily && hasPresentationQueueFamily)
+                    break;
+            }
+            if (!hasGraphicsQueueFamily)
+            {
+                logger.logInfo("\tNo queue family with graphics support found");
+                return true;
+            }
+            if (!hasPresentationQueueFamily)
+            {
+                logger.logInfo("\tNo queue family with presentation support found");
+                return true;
+            }
+
+            Array<VkExtensionProperties, 1024> deviceExtensionProperties;
+            std::uint32_t deviceExtensionPropertiesCount{1024};
+            if (!lib.enumerateDeviceExtensionProperties(device, nullptr, &deviceExtensionPropertiesCount, deviceExtensionProperties.getData()))
+                return false;
+            logger.logInfo("\t{} physical device extensions available:", deviceExtensionPropertiesCount);
+            for (std::uint32_t j{}; j < deviceExtensionPropertiesCount; j++)
+                logger.logInfo("\t\t{}", deviceExtensionProperties[j].extensionName);
+
+            for (auto extension : requiredExtensions)
+            {
+                bool isSupported{};
+                for (auto const& property : deviceExtensionProperties)
+                {
+                    if (std::strcmp(property.extensionName, extension) != 0)
+                        continue;
+
+                    isSupported = true;
+                    break;
+                }
+
+                if (!isSupported)
+                {
+                    logger.logInfo("\tRequired physical device extension {} not supported", extension);
+                    return true;
+                }
+            }
+
+            surfaceFormatCount = surfaceFormats.getSize();
+            if (!lib.getPhysicalDeviceSurfaceFormats(device, surface, &surfaceFormatCount, surfaceFormats.getData()))
+                return false;
+            logger.logInfo("\t{} physical device surface formats available:", surfaceFormatCount);
+            for (std::uint32_t j{}; j < surfaceFormatCount; j++)
+                logger.logInfo("\t\t{} {}", enumToStr(surfaceFormats[j].format), enumToStr(surfaceFormats[j].colorSpace));
+
+            presentModeCount = presentModes.getSize();
+            if (!lib.getPhysicalDeviceSurfacePresentModes(device, surface, &presentModeCount, presentModes.getData()))
+                return false;
+            logger.logInfo("\t{} physical device present modes available:", presentModeCount);
+            for (std::uint32_t j{}; j < presentModeCount; j++)
+                logger.logInfo("\t\t{}", enumToStr(presentModes[j]));
+
+            if (!lib.getPhysicalDeviceSurfaceCapabilities(device, surface, &surfaceCapabilities))
+                return false;
+            logger.logInfo("\tPhysical device minimum surface image count is {}", surfaceCapabilities.minImageCount);
+            if (surfaceCapabilities.maxImageCount == 0)
+                logger.logInfo("\tPhysical device surface image count has no maximum");
+            else
+                logger.logInfo("\tPhysical device maximum surface image count is {}", surfaceCapabilities.maxImageCount);
+
+            lib.getPhysicalDeviceMemoryProperties(device, &memoryProperties);
+
+            if (surfaceFormatCount == 0 || presentModeCount == 0)
+            {
+                logger.logInfo("\tPhysical device doesn't support swapchain");
+                return true;
+            }
+
+            VkPhysicalDeviceVulkan12Features features12;
+            features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+            features12.pNext = nullptr;
+            VkPhysicalDeviceVulkan11Features features11;
+            features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+            features11.pNext = &features12;
+            VkPhysicalDeviceFeatures2 features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features11, .features = {}};
+            lib.getPhysicalDeviceFeatures2(device, &features);
+            if (!features.features.shaderInt64)
+            {
+                logger.logInfo("\tPhysical device doesn't support 64 bit integers");
+                return true;
+            }
+            if (!features.features.samplerAnisotropy)
+            {
+                logger.logInfo("\tPhysical device doesn't support anisotropic filtering");
+                return true;
+            }
+            if (!features12.scalarBlockLayout)
+            {
+                logger.logInfo("\tPhysical device doesn't support scalar block layout");
+                return true;
+            }
+            if (!features12.bufferDeviceAddress)
+            {
+                logger.logInfo("\tPhysical device doesn't support buffer device address");
+                return true;
+            }
+
+            score = 0;
+            if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+                score++;
+            logger.logInfo("\tPhysical device is a {}", enumToStr(deviceProperties.deviceType));
+            return true;
+        }
+
         [[nodiscard]] std::int32_t getMemoryTypeIndex(VkMemoryRequirements const& requirements, VkMemoryPropertyFlags properties) const
         {
             std::int32_t selectedMemoryType{-1};
@@ -1613,6 +1761,8 @@ export class RenderEngine
             return selectedMemoryType;
         }
 
+        VkPhysicalDevice device{};
+        std::int64_t score{};
         FixedString<256> name;
         std::uint32_t surfaceFormatCount{};
         Array<VkSurfaceFormatKHR, 16> surfaceFormats;
@@ -1831,8 +1981,11 @@ export class RenderEngine
             shaderFile.seekg(0);
             shaderFile.read(reinterpret_cast<char*>(fileBuffer.getData()), fileSize);
 
-            VkShaderModuleCreateInfo createInfo{
-                .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO, .pNext = nullptr, .flags = {}, .codeSize = (std::size_t)fileSize, .pCode = fileBuffer.getData()};
+            VkShaderModuleCreateInfo createInfo{.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+                                                .pNext = nullptr,
+                                                .flags = {},
+                                                .codeSize = (std::size_t)fileSize,
+                                                .pCode = fileBuffer.getData()};
             if (!lib.createShaderModule(device, &createInfo, nullptr, &module))
                 return false;
 
@@ -2174,8 +2327,8 @@ public:
             return false;
 
         // Get available physical devices
-        Array<VkPhysicalDevice, 64> availablePhysicalDevices;
-        std::uint32_t availablePhysicalDeviceCount{64};
+        Array<VkPhysicalDevice, 16> availablePhysicalDevices;
+        std::uint32_t availablePhysicalDeviceCount{16};
         if (!lib.enumeratePhysicalDevices(instance, &availablePhysicalDeviceCount, availablePhysicalDevices.getData()))
             return false;
         if (availablePhysicalDeviceCount == 0)
@@ -2202,172 +2355,31 @@ public:
         for (auto const& extension : requiredPhysicalDeviceExtensions)
             logger.logInfo("\t{}", extension);
 
-        // Choose the best physical device
-        std::uint32_t maxDeviceScore{};
-        for (std::uint32_t i = 0; i < availablePhysicalDeviceCount; i++)
+        for (std::uint32_t i{}; i < availablePhysicalDeviceCount; i++)
         {
-            auto currentPhysicalDevice = availablePhysicalDevices[i];
-            std::uint32_t currentScore{};
-            PhysicalDeviceInfo currentInfo;
-            auto& [name, formatCount, formats, presentModeCount, presentModes, surfaceCapabilities, graphicsIndex, presentationIndex, maxSamplerAnisotropy,
-                   memoryProperties] = currentInfo;
-
-            // Get physical device properties
-            VkPhysicalDeviceProperties deviceProperties;
-            lib.getPhysicalDeviceProperties(currentPhysicalDevice, &deviceProperties);
-            name = deviceProperties.deviceName;
-            maxSamplerAnisotropy = deviceProperties.limits.maxSamplerAnisotropy;
-            logger.logInfo("Checking {} suitability:", name);
-
-            // Get queue family properties
-            Array<VkQueueFamilyProperties, 16> queueFamilyProperties;
-            std::uint32_t queueFamilyPropertiesCount{16};
-            lib.getPhysicalDeviceQueueFamilyProperties(currentPhysicalDevice, &queueFamilyPropertiesCount, queueFamilyProperties.getData());
-            logger.logInfo("\t{} queue families available", queueFamilyPropertiesCount);
-
-            // Check queue graphics, surface and presentation support
-            bool hasGraphicsQueueFamily{};
-            bool hasPresentationQueueFamily{};
-            for (std::uint32_t j{}; j < queueFamilyPropertiesCount; j++)
-            {
-                if (queueFamilyProperties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)
-                {
-                    hasGraphicsQueueFamily = true;
-                    graphicsIndex = j;
-                    logger.logInfo("\tQueue family with index {} supports graphics", j);
-                }
-
-                VkBool32 surfaceSupport;
-                if (!lib.getPhysicalDeviceSurfaceSupport(currentPhysicalDevice, j, surface, &surfaceSupport))
-                    return false;
-
-                if (surfaceSupport)
-                {
-                    hasPresentationQueueFamily = true;
-                    presentationIndex = j;
-                    logger.logInfo("\tQueue family with index {} supports presentation", j);
-                }
-
-                if (hasGraphicsQueueFamily && hasPresentationQueueFamily)
-                    break;
-            }
-            if (!hasGraphicsQueueFamily)
-            {
-                logger.logInfo("\tNo queue family with graphics support found");
-                continue;
-            }
-            if (!hasPresentationQueueFamily)
-            {
-                logger.logInfo("\tNo queue family with presentation support found");
-                continue;
-            }
-
-            Array<VkExtensionProperties, 1024> deviceExtensionProperties;
-            std::uint32_t deviceExtensionPropertiesCount{1024};
-            if (!lib.enumerateDeviceExtensionProperties(currentPhysicalDevice, nullptr, &deviceExtensionPropertiesCount, deviceExtensionProperties.getData()))
+            PhysicalDeviceInfo newInfo;
+            if (!newInfo.init(availablePhysicalDevices[i], surface, requiredPhysicalDeviceExtensions))
                 return false;
-            logger.logInfo("\t{} physical device extensions available:", deviceExtensionPropertiesCount);
-            for (std::uint32_t j{}; j < deviceExtensionPropertiesCount; j++)
-                logger.logInfo("\t\t{}", deviceExtensionProperties[j].extensionName);
 
-            bool hasUnsupportedExtension{};
-            for (auto extension : requiredPhysicalDeviceExtensions)
-            {
-                bool isSupported{};
-                for (auto const& property : deviceExtensionProperties)
-                {
-                    if (std::strcmp(property.extensionName, extension) != 0)
-                        continue;
-
-                    isSupported = true;
-                    break;
-                }
-
-                if (!isSupported)
-                {
-                    logger.logInfo("\tRequired physical device extension {} not supported", extension);
-                    hasUnsupportedExtension = true;
-                    break;
-                }
-            }
-            if (hasUnsupportedExtension)
+            if (newInfo.score < 0)
                 continue;
 
-            formatCount = formats.getSize();
-            if (!lib.getPhysicalDeviceSurfaceFormats(currentPhysicalDevice, surface, &formatCount, formats.getData()))
-                return false;
-            logger.logInfo("\t{} physical device surface formats available:", formatCount);
-            for (std::uint32_t j{}; j < formatCount; j++)
-                logger.logInfo("\t\t{} {}", enumToStr(formats[j].format), enumToStr(formats[j].colorSpace));
-
-            presentModeCount = presentModes.getSize();
-            if (!lib.getPhysicalDeviceSurfacePresentModes(currentPhysicalDevice, surface, &presentModeCount, presentModes.getData()))
-                return false;
-            logger.logInfo("\t{} physical device present modes available:", presentModeCount);
-            for (std::uint32_t j{}; j < presentModeCount; j++)
-                logger.logInfo("\t\t{}", enumToStr(presentModes[j]));
-
-            if (!lib.getPhysicalDeviceSurfaceCapabilities(currentPhysicalDevice, surface, &surfaceCapabilities))
-                return false;
-            logger.logInfo("\tPhysical device minimum surface image count is {}", surfaceCapabilities.minImageCount);
-            if (surfaceCapabilities.maxImageCount == 0)
-                logger.logInfo("\tPhysical device surface image count has no maximum");
-            else
-                logger.logInfo("\tPhysical device maximum surface image count is {}", surfaceCapabilities.maxImageCount);
-
-            lib.getPhysicalDeviceMemoryProperties(currentPhysicalDevice, &memoryProperties);
-
-            if (formatCount == 0 || presentModeCount == 0)
-            {
-                logger.logInfo("\tPhysical device doesn't support swapchain");
-                continue;
-            }
-
-            VkPhysicalDeviceVulkan12Features features12;
-            features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-            features12.pNext = nullptr;
-            VkPhysicalDeviceVulkan11Features features11;
-            features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-            features11.pNext = &features12;
-            VkPhysicalDeviceFeatures2 features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features11, .features = {}};
-            lib.getPhysicalDeviceFeatures2(currentPhysicalDevice, &features);
-            if (!features.features.shaderInt64)
-            {
-                logger.logInfo("\tPhysical device doesn't support 64 bit integers");
-                continue;
-            }
-            if (!features.features.samplerAnisotropy)
-            {
-                logger.logInfo("\tPhysical device doesn't support anisotropic filtering");
-                continue;
-            }
-            if (!features12.scalarBlockLayout)
-            {
-                logger.logInfo("\tPhysical device doesn't support scalar block layout");
-                continue;
-            }
-            if (!features12.bufferDeviceAddress)
-            {
-                logger.logInfo("\tPhysical device doesn't support buffer device address");
-                continue;
-            }
-
-            if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
-                currentScore++;
-            logger.logInfo("\tPhysical device is a {}", enumToStr(deviceProperties.deviceType));
-
-            if (currentScore > maxDeviceScore)
-            {
-                maxDeviceScore = currentScore;
-                physicalDevice = currentPhysicalDevice;
-                physicalDeviceInfo = currentInfo;
-            }
+            physicalDevices.emplaceBack(newInfo);
         }
-        if (!physicalDevice)
+        if (physicalDevices.isEmpty())
         {
-            logger.logError("No suitable physical devices found. Try updating drivers");
+            logger.logError("No compatible physical device found. Try updating drivers");
             return false;
         }
+
+        // Choose the physical device with highest score
+        currentPhysicalDeviceIndex = 0;
+        for (std::uint32_t i = 1; i < physicalDevices.getSize(); i++)
+        {
+            if (physicalDevices[i].score > physicalDevices[currentPhysicalDeviceIndex].score)
+                currentPhysicalDeviceIndex = i;
+        }
+        auto const& physicalDeviceInfo = physicalDevices[currentPhysicalDeviceIndex];
         logger.logInfo("Picked {} as a suitable physical device", physicalDeviceInfo.name);
 
         // Define device queues
@@ -2410,7 +2422,7 @@ public:
                                             .enabledExtensionCount = (std::uint32_t)requiredPhysicalDeviceExtensions.getSize(),
                                             .ppEnabledExtensionNames = requiredPhysicalDeviceExtensions.getData(),
                                             .pEnabledFeatures = nullptr};
-        if (!lib.createDevice(physicalDevice, &deviceCreateInfo, nullptr, &device))
+        if (!lib.createDevice(physicalDeviceInfo.device, &deviceCreateInfo, nullptr, &device))
             return false;
 
         if (!lib.init(device))
@@ -2461,11 +2473,11 @@ public:
 
             VkMemoryRequirements memoryRequirements{};
             lib.getImageMemoryRequirements(device, textureImage, &memoryRequirements);
-            VkMemoryAllocateInfo imageMemoryAllocateInfo{.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                                                         .pNext = nullptr,
-                                                         .allocationSize = memoryRequirements.size,
-                                                         .memoryTypeIndex =
-                                                             (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
+            VkMemoryAllocateInfo imageMemoryAllocateInfo{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                .pNext = nullptr,
+                .allocationSize = memoryRequirements.size,
+                .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
             if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, nullptr, &textureImageMemory))
                 return false;
 
@@ -2886,10 +2898,55 @@ public:
 
         lib.cleanup();
     }
-
-    [[nodiscard]] std::string_view getDeviceName()
+    void cleanupDevice()
     {
-        return physicalDeviceInfo.name;
+        auto _ = lib.deviceWaitIdle(device);
+
+        synchronizationResources.cleanup(lib, device);
+        lib.freeCommandBuffers(device, commandPool, commandBuffers.getSize(), commandBuffers.getData());
+
+        for (auto buffer : quadDataBuffers)
+        {
+            lib.freeMemory(device, buffer.bufferMemory, nullptr);
+            lib.destroyBuffer(device, buffer.buffer, nullptr);
+        }
+
+        lib.destroyPipeline(device, graphicsPipeline, nullptr);
+        lib.destroyPipelineLayout(device, pipelineLayout, nullptr);
+
+        lib.destroyDescriptorPool(device, descriptorPool, nullptr);
+        lib.destroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+
+        lib.destroySampler(device, textureSampler, nullptr);
+        lib.destroyImageView(device, textureImageView, nullptr);
+        lib.freeMemory(device, textureImageMemory, nullptr);
+        lib.destroyImage(device, textureImage, nullptr);
+
+        lib.destroyCommandPool(device, commandPool, nullptr);
+
+        if (swapchainResources.swapchain)
+        {
+            swapchainResources.cleanup(lib, device);
+        }
+
+        lib.destroyDevice(device, nullptr);
+    }
+
+    [[nodiscard]] FixedVector<std::string_view, 16> getDeviceNames()
+    {
+        FixedVector<std::string_view, 16> result;
+        for (auto const& device : physicalDevices)
+            result.emplaceBack(device.name);
+        return result;
+    }
+    [[nodiscard]] std::int64_t getDeviceIndex() { return currentPhysicalDeviceIndex; }
+    void setDeviceIndex(std::int64_t index)
+    {
+        currentPhysicalDeviceIndex = index;
+        cleanupDevice();
+        FixedVector<char const*, 64> requiredPhysicalDeviceExtensions;
+        requiredPhysicalDeviceExtensions.emplaceBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        auto _ = createDevice(requiredPhysicalDeviceExtensions);
     }
 
     // Submit drawing commands for current frame
@@ -3004,16 +3061,20 @@ private:
     // Create new swapchain and mark old one for deletion
     [[nodiscard]] bool recreateSwapchain()
     {
-        if (!lib.getPhysicalDeviceSurfaceCapabilities(physicalDevice, surface, &physicalDeviceInfo.surfaceCapabilities))
+        auto& physicalDeviceInfo = physicalDevices[currentPhysicalDeviceIndex];
+
+        if (!lib.getPhysicalDeviceSurfaceCapabilities(physicalDeviceInfo.device, surface, &physicalDeviceInfo.surfaceCapabilities))
             return false;
 
         if (physicalDeviceInfo.surfaceCapabilities.currentExtent.width == 0 || physicalDeviceInfo.surfaceCapabilities.currentExtent.height == 0)
             return true;
 
-        if (!lib.getPhysicalDeviceSurfaceFormats(physicalDevice, surface, &physicalDeviceInfo.surfaceFormatCount, physicalDeviceInfo.surfaceFormats.getData()))
+        if (!lib.getPhysicalDeviceSurfaceFormats(physicalDeviceInfo.device, surface, &physicalDeviceInfo.surfaceFormatCount,
+                                                 physicalDeviceInfo.surfaceFormats.getData()))
             return false;
 
-        if (!lib.getPhysicalDeviceSurfacePresentModes(physicalDevice, surface, &physicalDeviceInfo.presentModeCount, physicalDeviceInfo.presentModes.getData()))
+        if (!lib.getPhysicalDeviceSurfacePresentModes(physicalDeviceInfo.device, surface, &physicalDeviceInfo.presentModeCount,
+                                                      physicalDeviceInfo.presentModes.getData()))
             return false;
 
         auto oldSwapchainResources = swapchainResources;
@@ -3039,9 +3100,483 @@ private:
         return synchronizationResources.init(lib, device, swapchainResources.imageCount);
     }
 
+    [[nodiscard]] bool createDevice(std::span<char const*> requiredPhysicalDeviceExtensions)
+    {
+        auto const& physicalDeviceInfo = physicalDevices[currentPhysicalDeviceIndex];
+
+        // Define device queues
+        float queuePriority{1.0f};
+        FixedVector<VkDeviceQueueCreateInfo, 16> queueCreateInfos;
+        queueCreateInfos.emplaceBack(VkDeviceQueueCreateInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                             .pNext = nullptr,
+                                                             .flags = {},
+                                                             .queueFamilyIndex = physicalDeviceInfo.graphicsIndex,
+                                                             .queueCount = 1,
+                                                             .pQueuePriorities = &queuePriority});
+        if (physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex)
+        {
+            queueCreateInfos.emplaceBack(VkDeviceQueueCreateInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+                                                                 .pNext = nullptr,
+                                                                 .flags = {},
+                                                                 .queueFamilyIndex = physicalDeviceInfo.presentationIndex,
+                                                                 .queueCount = 1,
+                                                                 .pQueuePriorities = &queuePriority});
+        }
+
+        // Create logical device
+        VkPhysicalDeviceVulkan12Features features12{};
+        features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        features12.bufferDeviceAddress = VK_TRUE;
+        features12.scalarBlockLayout = VK_TRUE;
+        VkPhysicalDeviceVulkan11Features features11{};
+        features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        features11.pNext = &features12;
+        VkPhysicalDeviceFeatures2 requiredPhysicalDeviceFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features11, .features = {}};
+        requiredPhysicalDeviceFeatures.features.shaderInt64 = VK_TRUE;
+        requiredPhysicalDeviceFeatures.features.samplerAnisotropy = VK_TRUE;
+        VkDeviceCreateInfo deviceCreateInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+                                            .pNext = &requiredPhysicalDeviceFeatures,
+                                            .flags = {},
+                                            .queueCreateInfoCount = (std::uint32_t)queueCreateInfos.getSize(),
+                                            .pQueueCreateInfos = queueCreateInfos.getData(),
+                                            .enabledLayerCount = 0,
+                                            .ppEnabledLayerNames = nullptr,
+                                            .enabledExtensionCount = (std::uint32_t)requiredPhysicalDeviceExtensions.size(),
+                                            .ppEnabledExtensionNames = requiredPhysicalDeviceExtensions.data(),
+                                            .pEnabledFeatures = nullptr};
+        if (!lib.createDevice(physicalDeviceInfo.device, &deviceCreateInfo, nullptr, &device))
+            return false;
+
+        if (!lib.init(device))
+            return false;
+
+        // Get queues
+        lib.getDeviceQueue(device, physicalDeviceInfo.graphicsIndex, 0, &graphicsQueue);
+        lib.getDeviceQueue(device, physicalDeviceInfo.presentationIndex, 0, &presentationQueue);
+
+        if (!swapchainResources.init(lib, physicalDeviceInfo, device, surface, {}))
+            return false;
+
+        // Create command pool
+        VkCommandPoolCreateInfo poolCreateInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                                               .pNext = nullptr,
+                                               .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                                               .queueFamilyIndex = physicalDeviceInfo.graphicsIndex};
+        if (!lib.createCommandPool(device, &poolCreateInfo, nullptr, &commandPool))
+            return false;
+
+        // Create texture resources
+        {
+            auto tileImage = ImageLoader("textures/tiles.png"sv);
+            VkDeviceSize imageSize{(std::size_t)tileImage.width * tileImage.height * tileImage.channels};
+
+            SingleUseStagingBuffer stagingBufferResources;
+            if (!stagingBufferResources.init(device, physicalDeviceInfo, imageSize))
+                return false;
+            std::memcpy(stagingBufferResources.getData(), tileImage.data, imageSize);
+
+            VkImageCreateInfo imageCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                                              .pNext = nullptr,
+                                              .flags = {},
+                                              .imageType = VK_IMAGE_TYPE_2D,
+                                              .format = VK_FORMAT_R8_UNORM,
+                                              .extent = VkExtent3D{(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1u},
+                                              .mipLevels = 1,
+                                              .arrayLayers = 1,
+                                              .samples = VK_SAMPLE_COUNT_1_BIT,
+                                              .tiling = VK_IMAGE_TILING_OPTIMAL,
+                                              .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                              .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                                              .queueFamilyIndexCount = 1,
+                                              .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex,
+                                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+            if (!lib.createImage(device, &imageCreateInfo, nullptr, &textureImage))
+                return false;
+
+            VkMemoryRequirements memoryRequirements{};
+            lib.getImageMemoryRequirements(device, textureImage, &memoryRequirements);
+            VkMemoryAllocateInfo imageMemoryAllocateInfo{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                .pNext = nullptr,
+                .allocationSize = memoryRequirements.size,
+                .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
+            if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, nullptr, &textureImageMemory))
+                return false;
+
+            if (!lib.bindImageMemory(device, textureImage, textureImageMemory, 0))
+                return false;
+
+            {
+                SingleUseCommandBuffer transitionCommandBuffer;
+                if (!transitionCommandBuffer.init(lib, device, commandPool))
+                    return false;
+
+                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                                   .pNext = nullptr,
+                                                   .srcAccessMask = VK_ACCESS_NONE,
+                                                   .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                   .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                                                   .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .image = textureImage,
+                                                   .subresourceRange = range};
+                lib.commandPipelineBarrier(transitionCommandBuffer.getCommandBuffer(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, 0,
+                                           nullptr, 0, nullptr, 1, &memoryBarrier);
+
+                if (!transitionCommandBuffer.submit(lib, graphicsQueue))
+                    return false;
+            }
+
+            {
+                SingleUseCommandBuffer copyCommandBuffer;
+                if (!copyCommandBuffer.init(lib, device, commandPool))
+                    return false;
+
+                VkImageSubresourceLayers imageSubresourceLayers(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
+                VkBufferImageCopy imageCopy{.bufferOffset = 0,
+                                            .bufferRowLength = 0,
+                                            .bufferImageHeight = 0,
+                                            .imageSubresource = imageSubresourceLayers,
+                                            .imageOffset = {},
+                                            .imageExtent = {(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1}};
+                lib.commandCopyBufferToImage(copyCommandBuffer.getCommandBuffer(), stagingBufferResources.getBuffer(), textureImage,
+                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+
+                if (!copyCommandBuffer.submit(lib, graphicsQueue))
+                    return false;
+            }
+
+            {
+                SingleUseCommandBuffer transitionCommandBuffer;
+                if (!transitionCommandBuffer.init(lib, device, commandPool))
+                    return false;
+
+                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                                   .pNext = nullptr,
+                                                   .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                   .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                                                   .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                   .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .image = textureImage,
+                                                   .subresourceRange = range};
+                lib.commandPipelineBarrier(transitionCommandBuffer.getCommandBuffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+                                           {}, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
+
+                if (!transitionCommandBuffer.submit(lib, graphicsQueue))
+                    return false;
+            }
+
+            VkImageSubresourceRange subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+            VkImageViewCreateInfo viewCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                                                 .pNext = nullptr,
+                                                 .flags = {},
+                                                 .image = textureImage,
+                                                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                                                 .format = VK_FORMAT_R8_UNORM,
+                                                 .components = {},
+                                                 .subresourceRange = subresourceRange};
+            if (!lib.createImageView(device, &viewCreateInfo, nullptr, &textureImageView))
+                return false;
+
+            VkSamplerCreateInfo samplerCreateInfo{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                                  .pNext = nullptr,
+                                                  .flags = {},
+                                                  .magFilter = VK_FILTER_LINEAR,
+                                                  .minFilter = VK_FILTER_LINEAR,
+                                                  .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                                  .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  .mipLodBias = 0.0f,
+                                                  .anisotropyEnable = VK_TRUE,
+                                                  .maxAnisotropy = physicalDeviceInfo.maxSamplerAnisotropy,
+                                                  .compareEnable = VK_FALSE,
+                                                  .compareOp = VK_COMPARE_OP_ALWAYS,
+                                                  .minLod = 0.0f,
+                                                  .maxLod = 0.0f,
+                                                  .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+                                                  .unnormalizedCoordinates = VK_FALSE};
+            if (!lib.createSampler(device, &samplerCreateInfo, nullptr, &textureSampler))
+                return false;
+
+            stagingBufferResources.cleanup(device);
+        }
+
+        VkDescriptorSetLayoutBinding layoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, .pNext = nullptr, .flags = {}, .bindingCount = 1, .pBindings = &layoutBinding};
+        if (!lib.createDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout))
+            return false;
+
+        VkDescriptorPoolSize descriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxFramesInFlight};
+        VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+                                                            .pNext = nullptr,
+                                                            .flags = {},
+                                                            .maxSets = maxFramesInFlight,
+                                                            .poolSizeCount = 1,
+                                                            .pPoolSizes = &descriptorPoolSize};
+        if (!lib.createDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool))
+            return false;
+
+        Array<VkDescriptorSetLayout, maxFramesInFlight> setLayouts{descriptorSetLayout, descriptorSetLayout};
+        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+                                                              .pNext = nullptr,
+                                                              .descriptorPool = descriptorPool,
+                                                              .descriptorSetCount = maxFramesInFlight,
+                                                              .pSetLayouts = setLayouts.getData()};
+        if (!lib.allocateDescriptorSets(device, &descriptorSetAllocateInfo, descriptorSets.getData()))
+            return false;
+
+        for (size_t i = 0; i < maxFramesInFlight; i++)
+        {
+            VkDescriptorImageInfo imageInfo(textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            VkWriteDescriptorSet writeDescriptorSet{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                                    .pNext = nullptr,
+                                                    .dstSet = descriptorSets[i],
+                                                    .dstBinding = 0,
+                                                    .dstArrayElement = 0,
+                                                    .descriptorCount = 1,
+                                                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                    .pImageInfo = &imageInfo,
+                                                    .pBufferInfo = nullptr,
+                                                    .pTexelBufferView = nullptr};
+            lib.updateDescriptorSets(device, 1, &writeDescriptorSet, 0, nullptr);
+        }
+
+        {
+            // Create shader modules
+            ShaderModule vertexShaderModule;
+            if (!vertexShaderModule.init(device, "shaders/quadVert.spv"sv))
+                return false;
+            ShaderModule fragmentShaderModule;
+            if (!fragmentShaderModule.init(device, "shaders/quadFrag.spv"sv))
+                return false;
+
+            // Define shader stages
+            Array stageCreateInfos{VkPipelineShaderStageCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                                                   .pNext = nullptr,
+                                                                   .flags = {},
+                                                                   .stage = VK_SHADER_STAGE_VERTEX_BIT,
+                                                                   .module = vertexShaderModule.getModule(),
+                                                                   .pName = "main",
+                                                                   .pSpecializationInfo = nullptr},
+                                   VkPipelineShaderStageCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                                                                   .pNext = nullptr,
+                                                                   .flags = {},
+                                                                   .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+                                                                   .module = fragmentShaderModule.getModule(),
+                                                                   .pName = "main",
+                                                                   .pSpecializationInfo = nullptr}};
+
+            // Define dynamic states
+            Array dynamicStates{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+            VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+                                                                    .pNext = nullptr,
+                                                                    .flags = {},
+                                                                    .dynamicStateCount = dynamicStates.getSize(),
+                                                                    .pDynamicStates = dynamicStates.getData()};
+
+            // Define vertex input
+            VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+                                                                            .pNext = nullptr,
+                                                                            .flags = {},
+                                                                            .vertexBindingDescriptionCount = 0,
+                                                                            .pVertexBindingDescriptions = nullptr,
+                                                                            .vertexAttributeDescriptionCount = 0,
+                                                                            .pVertexAttributeDescriptions = nullptr};
+
+            // Define input assembly
+            VkPipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+                                                                           .pNext = nullptr,
+                                                                           .flags = {},
+                                                                           .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                                                                           .primitiveRestartEnable = VK_FALSE};
+
+            // Define viewport
+            VkViewport viewport{0.0f, 0.0f, (float)swapchainResources.imageExtent.width, (float)swapchainResources.imageExtent.height, 0.0f, 1.0f};
+            VkRect2D scissor{{0, 0}, swapchainResources.imageExtent};
+            VkPipelineViewportStateCreateInfo viewportStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+                                                                      .pNext = nullptr,
+                                                                      .flags = {},
+                                                                      .viewportCount = 1,
+                                                                      .pViewports = &viewport,
+                                                                      .scissorCount = 1,
+                                                                      .pScissors = &scissor};
+
+            // Define rasterization
+            VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+                                                                                .pNext = nullptr,
+                                                                                .flags = {},
+                                                                                .depthClampEnable = VK_FALSE,
+                                                                                .rasterizerDiscardEnable = VK_FALSE,
+                                                                                .polygonMode = VK_POLYGON_MODE_FILL,
+                                                                                .cullMode = VK_CULL_MODE_BACK_BIT,
+                                                                                .frontFace = VK_FRONT_FACE_CLOCKWISE,
+                                                                                .depthBiasEnable = VK_FALSE,
+                                                                                .depthBiasConstantFactor = 0.0f,
+                                                                                .depthBiasClamp = 0.0f,
+                                                                                .depthBiasSlopeFactor = 0.0f,
+                                                                                .lineWidth = 1.0f};
+
+            // Define multisampling
+            VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+                                                                            .pNext = nullptr,
+                                                                            .flags = {},
+                                                                            .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+                                                                            .sampleShadingEnable = VK_FALSE,
+                                                                            .minSampleShading = 0.0,
+                                                                            .pSampleMask = nullptr,
+                                                                            .alphaToCoverageEnable = VK_FALSE,
+                                                                            .alphaToOneEnable = VK_FALSE};
+
+            // Define depth and stencil
+            VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+                                                                              .pNext = nullptr,
+                                                                              .flags = {},
+                                                                              .depthTestEnable = VK_FALSE,
+                                                                              .depthWriteEnable = VK_FALSE,
+                                                                              .depthCompareOp = VK_COMPARE_OP_NEVER,
+                                                                              .depthBoundsTestEnable = VK_FALSE,
+                                                                              .stencilTestEnable = VK_FALSE,
+                                                                              .front = {},
+                                                                              .back = {},
+                                                                              .minDepthBounds = 0.0f,
+                                                                              .maxDepthBounds = 1.0f};
+
+            // Define color blending
+            VkPipelineColorBlendAttachmentState colorBlendAttachmentState{.blendEnable = VK_TRUE,
+                                                                          .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+                                                                          .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+                                                                          .colorBlendOp = VK_BLEND_OP_ADD,
+                                                                          .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+                                                                          .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+                                                                          .alphaBlendOp = VK_BLEND_OP_ADD,
+                                                                          .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                                                                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
+            VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+                                                                          .pNext = nullptr,
+                                                                          .flags = {},
+                                                                          .logicOpEnable = VK_FALSE,
+                                                                          .logicOp = VK_LOGIC_OP_NO_OP,
+                                                                          .attachmentCount = 1,
+                                                                          .pAttachments = &colorBlendAttachmentState,
+                                                                          .blendConstants = {1.0f, 1.0f, 1.0f, 1.0f}};
+
+            // Create pipeline layout
+            VkPushConstantRange pushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(QuadData));
+            VkPipelineLayoutCreateInfo layoutCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+                                                        .pNext = nullptr,
+                                                        .flags = {},
+                                                        .setLayoutCount = 1,
+                                                        .pSetLayouts = &descriptorSetLayout,
+                                                        .pushConstantRangeCount = 1,
+                                                        .pPushConstantRanges = &pushConstantRange};
+            if (!lib.createPipelineLayout(device, &layoutCreateInfo, nullptr, &pipelineLayout))
+                return false;
+
+            // Create graphics pipeline
+            VkGraphicsPipelineCreateInfo pipelineCreateInfo{.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+                                                            .pNext = nullptr,
+                                                            .flags = {},
+                                                            .stageCount = stageCreateInfos.getSize(),
+                                                            .pStages = stageCreateInfos.getData(),
+                                                            .pVertexInputState = &vertexInputStateCreateInfo,
+                                                            .pInputAssemblyState = &assemblyStateCreateInfo,
+                                                            .pTessellationState = nullptr,
+                                                            .pViewportState = &viewportStateCreateInfo,
+                                                            .pRasterizationState = &rasterizationStateCreateInfo,
+                                                            .pMultisampleState = &multisampleStateCreateInfo,
+                                                            .pDepthStencilState = &depthStencilStateCreateInfo,
+                                                            .pColorBlendState = &colorBlendStateCreateInfo,
+                                                            .pDynamicState = &dynamicStateCreateInfo,
+                                                            .layout = pipelineLayout,
+                                                            .renderPass = swapchainResources.renderPass,
+                                                            .subpass = 0,
+                                                            .basePipelineHandle = nullptr,
+                                                            .basePipelineIndex = 0};
+            if (!lib.createGraphicsPipelines(device, {}, 1, &pipelineCreateInfo, nullptr, &graphicsPipeline))
+                return false;
+
+            vertexShaderModule.cleanup(device);
+            fragmentShaderModule.cleanup(device);
+        }
+
+        for (std::uint64_t i{}; i < quadDataBuffers.getSize(); i++)
+        {
+            auto& bufferResources = quadDataBuffers[i];
+
+            VkBufferCreateInfo bufferCreateInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+                                                .pNext = nullptr,
+                                                .flags = {},
+                                                .size = sizeof(QuadData) * QuadPool::getCapacity(),
+                                                .usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                                                .queueFamilyIndexCount = 1,
+                                                .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex};
+            if (!lib.createBuffer(device, &bufferCreateInfo, nullptr, &bufferResources.buffer))
+                return false;
+
+            VkMemoryRequirements bufferMemoryRequirements{};
+            lib.getBufferMemoryRequirements(device, bufferResources.buffer, &bufferMemoryRequirements);
+
+            VkMemoryPropertyFlags memoryProperties{VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+
+            auto selectedMemoryType = physicalDeviceInfo.getMemoryTypeIndex(bufferMemoryRequirements, memoryProperties);
+            if (selectedMemoryType == -1)
+                return false;
+
+            VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO, .pNext = nullptr, .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, .deviceMask = 0};
+            VkMemoryAllocateInfo memoryAllocateInfo{.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                                    .pNext = &memoryAllocateFlagsInfo,
+                                                    .allocationSize = bufferMemoryRequirements.size,
+                                                    .memoryTypeIndex = (std::uint32_t)selectedMemoryType};
+            if (!lib.allocateMemory(device, &memoryAllocateInfo, nullptr, &bufferResources.bufferMemory))
+                return false;
+
+            if (!lib.bindBufferMemory(device, bufferResources.buffer, bufferResources.bufferMemory, 0))
+                return false;
+
+            VkBufferDeviceAddressInfo deviceAddressInfo{
+                .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .pNext = nullptr, .buffer = bufferResources.buffer};
+            bufferResources.bufferAddress = lib.getBufferDeviceAddress(device, &deviceAddressInfo);
+            if (!bufferResources.bufferAddress)
+            {
+                logger.logError("Failed to get buffer address");
+                return false;
+            }
+
+            if (!lib.mapMemory(device, bufferResources.bufferMemory, 0, bufferCreateInfo.size, {}, &bufferResources.data))
+                return false;
+        }
+        logger.logInfo("Created quad data buffers");
+
+        // Allocate command buffers
+        VkCommandBufferAllocateInfo bufferAllocateInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                                                       .pNext = nullptr,
+                                                       .commandPool = commandPool,
+                                                       .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                       .commandBufferCount = maxFramesInFlight};
+        if (!lib.allocateCommandBuffers(device, &bufferAllocateInfo, commandBuffers.getData()))
+            return false;
+
+        // Create synchronization objects
+        if (!synchronizationResources.init(lib, device, swapchainResources.imageCount))
+            return false;
+        logger.logInfo("Created synchronization objects");
+
+        return true;
+    }
+
     // Callback for debug utils messenger
-    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                        VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void* pUserData)
+    static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
+                                                        VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*)
     {
         if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
             logger.logInfo("{}", pCallbackData->pMessage);
@@ -3054,8 +3589,8 @@ private:
     VkInstance instance{};
     VkDebugUtilsMessengerEXT debugMessenger{};
     VkSurfaceKHR surface{};
-    VkPhysicalDevice physicalDevice;
-    PhysicalDeviceInfo physicalDeviceInfo;
+    FixedVector<PhysicalDeviceInfo, 16> physicalDevices;
+    std::int64_t currentPhysicalDeviceIndex{-1};
     VkDevice device{};
     VkQueue graphicsQueue{};
     VkQueue presentationQueue{};

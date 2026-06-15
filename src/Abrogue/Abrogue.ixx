@@ -1295,7 +1295,6 @@ enum class OptionsMenuLabelType
 {
     eControls,
     eVideo,
-    eGPU,
     eResolution,
     COUNT
 };
@@ -1312,6 +1311,7 @@ enum class OptionsMenuButtonType
     eDebug,
     eStopTime,
     eStepTime,
+    eGPU,
     eFullscreen,
     eApply,
     eResetToDefault,
@@ -4109,27 +4109,27 @@ void OptionsMenu::init()
 {
     using enum ButtonType;
 
-    labels[LabelType::eControls].init("Controls"sv, 60, 5);
-    labels[LabelType::eVideo].init("Video"sv, 82, 5);
-    labels[LabelType::eGPU].init(""sv, 78, 7);
-    labels[LabelType::eResolution].init(""sv, 78, 9);
+    labels[LabelType::eControls].init("Controls"sv, 52, 5);
+    labels[LabelType::eVideo].init("Video"sv, 74, 5);
+    labels[LabelType::eResolution].init(""sv, 70, 9);
 
-    buttons[eMoveUp].init(""sv, 58, 7);
-    buttons[eMoveDown].init(""sv, 58, 9);
-    buttons[eMoveLeft].init(""sv, 58, 11);
-    buttons[eMoveRight].init(""sv, 58, 13);
-    buttons[eAttack].init(""sv, 58, 15);
-    buttons[ePause].init(""sv, 58, 17);
-    buttons[eSearch].init(""sv, 58, 19);
-    buttons[eDiscoveries].init(""sv, 58, 21);
-    buttons[eDebug].init(""sv, 58, 23);
-    buttons[eStopTime].init(""sv, 58, 25);
-    buttons[eStepTime].init(""sv, 58, 27);
+    buttons[eMoveUp].init(""sv, 50, 7);
+    buttons[eMoveDown].init(""sv, 50, 9);
+    buttons[eMoveLeft].init(""sv, 50, 11);
+    buttons[eMoveRight].init(""sv, 50, 13);
+    buttons[eAttack].init(""sv, 50, 15);
+    buttons[ePause].init(""sv, 50, 17);
+    buttons[eSearch].init(""sv, 50, 19);
+    buttons[eDiscoveries].init(""sv, 50, 21);
+    buttons[eDebug].init(""sv, 50, 23);
+    buttons[eStopTime].init(""sv, 50, 25);
+    buttons[eStepTime].init(""sv, 50, 27);
 
     buttons[eApply].init("Apply"sv, 56, 32);
     buttons[eResetToDefault].init("Reset To Default"sv, 66, 32);
 
-    buttons[eFullscreen].init(""sv, 78, 11);
+    buttons[eGPU].init(""sv, 70, 7);
+    buttons[eFullscreen].init(""sv, 70, 11);
 
     refreshLabels();
 }
@@ -4164,6 +4164,13 @@ void OptionsMenu::onButtonPressed(ButtonType type)
         inputHandler.setChangingControlType(InputControlType::eStepTime);
     else if (type == eResetToDefault)
         configuration.resetInputControlsToDefault();
+    else if (type == eGPU)
+    {
+        auto deviceIndex = renderEngine.getDeviceIndex();
+        deviceIndex = (deviceIndex + 1) % renderEngine.getDeviceNames().getSize();
+        renderEngine.setDeviceIndex(deviceIndex);
+        refreshLabels();
+    }
     else if (type == eFullscreen)
     {
         auto isFullscreen = configuration.getIsFullscreen();
@@ -4191,8 +4198,13 @@ void OptionsMenu::refreshLabels()
     buttons[eStopTime].setText(labelText.fill("Stop Time"sv, configuration.getInputControlName(InputControlType::eStopTime)));
     buttons[eStepTime].setText(labelText.fill("Step Time"sv, configuration.getInputControlName(InputControlType::eStepTime)));
 
-    auto deviceName = renderEngine.getDeviceName();
-    labels[LabelType::eGPU].setText(labelText.format("Device: {}", deviceName));
+    auto deviceIndex = renderEngine.getDeviceIndex();
+    if (deviceIndex != -1)
+    {
+        auto deviceNames = renderEngine.getDeviceNames();
+        buttons[eGPU].setText(labelText.format("Device: {}", deviceNames[renderEngine.getDeviceIndex()]));
+    }
+
     auto [windowWidth, windowHeight] = renderWindow.getWindowSize();
     labels[LabelType::eResolution].setText(labelText.format("Resolution: {}x{}", windowWidth, windowHeight));
     buttons[eFullscreen].setText(renderWindow.getIsFullscreen() ? "[X]Fullscreen"sv : "[ ]Fullscreen"sv);
