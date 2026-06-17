@@ -18,6 +18,11 @@ import std;
 using namespace std::literals;
 
 /*
+ * Layers for defining draw order
+ */
+export enum class QuadLayer { eMap, eItem, eEntity, eMapOverlay, ePopupBackground, ePopup, COUNT };
+
+/*
  * String conversions for Vulkan enums
  */
 constexpr std::string_view enumToStr(VkResult result)
@@ -766,6 +771,8 @@ template <class Value, class ResultValue>
     return false;
 }
 
+inline constexpr std::uint32_t maxFramesInFlight{2};
+
 export class RenderConstants
 {
 public:
@@ -810,9 +817,6 @@ private:
     glm::uvec2 colors{};            // Packed glyph and background colors
     std::uint32_t glyph{};          // Index of drawn symbol
 };
-
-// Layers for defining draw order
-export enum class QuadLayer { eMap, eItem, eEntity, eMapOverlay, ePopupBackground, ePopup, COUNT };
 
 /*
  * Class for a bidirectional reference to quad data
@@ -1447,6 +1451,125 @@ private:
 inline VulkanLibrary lib;
 
 /*
+ * Class for creating and submitting one time command buffers
+ */
+class SingleUseCommandBuffer
+{
+public:
+    template <class Func>
+    [[nodiscard]] static bool execute(VkDevice device, VkCommandPool commandPool, VkQueue submitQueue, Func&& func)
+    {
+        VkCommandBuffer commandBuffer{};
+
+        VkCommandBufferAllocateInfo allocateInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+                                                 .pNext = nullptr,
+                                                 .commandPool = commandPool,
+                                                 .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                 .commandBufferCount = 1};
+        if (!lib.allocateCommandBuffers(device, &allocateInfo, &commandBuffer))
+            return false;
+
+        VkCommandBufferBeginInfo beginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+                                           .pNext = nullptr,
+                                           .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                                           .pInheritanceInfo = nullptr};
+        if (!lib.beginCommandBuffer(commandBuffer, &beginInfo))
+        {
+            lib.freeCommandBuffers(device, commandPool, 1, &commandBuffer);
+            return false;
+        }
+
+        std::forward<Func>(func)(commandBuffer);
+
+        if (!lib.endCommandBuffer(commandBuffer))
+        {
+            lib.freeCommandBuffers(device, commandPool, 1, &commandBuffer);
+            return false;
+        }
+
+        VkSubmitInfo submitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+                                .pNext = nullptr,
+                                .waitSemaphoreCount = 0,
+                                .pWaitSemaphores = nullptr,
+                                .pWaitDstStageMask = nullptr,
+                                .commandBufferCount = 1,
+                                .pCommandBuffers = &commandBuffer,
+                                .signalSemaphoreCount = 0,
+                                .pSignalSemaphores = nullptr};
+        if (!lib.queueSubmit(submitQueue, 1, &submitInfo, nullptr))
+        {
+            lib.freeCommandBuffers(device, commandPool, 1, &commandBuffer);
+            return false;
+        }
+
+        if (!lib.queueWaitIdle(submitQueue))
+        {
+            lib.freeCommandBuffers(device, commandPool, 1, &commandBuffer);
+            return false;
+        }
+
+        lib.freeCommandBuffers(device, commandPool, 1, &commandBuffer);
+        return true;
+    }
+};
+
+/*
+ * Class for handling vulkan synchronization objects
+ */
+class SynchronizationResources
+{
+public:
+    SynchronizationResources() = default;
+    [[nodiscard]] bool init(VkDevice device, uint32_t imageCount)
+    {
+        // Create synchronization objects
+        VkSemaphoreCreateInfo semaphoreCreateInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = {}};
+        VkFenceCreateInfo fenceCreateInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+        for (std::uint32_t i{}; i < maxFramesInFlight; i++)
+        {
+            if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAcquiredSemaphores[i]) ||
+                !lib.createFence(device, &fenceCreateInfo, nullptr, &submitFinishedFences[i]))
+                return false;
+        }
+
+        submitFinishedSemaphores.resize(imageCount);
+        for (std::uint32_t i{}; i < imageCount; i++)
+        {
+            if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &submitFinishedSemaphores[i]))
+                return false;
+        }
+        logger.logInfo("Created synchronization objects");
+
+        return true;
+    }
+    void cleanup(VkDevice device)
+    {
+        for (std::uint32_t i{}; i < maxFramesInFlight; i++)
+        {
+            if (imageAcquiredSemaphores[i])
+                lib.destroySemaphore(device, imageAcquiredSemaphores[i], nullptr);
+            if (submitFinishedSemaphores[i])
+                lib.destroyFence(device, submitFinishedFences[i], nullptr);
+        }
+
+        for (std::uint32_t i{}; i < submitFinishedSemaphores.getSize(); i++)
+        {
+            if (submitFinishedSemaphores[i])
+                lib.destroySemaphore(device, submitFinishedSemaphores[i], nullptr);
+        }
+    }
+
+    [[nodiscard]] auto getImageSemaphore(std::uint64_t frameIndex) const { return imageAcquiredSemaphores[frameIndex]; }
+    [[nodiscard]] auto getSubmitSemaphore(std::uint64_t imageIndex) const { return submitFinishedSemaphores[imageIndex]; }
+    [[nodiscard]] auto getSubmitFence(std::uint64_t frameIndex) const { return submitFinishedFences[frameIndex]; }
+
+private:
+    Array<VkSemaphore, maxFramesInFlight> imageAcquiredSemaphores;
+    FixedVector<VkSemaphore, 8> submitFinishedSemaphores;
+    Array<VkFence, maxFramesInFlight> submitFinishedFences;
+};
+
+/*
  * RenderWindow - class for handling SDL initialization and window creation
  */
 export class RenderWindow
@@ -1591,8 +1714,6 @@ export inline RenderWindow renderWindow;
  */
 export class RenderEngine
 {
-    static constexpr std::uint32_t maxFramesInFlight{2};
-
     // Struct for storing physical device properties
     struct PhysicalDeviceInfo
     {
@@ -2068,125 +2189,165 @@ export class RenderEngine
         void* data{};
     };
 
-    // Class for creating and submitting one time command buffers
-    class SingleUseCommandBuffer
+    class TextureResources
     {
     public:
-        SingleUseCommandBuffer() = default;
-
-        // Create command buffer resources
-        [[nodiscard]] bool init(VulkanLibrary const& lib, VkDevice device, VkCommandPool commandPool)
+        TextureResources() = default;
+        [[nodiscard]] bool init(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, PhysicalDeviceInfo const& physicalDeviceInfo)
         {
-            VkCommandBufferAllocateInfo allocateInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-                                                     .pNext = nullptr,
-                                                     .commandPool = commandPool,
-                                                     .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-                                                     .commandBufferCount = 1};
-            if (!lib.allocateCommandBuffers(device, &allocateInfo, &commandBuffer))
+            auto tileImage = ImageLoader("textures/tiles.png"sv);
+            VkDeviceSize imageSize{(std::size_t)tileImage.width * tileImage.height * tileImage.channels};
+
+            SingleUseStagingBuffer stagingBufferResources;
+            if (!stagingBufferResources.init(device, physicalDeviceInfo, imageSize))
+                return false;
+            std::memcpy(stagingBufferResources.getData(), tileImage.data, imageSize);
+
+            VkImageCreateInfo imageCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+                                              .pNext = nullptr,
+                                              .flags = {},
+                                              .imageType = VK_IMAGE_TYPE_2D,
+                                              .format = VK_FORMAT_R8_UNORM,
+                                              .extent = VkExtent3D{(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1u},
+                                              .mipLevels = 1,
+                                              .arrayLayers = 1,
+                                              .samples = VK_SAMPLE_COUNT_1_BIT,
+                                              .tiling = VK_IMAGE_TILING_OPTIMAL,
+                                              .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+                                              .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                                              .queueFamilyIndexCount = 1,
+                                              .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex,
+                                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+            if (!lib.createImage(device, &imageCreateInfo, nullptr, &image))
                 return false;
 
-            VkCommandBufferBeginInfo beginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                                               .pNext = nullptr,
-                                               .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-                                               .pInheritanceInfo = nullptr};
-            if (!lib.beginCommandBuffer(commandBuffer, &beginInfo))
+            VkMemoryRequirements memoryRequirements{};
+            lib.getImageMemoryRequirements(device, image, &memoryRequirements);
+            VkMemoryAllocateInfo imageMemoryAllocateInfo{
+                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                .pNext = nullptr,
+                .allocationSize = memoryRequirements.size,
+                .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
+            if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, nullptr, &imageMemory))
                 return false;
 
-            return true;
-        }
+            if (!lib.bindImageMemory(device, image, imageMemory, 0))
+                return false;
 
-        void cleanup(VulkanLibrary const& lib, VkDevice device, VkCommandPool commandPool)
-        {
-            if (commandBuffer)
+            auto transitionToWriteDestination = [this](VkCommandBuffer commandBuffer)
             {
-                lib.freeCommandBuffers(device, commandPool, 1, &commandBuffer);
-            }
-        }
-
-        // Submit command buffer
-        [[nodiscard]] bool submit(VulkanLibrary const& lib, VkQueue submitQueue)
-        {
-            if (!lib.endCommandBuffer(commandBuffer))
+                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                                   .pNext = nullptr,
+                                                   .srcAccessMask = VK_ACCESS_NONE,
+                                                   .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                   .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+                                                   .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .image = image,
+                                                   .subresourceRange = range};
+                lib.commandPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, 0, nullptr, 0, nullptr, 1,
+                                           &memoryBarrier);
+            };
+            if (!SingleUseCommandBuffer::execute(device, commandPool, graphicsQueue, transitionToWriteDestination))
                 return false;
 
-            VkSubmitInfo submitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-                                    .pNext = nullptr,
-                                    .waitSemaphoreCount = 0,
-                                    .pWaitSemaphores = nullptr,
-                                    .pWaitDstStageMask = nullptr,
-                                    .commandBufferCount = 1,
-                                    .pCommandBuffers = &commandBuffer,
-                                    .signalSemaphoreCount = 0,
-                                    .pSignalSemaphores = nullptr};
-            if (!lib.queueSubmit(submitQueue, 1, &submitInfo, nullptr))
+            auto copyToImage = [this, &tileImage, &stagingBufferResources](VkCommandBuffer commandBuffer)
+            {
+                VkImageSubresourceLayers imageSubresourceLayers(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
+                VkBufferImageCopy imageCopy{.bufferOffset = 0,
+                                            .bufferRowLength = 0,
+                                            .bufferImageHeight = 0,
+                                            .imageSubresource = imageSubresourceLayers,
+                                            .imageOffset = {},
+                                            .imageExtent = {(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1}};
+                lib.commandCopyBufferToImage(commandBuffer, stagingBufferResources.getBuffer(), image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+            };
+            if (!SingleUseCommandBuffer::execute(device, commandPool, graphicsQueue, copyToImage))
                 return false;
 
-            if (!lib.queueWaitIdle(submitQueue))
+            auto transitionToShaderRead = [this](VkCommandBuffer commandBuffer)
+            {
+                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+                                                   .pNext = nullptr,
+                                                   .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+                                                   .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+                                                   .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                                   .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                                   .image = image,
+                                                   .subresourceRange = range};
+                lib.commandPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, 0, nullptr, 0, nullptr, 1,
+                                           &memoryBarrier);
+            };
+            if (!SingleUseCommandBuffer::execute(device, commandPool, graphicsQueue, transitionToShaderRead))
                 return false;
 
+            VkImageSubresourceRange subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+            VkImageViewCreateInfo viewCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                                                 .pNext = nullptr,
+                                                 .flags = {},
+                                                 .image = image,
+                                                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                                                 .format = VK_FORMAT_R8_UNORM,
+                                                 .components = {},
+                                                 .subresourceRange = subresourceRange};
+            if (!lib.createImageView(device, &viewCreateInfo, nullptr, &imageView))
+                return false;
+
+            VkSamplerCreateInfo samplerCreateInfo{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+                                                  .pNext = nullptr,
+                                                  .flags = {},
+                                                  .magFilter = VK_FILTER_LINEAR,
+                                                  .minFilter = VK_FILTER_LINEAR,
+                                                  .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                                  .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                  .mipLodBias = 0.0f,
+                                                  .anisotropyEnable = VK_TRUE,
+                                                  .maxAnisotropy = physicalDeviceInfo.maxSamplerAnisotropy,
+                                                  .compareEnable = VK_FALSE,
+                                                  .compareOp = VK_COMPARE_OP_ALWAYS,
+                                                  .minLod = 0.0f,
+                                                  .maxLod = 0.0f,
+                                                  .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+                                                  .unnormalizedCoordinates = VK_FALSE};
+            if (!lib.createSampler(device, &samplerCreateInfo, nullptr, &sampler))
+                return false;
+
+            stagingBufferResources.cleanup(device);
             return true;
         }
+        void cleanup(VkDevice device)
+        {
+            if (sampler)
+                lib.destroySampler(device, sampler, nullptr);
+            if (imageView)
+                lib.destroyImageView(device, imageView, nullptr);
+            if (imageMemory)
+                lib.freeMemory(device, imageMemory, nullptr);
+            if (image)
+                lib.destroyImage(device, image, nullptr);
+        }
 
-        [[nodiscard]] auto getCommandBuffer() const { return commandBuffer; }
+        [[nodiscard]] auto getImageView() const { return imageView; }
+        [[nodiscard]] auto getSampler() const { return sampler; }
 
     private:
-        VkCommandBuffer commandBuffer;
+        VkImage image{};
+        VkDeviceMemory imageMemory{};
+        VkImageView imageView{};
+        VkSampler sampler{};
     };
 
     // Struct for shader constants
     struct PushConstantsBlock
     {
         VkDeviceAddress quadReference{};
-    };
-
-    class SynchronizationResources
-    {
-    public:
-        SynchronizationResources() = default;
-
-        [[nodiscard]] bool init(VulkanLibrary const& lib, VkDevice device, uint32_t imageCount)
-        {
-            // Create synchronization objects
-            VkSemaphoreCreateInfo semaphoreCreateInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = {}};
-            VkFenceCreateInfo fenceCreateInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-            for (std::uint32_t i{}; i < maxFramesInFlight; i++)
-            {
-                if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAcquiredSemaphores[i]) ||
-                    !lib.createFence(device, &fenceCreateInfo, nullptr, &submitFinishedFences[i]))
-                    return false;
-            }
-
-            submitFinishedSemaphores.resize(imageCount);
-            for (std::uint32_t i{}; i < imageCount; i++)
-            {
-                if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &submitFinishedSemaphores[i]))
-                    return false;
-            }
-            logger.logInfo("Created synchronization objects");
-
-            return true;
-        }
-
-        void cleanup(VulkanLibrary const& lib, VkDevice device)
-        {
-            for (std::uint32_t i{}; i < maxFramesInFlight; i++)
-            {
-                lib.destroySemaphore(device, imageAcquiredSemaphores[i], nullptr);
-                lib.destroyFence(device, submitFinishedFences[i], nullptr);
-            }
-
-            for (std::uint32_t i{}; i < submitFinishedSemaphores.getSize(); i++)
-                lib.destroySemaphore(device, submitFinishedSemaphores[i], nullptr);
-        }
-
-        [[nodiscard]] auto const& getImageSemaphore(std::uint64_t frameIndex) const { return imageAcquiredSemaphores[frameIndex]; }
-        [[nodiscard]] auto const& getSubmitSemaphore(std::uint64_t imageIndex) const { return submitFinishedSemaphores[imageIndex]; }
-        [[nodiscard]] auto const& getSubmitFence(std::uint64_t frameIndex) const { return submitFinishedFences[frameIndex]; }
-
-    private:
-        Array<VkSemaphore, maxFramesInFlight> imageAcquiredSemaphores;
-        FixedVector<VkSemaphore, 8> submitFinishedSemaphores;
-        Array<VkFence, maxFramesInFlight> submitFinishedFences;
     };
 
 public:
@@ -2443,147 +2604,8 @@ public:
         if (!lib.createCommandPool(device, &poolCreateInfo, nullptr, &commandPool))
             return false;
 
-        // Create texture resources
-        {
-            auto tileImage = ImageLoader("textures/tiles.png"sv);
-            VkDeviceSize imageSize{(std::size_t)tileImage.width * tileImage.height * tileImage.channels};
-
-            SingleUseStagingBuffer stagingBufferResources;
-            if (!stagingBufferResources.init(device, physicalDeviceInfo, imageSize))
-                return false;
-            std::memcpy(stagingBufferResources.getData(), tileImage.data, imageSize);
-
-            VkImageCreateInfo imageCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-                                              .pNext = nullptr,
-                                              .flags = {},
-                                              .imageType = VK_IMAGE_TYPE_2D,
-                                              .format = VK_FORMAT_R8_UNORM,
-                                              .extent = VkExtent3D{(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1u},
-                                              .mipLevels = 1,
-                                              .arrayLayers = 1,
-                                              .samples = VK_SAMPLE_COUNT_1_BIT,
-                                              .tiling = VK_IMAGE_TILING_OPTIMAL,
-                                              .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                              .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-                                              .queueFamilyIndexCount = 1,
-                                              .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex,
-                                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
-            if (!lib.createImage(device, &imageCreateInfo, nullptr, &textureImage))
-                return false;
-
-            VkMemoryRequirements memoryRequirements{};
-            lib.getImageMemoryRequirements(device, textureImage, &memoryRequirements);
-            VkMemoryAllocateInfo imageMemoryAllocateInfo{
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .pNext = nullptr,
-                .allocationSize = memoryRequirements.size,
-                .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
-            if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, nullptr, &textureImageMemory))
-                return false;
-
-            if (!lib.bindImageMemory(device, textureImage, textureImageMemory, 0))
-                return false;
-
-            {
-                SingleUseCommandBuffer transitionCommandBuffer;
-                if (!transitionCommandBuffer.init(lib, device, commandPool))
-                    return false;
-
-                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                                   .pNext = nullptr,
-                                                   .srcAccessMask = VK_ACCESS_NONE,
-                                                   .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                                                   .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                                   .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .image = textureImage,
-                                                   .subresourceRange = range};
-                lib.commandPipelineBarrier(transitionCommandBuffer.getCommandBuffer(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, 0,
-                                           nullptr, 0, nullptr, 1, &memoryBarrier);
-
-                if (!transitionCommandBuffer.submit(lib, graphicsQueue))
-                    return false;
-            }
-
-            {
-                SingleUseCommandBuffer copyCommandBuffer;
-                if (!copyCommandBuffer.init(lib, device, commandPool))
-                    return false;
-
-                VkImageSubresourceLayers imageSubresourceLayers(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
-                VkBufferImageCopy imageCopy{.bufferOffset = 0,
-                                            .bufferRowLength = 0,
-                                            .bufferImageHeight = 0,
-                                            .imageSubresource = imageSubresourceLayers,
-                                            .imageOffset = {},
-                                            .imageExtent = {(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1}};
-                lib.commandCopyBufferToImage(copyCommandBuffer.getCommandBuffer(), stagingBufferResources.getBuffer(), textureImage,
-                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-
-                if (!copyCommandBuffer.submit(lib, graphicsQueue))
-                    return false;
-            }
-
-            {
-                SingleUseCommandBuffer transitionCommandBuffer;
-                if (!transitionCommandBuffer.init(lib, device, commandPool))
-                    return false;
-
-                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                                   .pNext = nullptr,
-                                                   .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                                                   .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                                                   .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                   .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .image = textureImage,
-                                                   .subresourceRange = range};
-                lib.commandPipelineBarrier(transitionCommandBuffer.getCommandBuffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                           {}, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
-
-                if (!transitionCommandBuffer.submit(lib, graphicsQueue))
-                    return false;
-            }
-
-            VkImageSubresourceRange subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-            VkImageViewCreateInfo viewCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                                                 .pNext = nullptr,
-                                                 .flags = {},
-                                                 .image = textureImage,
-                                                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                                                 .format = VK_FORMAT_R8_UNORM,
-                                                 .components = {},
-                                                 .subresourceRange = subresourceRange};
-            if (!lib.createImageView(device, &viewCreateInfo, nullptr, &textureImageView))
-                return false;
-
-            VkSamplerCreateInfo samplerCreateInfo{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-                                                  .pNext = nullptr,
-                                                  .flags = {},
-                                                  .magFilter = VK_FILTER_LINEAR,
-                                                  .minFilter = VK_FILTER_LINEAR,
-                                                  .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                                  .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                                  .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                                  .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                                  .mipLodBias = 0.0f,
-                                                  .anisotropyEnable = VK_TRUE,
-                                                  .maxAnisotropy = physicalDeviceInfo.maxSamplerAnisotropy,
-                                                  .compareEnable = VK_FALSE,
-                                                  .compareOp = VK_COMPARE_OP_ALWAYS,
-                                                  .minLod = 0.0f,
-                                                  .maxLod = 0.0f,
-                                                  .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-                                                  .unnormalizedCoordinates = VK_FALSE};
-            if (!lib.createSampler(device, &samplerCreateInfo, nullptr, &textureSampler))
-                return false;
-
-            stagingBufferResources.cleanup(device);
-        }
+        if (!textureResources.init(device, commandPool, graphicsQueue, physicalDeviceInfo))
+            return false;
 
         VkDescriptorSetLayoutBinding layoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{
@@ -2612,7 +2634,7 @@ public:
 
         for (size_t i = 0; i < maxFramesInFlight; i++)
         {
-            VkDescriptorImageInfo imageInfo(textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            VkDescriptorImageInfo imageInfo(textureResources.getSampler(), textureResources.getImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             VkWriteDescriptorSet writeDescriptorSet{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                                                     .pNext = nullptr,
                                                     .dstSet = descriptorSets[i],
@@ -2845,7 +2867,7 @@ public:
             return false;
 
         // Create synchronization objects
-        if (!synchronizationResources.init(lib, device, swapchainResources.imageCount))
+        if (!synchronizationResources.init(device, swapchainResources.imageCount))
             return false;
         logger.logInfo("Created synchronization objects");
 
@@ -2857,7 +2879,7 @@ public:
         {
             auto _ = lib.deviceWaitIdle(device);
 
-            synchronizationResources.cleanup(lib, device);
+            synchronizationResources.cleanup(device);
             lib.freeCommandBuffers(device, commandPool, commandBuffers.getSize(), commandBuffers.getData());
 
             for (auto buffer : quadDataBuffers)
@@ -2872,10 +2894,7 @@ public:
             lib.destroyDescriptorPool(device, descriptorPool, nullptr);
             lib.destroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-            lib.destroySampler(device, textureSampler, nullptr);
-            lib.destroyImageView(device, textureImageView, nullptr);
-            lib.freeMemory(device, textureImageMemory, nullptr);
-            lib.destroyImage(device, textureImage, nullptr);
+            textureResources.cleanup(device);
 
             lib.destroyCommandPool(device, commandPool, nullptr);
 
@@ -2902,7 +2921,7 @@ public:
     {
         auto _ = lib.deviceWaitIdle(device);
 
-        synchronizationResources.cleanup(lib, device);
+        synchronizationResources.cleanup(device);
         lib.freeCommandBuffers(device, commandPool, commandBuffers.getSize(), commandBuffers.getData());
 
         for (auto buffer : quadDataBuffers)
@@ -2917,10 +2936,7 @@ public:
         lib.destroyDescriptorPool(device, descriptorPool, nullptr);
         lib.destroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
 
-        lib.destroySampler(device, textureSampler, nullptr);
-        lib.destroyImageView(device, textureImageView, nullptr);
-        lib.freeMemory(device, textureImageMemory, nullptr);
-        lib.destroyImage(device, textureImage, nullptr);
+        textureResources.cleanup(device);
 
         lib.destroyCommandPool(device, commandPool, nullptr);
 
@@ -2932,13 +2948,8 @@ public:
         lib.destroyDevice(device, nullptr);
     }
 
-    [[nodiscard]] FixedVector<std::string_view, 16> getDeviceNames()
-    {
-        FixedVector<std::string_view, 16> result;
-        for (auto const& device : physicalDevices)
-            result.emplaceBack(device.name);
-        return result;
-    }
+    [[nodiscard]] std::string_view getDeviceName() { return physicalDevices[currentPhysicalDeviceIndex].name; }
+    [[nodiscard]] std::int64_t getDeviceCount() { return physicalDevices.getSize(); }
     [[nodiscard]] std::int64_t getDeviceIndex() { return currentPhysicalDeviceIndex; }
     void setDeviceIndex(std::int64_t index)
     {
@@ -2953,9 +2964,10 @@ public:
     [[nodiscard]] bool drawFrame()
     {
         auto timeout = std::numeric_limits<std::uint64_t>::max();
-        if (!lib.waitForFences(device, 1, &synchronizationResources.getSubmitFence(currentFrameIndex), VK_TRUE, timeout))
+        auto waitFence = synchronizationResources.getSubmitFence(currentFrameIndex);
+        if (!lib.waitForFences(device, 1, &waitFence, VK_TRUE, timeout))
             return false;
-        if (!lib.resetFences(device, 1, &synchronizationResources.getSubmitFence(currentFrameIndex)))
+        if (!lib.resetFences(device, 1, &waitFence))
             return false;
 
         std::uint32_t imageIndex{};
@@ -3009,22 +3021,24 @@ public:
             return false;
 
         VkPipelineStageFlags waitStage{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        auto imageSemaphore = synchronizationResources.getImageSemaphore(currentFrameIndex);
+        auto submitSemaphore = synchronizationResources.getSubmitSemaphore(imageIndex);
         VkSubmitInfo submitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
                                 .pNext = nullptr,
                                 .waitSemaphoreCount = 1,
-                                .pWaitSemaphores = &synchronizationResources.getImageSemaphore(currentFrameIndex),
+                                .pWaitSemaphores = &imageSemaphore,
                                 .pWaitDstStageMask = &waitStage,
                                 .commandBufferCount = 1,
                                 .pCommandBuffers = &commandBuffers[currentFrameIndex],
                                 .signalSemaphoreCount = 1,
-                                .pSignalSemaphores = &synchronizationResources.getSubmitSemaphore(imageIndex)};
+                                .pSignalSemaphores = &submitSemaphore};
         if (!lib.queueSubmit(graphicsQueue, 1, &submitInfo, synchronizationResources.getSubmitFence(currentFrameIndex)))
             return false;
 
         VkPresentInfoKHR presentInfo{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                                      .pNext = nullptr,
                                      .waitSemaphoreCount = 1,
-                                     .pWaitSemaphores = &synchronizationResources.getSubmitSemaphore(imageIndex),
+                                     .pWaitSemaphores = &submitSemaphore,
                                      .swapchainCount = 1,
                                      .pSwapchains = &swapchainResources.swapchain,
                                      .pImageIndices = &imageIndex,
@@ -3084,7 +3098,7 @@ private:
         if (!lib.deviceWaitIdle(device))
             return false;
 
-        synchronizationResources.cleanup(lib, device);
+        synchronizationResources.cleanup(device);
         oldSwapchainResources.cleanup(lib, device);
         lib.freeCommandBuffers(device, commandPool, maxFramesInFlight, commandBuffers.getData());
 
@@ -3097,7 +3111,7 @@ private:
         if (!lib.allocateCommandBuffers(device, &bufferAllocateInfo, commandBuffers.getData()))
             return false;
 
-        return synchronizationResources.init(lib, device, swapchainResources.imageCount);
+        return synchronizationResources.init(device, swapchainResources.imageCount);
     }
 
     [[nodiscard]] bool createDevice(std::span<char const*> requiredPhysicalDeviceExtensions)
@@ -3165,147 +3179,8 @@ private:
         if (!lib.createCommandPool(device, &poolCreateInfo, nullptr, &commandPool))
             return false;
 
-        // Create texture resources
-        {
-            auto tileImage = ImageLoader("textures/tiles.png"sv);
-            VkDeviceSize imageSize{(std::size_t)tileImage.width * tileImage.height * tileImage.channels};
-
-            SingleUseStagingBuffer stagingBufferResources;
-            if (!stagingBufferResources.init(device, physicalDeviceInfo, imageSize))
-                return false;
-            std::memcpy(stagingBufferResources.getData(), tileImage.data, imageSize);
-
-            VkImageCreateInfo imageCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-                                              .pNext = nullptr,
-                                              .flags = {},
-                                              .imageType = VK_IMAGE_TYPE_2D,
-                                              .format = VK_FORMAT_R8_UNORM,
-                                              .extent = VkExtent3D{(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1u},
-                                              .mipLevels = 1,
-                                              .arrayLayers = 1,
-                                              .samples = VK_SAMPLE_COUNT_1_BIT,
-                                              .tiling = VK_IMAGE_TILING_OPTIMAL,
-                                              .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                              .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-                                              .queueFamilyIndexCount = 1,
-                                              .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex,
-                                              .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
-            if (!lib.createImage(device, &imageCreateInfo, nullptr, &textureImage))
-                return false;
-
-            VkMemoryRequirements memoryRequirements{};
-            lib.getImageMemoryRequirements(device, textureImage, &memoryRequirements);
-            VkMemoryAllocateInfo imageMemoryAllocateInfo{
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-                .pNext = nullptr,
-                .allocationSize = memoryRequirements.size,
-                .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
-            if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, nullptr, &textureImageMemory))
-                return false;
-
-            if (!lib.bindImageMemory(device, textureImage, textureImageMemory, 0))
-                return false;
-
-            {
-                SingleUseCommandBuffer transitionCommandBuffer;
-                if (!transitionCommandBuffer.init(lib, device, commandPool))
-                    return false;
-
-                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                                   .pNext = nullptr,
-                                                   .srcAccessMask = VK_ACCESS_NONE,
-                                                   .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                                                   .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                                   .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .image = textureImage,
-                                                   .subresourceRange = range};
-                lib.commandPipelineBarrier(transitionCommandBuffer.getCommandBuffer(), VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, 0,
-                                           nullptr, 0, nullptr, 1, &memoryBarrier);
-
-                if (!transitionCommandBuffer.submit(lib, graphicsQueue))
-                    return false;
-            }
-
-            {
-                SingleUseCommandBuffer copyCommandBuffer;
-                if (!copyCommandBuffer.init(lib, device, commandPool))
-                    return false;
-
-                VkImageSubresourceLayers imageSubresourceLayers(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
-                VkBufferImageCopy imageCopy{.bufferOffset = 0,
-                                            .bufferRowLength = 0,
-                                            .bufferImageHeight = 0,
-                                            .imageSubresource = imageSubresourceLayers,
-                                            .imageOffset = {},
-                                            .imageExtent = {(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1}};
-                lib.commandCopyBufferToImage(copyCommandBuffer.getCommandBuffer(), stagingBufferResources.getBuffer(), textureImage,
-                                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
-
-                if (!copyCommandBuffer.submit(lib, graphicsQueue))
-                    return false;
-            }
-
-            {
-                SingleUseCommandBuffer transitionCommandBuffer;
-                if (!transitionCommandBuffer.init(lib, device, commandPool))
-                    return false;
-
-                VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-                VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-                                                   .pNext = nullptr,
-                                                   .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                                                   .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                                                   .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                                   .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                                   .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                                   .image = textureImage,
-                                                   .subresourceRange = range};
-                lib.commandPipelineBarrier(transitionCommandBuffer.getCommandBuffer(), VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-                                           {}, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
-
-                if (!transitionCommandBuffer.submit(lib, graphicsQueue))
-                    return false;
-            }
-
-            VkImageSubresourceRange subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-            VkImageViewCreateInfo viewCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-                                                 .pNext = nullptr,
-                                                 .flags = {},
-                                                 .image = textureImage,
-                                                 .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                                                 .format = VK_FORMAT_R8_UNORM,
-                                                 .components = {},
-                                                 .subresourceRange = subresourceRange};
-            if (!lib.createImageView(device, &viewCreateInfo, nullptr, &textureImageView))
-                return false;
-
-            VkSamplerCreateInfo samplerCreateInfo{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-                                                  .pNext = nullptr,
-                                                  .flags = {},
-                                                  .magFilter = VK_FILTER_LINEAR,
-                                                  .minFilter = VK_FILTER_LINEAR,
-                                                  .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                                  .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                                  .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                                  .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                                  .mipLodBias = 0.0f,
-                                                  .anisotropyEnable = VK_TRUE,
-                                                  .maxAnisotropy = physicalDeviceInfo.maxSamplerAnisotropy,
-                                                  .compareEnable = VK_FALSE,
-                                                  .compareOp = VK_COMPARE_OP_ALWAYS,
-                                                  .minLod = 0.0f,
-                                                  .maxLod = 0.0f,
-                                                  .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-                                                  .unnormalizedCoordinates = VK_FALSE};
-            if (!lib.createSampler(device, &samplerCreateInfo, nullptr, &textureSampler))
-                return false;
-
-            stagingBufferResources.cleanup(device);
-        }
+        if (!textureResources.init(device, commandPool, graphicsQueue, physicalDeviceInfo))
+            return false;
 
         VkDescriptorSetLayoutBinding layoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
         VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{
@@ -3334,7 +3209,7 @@ private:
 
         for (size_t i = 0; i < maxFramesInFlight; i++)
         {
-            VkDescriptorImageInfo imageInfo(textureSampler, textureImageView, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            VkDescriptorImageInfo imageInfo(textureResources.getSampler(), textureResources.getImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
             VkWriteDescriptorSet writeDescriptorSet{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                                                     .pNext = nullptr,
                                                     .dstSet = descriptorSets[i],
@@ -3567,7 +3442,7 @@ private:
             return false;
 
         // Create synchronization objects
-        if (!synchronizationResources.init(lib, device, swapchainResources.imageCount))
+        if (!synchronizationResources.init(device, swapchainResources.imageCount))
             return false;
         logger.logInfo("Created synchronization objects");
 
@@ -3596,10 +3471,7 @@ private:
     VkQueue presentationQueue{};
     SwapchainResources swapchainResources;
     VkCommandPool commandPool{};
-    VkImage textureImage{};
-    VkDeviceMemory textureImageMemory{};
-    VkImageView textureImageView{};
-    VkSampler textureSampler{};
+    TextureResources textureResources;
     VkDescriptorSetLayout descriptorSetLayout{};
     VkDescriptorPool descriptorPool{};
     Array<VkDescriptorSet, maxFramesInFlight> descriptorSets;

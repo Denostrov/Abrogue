@@ -4167,7 +4167,7 @@ void OptionsMenu::onButtonPressed(ButtonType type)
     else if (type == eGPU)
     {
         auto deviceIndex = renderEngine.getDeviceIndex();
-        deviceIndex = (deviceIndex + 1) % renderEngine.getDeviceNames().getSize();
+        deviceIndex = (deviceIndex + 1) % renderEngine.getDeviceCount();
         renderEngine.setDeviceIndex(deviceIndex);
         refreshLabels();
     }
@@ -4201,8 +4201,7 @@ void OptionsMenu::refreshLabels()
     auto deviceIndex = renderEngine.getDeviceIndex();
     if (deviceIndex != -1)
     {
-        auto deviceNames = renderEngine.getDeviceNames();
-        buttons[eGPU].setText(labelText.format("Device: {}", deviceNames[renderEngine.getDeviceIndex()]));
+        buttons[eGPU].setText(labelText.format("Device: {}", renderEngine.getDeviceName()));
     }
 
     auto [windowWidth, windowHeight] = renderWindow.getWindowSize();
