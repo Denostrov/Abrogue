@@ -164,7 +164,7 @@ public:
     [[nodiscard]] bool getIsAttacking() const { return attackTimer > 0.0; }
 
     void update(double positionX, double positionY);
-    void updateDraw(double positionX, double positionY);
+    void updateDraw(double positionX, double positionY, double deltaTime);
 
     void startAttack(double positionX, double positionY, double targetPositionX, double targetPositionY);
 
@@ -313,17 +313,18 @@ public:
     void updateDraw(double deltaTime);
 
     [[nodiscard]] Type getType() const { return type; }
+    [[nodiscard]] std::int64_t getLevel() const { return level; }
     [[nodiscard]] FixedString<32> getName() const;
     [[nodiscard]] std::uint32_t getGlyph() const { return typeGlyphs[(std::size_t)type]; }
 
-    void setEnchantmentLevel(std::int64_t level) { enchantmentLevel = level; }
+    void setEnchantmentLevel(std::int64_t newLevel) { level = newLevel; }
     void setVisible(bool visible);
 
 private:
     static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157, 24, 91, 33};
 
     Type type{};
-    std::int64_t enchantmentLevel{};
+    std::int64_t level{};
 
     QuadReference<QuadLayer::eItem> quad;
 };
@@ -554,6 +555,7 @@ public:
     void updateDraw(double deltaTime);
 
     void takeDamage(std::int64_t damage);
+    void equipItem(std::int64_t index);
 
     [[nodiscard]] auto getStealthRange() const { return stealthRange; }
 
@@ -1491,13 +1493,14 @@ void Weapon::update(double positionX, double positionY)
         weaponReference = {};
     }
 }
-void Weapon::updateDraw(double positionX, double positionY)
+void Weapon::updateDraw(double positionX, double positionY, double deltaTime)
 {
     if (attackTimer <= 0.0)
         return;
 
+    double adjustedAttackTimer = attackTimer - deltaTime;
     double attackPeak = attackTime / 2.0;
-    double weaponOffset = (attackPeak - std::abs(attackTimer - attackPeak)) / attackPeak + drawOffset;
+    double weaponOffset = (attackPeak - std::abs(adjustedAttackTimer - attackPeak)) / attackPeak + drawOffset;
     weaponReference.setPosition(positionX + weaponOffset * attackAngleCos, positionY + weaponOffset * attackAngleSin * 0.5);
 }
 void Weapon::startAttack(double positionX, double positionY, double targetPositionX, double targetPositionY)
@@ -1784,9 +1787,9 @@ FixedString<32> Item::getName() const
     else if (type == Type::eAmulet)
         result.fill("Amulet of Yendor"sv);
     else if (type == Type::eWeapon)
-        result.format("Dagger +{}"sv, enchantmentLevel);
+        result.format("Dagger +{}"sv, level);
     else if (type == Type::eArmor)
-        result.format("Leather armor +{}"sv, enchantmentLevel);
+        result.format("Leather armor +{}"sv, level);
     else if (type == Type::ePotion)
         result.fill("Potion"sv);
 
@@ -3391,7 +3394,7 @@ Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0
     armorIndex = 1;
     item1Index = 2;
 
-    weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 0.25, true);
+    weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0, true);
     gui.setInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
 }
 void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
@@ -3436,18 +3439,39 @@ void Player::updateDraw(double deltaTime)
 
     auto [x, y] = getPredictedPosition(deltaTime);
     quadReference.setPosition(guiOffset + x, y);
-    weapon.updateDraw(guiOffset + x, y);
+    weapon.updateDraw(guiOffset + x, y, deltaTime);
 }
 void Player::takeDamage(std::int64_t damage)
 {
     if (health == 0)
         return;
 
+    if (armorIndex != -1)
+    {
+        damage /= inventory[armorIndex].getLevel() + 1;
+    }
+
     std::int64_t newHealth = health - damage;
     if (newHealth < 0)
         newHealth = 0;
 
     setHealth(newHealth);
+}
+void Player::equipItem(std::int64_t index)
+{
+    logger.extraAssert(index < inventory.getSize(), "Item index out of range");
+
+    auto const& item = inventory[index];
+    if (item.getType() == Item::Type::eWeapon)
+    {
+        weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0 / (item.getLevel() + 1), true);
+        weaponIndex = index;
+    }
+    else if (item.getType() == Item::Type::eArmor)
+    {
+        armorIndex = index;
+    }
+    gui.setInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
 }
 void Player::setMovement(std::int64_t movementX, std::int64_t movementY)
 {
@@ -3599,7 +3623,7 @@ void EnemyHandler::Enemy::updateDraw(double deltaTime)
         quad.setColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, color.a));
         quad.setBackgroundColor(Color::pack(color.r * brightness, color.g * brightness, color.b * brightness, 0));
 
-        weapon.updateDraw(Constants::mapOffset + x, y);
+        weapon.updateDraw(Constants::mapOffset + x, y, deltaTime);
     }
 }
 void EnemyHandler::Enemy::updateDrawDebug()
@@ -3773,7 +3797,7 @@ bool Game::update()
     {
         auto fps = framesDrawn * 10'000'000'000 / timeSinceLastLog;
         fps = fps / 10 + (fps % 10 >= 5);
-        gui.setFPS(fps, timeSinceLastLog / maxFrameTimeNS);
+        gui.setFPS(fps, 1e9 / maxFrameTimeNS);
 
         framesDrawn = 0;
         maxFrameTimeNS = 1;
@@ -3907,9 +3931,9 @@ void PlayArea::init()
     labels[LabelType::eArmorIcon].init(""sv, 15, 29);
     labels[LabelType::eArmorSlot].init("Armor[2]"sv, 12, 30);
     labels[LabelType::eItem1Icon].init(""sv, 25, 29);
-    labels[LabelType::eItem1Slot].init("Item[3]"sv, 22, 30);
+    labels[LabelType::eItem1Slot].init("Throw[3]"sv, 22, 30);
     labels[LabelType::eItem2Icon].init(""sv, 34, 29);
-    labels[LabelType::eItem2Slot].init("Item[4]"sv, 31, 30);
+    labels[LabelType::eItem2Slot].init("Consume[4]"sv, 32, 30);
 
     buttons[ePause].init(""sv, 26, 1);
     buttons[eHealth].init("       Health       "sv, 0, 1);
@@ -3990,6 +4014,12 @@ void PlayArea::onButtonPressed(ButtonType type)
 
     if (type == ePause)
         setPaused(!getPaused());
+
+    if (type >= eInventorySlotFirst && type <= eInventorySlotLast)
+    {
+        auto inventoryIndex = (std::int64_t)type - (std::int64_t)eInventorySlotFirst;
+        player.equipItem(inventoryIndex);
+    }
 }
 void PlayArea::onTabButtonPressed(TabButtonType type) const
 {
