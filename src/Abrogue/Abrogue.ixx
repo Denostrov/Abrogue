@@ -38,6 +38,8 @@ enum class InputControlType
     eMoveLeft,
     eMoveRight,
     eAttack,
+    eThrow,
+    eUse,
     ePause,
     eSearch,
     eDiscoveries,
@@ -303,6 +305,12 @@ public:
         eWeapon,
         eArmor,
         ePotion,
+        eDart,
+        eCharm,
+        eStaff,
+        eWand,
+        eRing,
+        eScroll,
         COUNT
     };
 
@@ -321,7 +329,7 @@ public:
     void setVisible(bool visible);
 
 private:
-    static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157, 24, 91, 33};
+    static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157, 24, 91, 33, 26, 231, 47, 126, 9, 13};
 
     Type type{};
     std::int64_t level{};
@@ -402,9 +410,19 @@ private:
 
     FixedVector<EnemyData, 128uz> enemyData;
 
-    static constexpr Array<SDL_Scancode, InputControlType::COUNT> defaultControls{
-        SDL_SCANCODE_W, SDL_SCANCODE_S,  SDL_SCANCODE_A,    SDL_SCANCODE_D,   static_cast<SDL_Scancode>(301), SDL_SCANCODE_SPACE, SDL_SCANCODE_Z,
-        SDL_SCANCODE_C, SDL_SCANCODE_F3, SDL_SCANCODE_KP_7, SDL_SCANCODE_KP_8};
+    static constexpr Array<SDL_Scancode, InputControlType::COUNT> defaultControls{SDL_SCANCODE_W,
+                                                                                  SDL_SCANCODE_S,
+                                                                                  SDL_SCANCODE_A,
+                                                                                  SDL_SCANCODE_D,
+                                                                                  static_cast<SDL_Scancode>(301),
+                                                                                  static_cast<SDL_Scancode>(302),
+                                                                                  SDL_SCANCODE_E,
+                                                                                  SDL_SCANCODE_SPACE,
+                                                                                  SDL_SCANCODE_Z,
+                                                                                  SDL_SCANCODE_C,
+                                                                                  SDL_SCANCODE_F3,
+                                                                                  SDL_SCANCODE_KP_7,
+                                                                                  SDL_SCANCODE_KP_8};
 };
 inline Configuration configuration;
 /*
@@ -556,14 +574,17 @@ public:
 
     void takeDamage(std::int64_t damage);
     void equipItem(std::int64_t index);
+    void useItem();
 
     [[nodiscard]] auto getStealthRange() const { return stealthRange; }
 
     void setMovement(std::int64_t movementX, std::int64_t movementY);
     void setHealth(std::int64_t newHealth);
+    void setNutrition(std::int64_t newNutrition);
 
     Weapon weapon;
     std::int64_t health{};
+    std::int64_t nutrition{};
     std::int64_t gold{};
     std::int64_t stealthRange{7};
 
@@ -572,8 +593,8 @@ public:
     FixedVector<Item, 20> inventory;
     std::int64_t weaponIndex{-1};
     std::int64_t armorIndex{-1};
-    std::int64_t item1Index{-1};
-    std::int64_t item2Index{-1};
+    std::int64_t throwIndex{-1};
+    std::int64_t useIndex{-1};
     bool hasAmulet{};
 
     QuadReference<QuadLayer::eEntity> quadReference;
@@ -674,6 +695,7 @@ public:
     void setPaused(bool paused);
     void setSpeedPercentage(std::uint64_t speed);
     void setPlayerMovement(std::int64_t movementX, std::int64_t movementY) const;
+    void usePlayerItem() const;
 
     [[nodiscard]] bool getShouldExit() const { return state == State::eFinished; }
 
@@ -715,7 +737,7 @@ public:
             return;
 
         auto result = animationHandler.update();
-        if (result == 0 && !animationHandler.getIsForward())
+        if (animationHandler.getIsFinished() && !animationHandler.getIsForward())
             quad.clear();
     }
 
@@ -745,7 +767,7 @@ public:
     }
 
 private:
-    AnimationHandler animationHandler{100'000'000};
+    AnimationHandler animationHandler{250'000'000};
     QuadReference<QuadLayer::ePopupBackground> quad;
 };
 /*
@@ -912,7 +934,7 @@ private:
         return color.getPacked();
     }
 
-    AnimationHandler animationHandler{2'000'000'000};
+    AnimationHandler animationHandler{250'000'000};
 
     bool isVisible{};
     bool isHovered{};
@@ -1228,13 +1250,14 @@ public:
     void onButtonPressed(ButtonType type);
     void onTabButtonPressed(TabButtonType type) const;
 
-    void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
-                         std::int64_t item2Index);
+    void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t throwIndex,
+                         std::int64_t useIndex);
 
     [[nodiscard]] bool getPaused() const { return buttons[ButtonType::ePause].getPressed(); }
     void setPaused(bool paused);
 
     void setPlayerHealth(double percentage);
+    void setPlayerNutrition(double percentage);
 
     void refreshLabels();
 };
@@ -1376,6 +1399,7 @@ public:
 
     void setFPS(std::int64_t fps, std::int64_t minFPS);
     void setPlayerHealth(double percentage);
+    void setPlayerNutrition(double percentage);
     void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
                       std::int64_t item2Index);
 
@@ -1792,6 +1816,18 @@ FixedString<32> Item::getName() const
         result.format("Leather armor +{}"sv, level);
     else if (type == Type::ePotion)
         result.fill("Potion"sv);
+    else if (type == Type::eDart)
+        result.format("Dart +{}"sv, level);
+    else if (type == Type::eCharm)
+        result.format("Charm +{}"sv, level);
+    else if (type == Type::eStaff)
+        result.format("Staff +{}"sv, level);
+    else if (type == Type::eWand)
+        result.format("Wand +{}"sv, level);
+    else if (type == Type::eRing)
+        result.format("Ring +{}"sv, level);
+    else if (type == Type::eScroll)
+        result.format("Scroll"sv);
 
     return result;
 }
@@ -1879,6 +1915,8 @@ void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
             std::int64_t moveUp = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveUp)];
             game.setPlayerMovement(moveRight - moveLeft, moveDown - moveUp);
         }
+        else if (inputControl == InputControlType::eUse)
+            game.usePlayerItem();
     }
     else
     {
@@ -2258,6 +2296,8 @@ bool Configuration::loadOptions()
     readInputControl("controlMoveLeft"sv, InputControlType::eMoveLeft);
     readInputControl("controlMoveRight"sv, InputControlType::eMoveRight);
     readInputControl("controlAttack"sv, InputControlType::eAttack);
+    readInputControl("controlThrow"sv, InputControlType::eThrow);
+    readInputControl("controlUse"sv, InputControlType::eUse);
     readInputControl("controlPause"sv, InputControlType::ePause);
     readInputControl("controlSearch"sv, InputControlType::eSearch);
     readInputControl("controlDiscoveries"sv, InputControlType::eDiscoveries);
@@ -2280,6 +2320,8 @@ bool Configuration::saveOptions()
     configJSON["controlMoveLeft"sv] = inputControlToScancode[InputControlType::eMoveLeft];
     configJSON["controlMoveRight"sv] = inputControlToScancode[InputControlType::eMoveRight];
     configJSON["controlAttack"sv] = inputControlToScancode[InputControlType::eAttack];
+    configJSON["controlThrow"sv] = inputControlToScancode[InputControlType::eThrow];
+    configJSON["controlUse"] = inputControlToScancode[InputControlType::eUse];
     configJSON["controlPause"sv] = inputControlToScancode[InputControlType::ePause];
     configJSON["controlSearch"sv] = inputControlToScancode[InputControlType::eSearch];
     configJSON["controlDiscoveries"sv] = inputControlToScancode[InputControlType::eDiscoveries];
@@ -2842,11 +2884,17 @@ void Map::generateLevel()
         std::int64_t spawnX = room.originX + mapRandom.generate() % room.width;
         std::int64_t spawnY = room.originY + mapRandom.generate() % room.height;
 
-        std::int64_t itemTypeVal = mapRandom.generate() % 10;
+        std::int64_t itemTypeVal = mapRandom.generate() % 20;
         Item::Type itemType = itemTypeVal == 0 ? Item::Type::eFood
             : itemTypeVal == 1                 ? Item::Type::eWeapon
             : itemTypeVal == 2                 ? Item::Type::eArmor
             : itemTypeVal == 3                 ? Item::Type::ePotion
+            : itemTypeVal == 4                 ? Item::Type::eDart
+            : itemTypeVal == 5                 ? Item::Type::eCharm
+            : itemTypeVal == 6                 ? Item::Type::eStaff
+            : itemTypeVal == 7                 ? Item::Type::eWand
+            : itemTypeVal == 8                 ? Item::Type::eRing
+            : itemTypeVal == 9                 ? Item::Type::eScroll
                                                : Item::Type::eGold;
         items.emplaceBack(itemType, spawnX + 0.5, spawnY + 0.5);
         if (itemType == Item::Type::eWeapon || itemType == Item::Type::eArmor)
@@ -3387,15 +3435,18 @@ Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0
     inventory.getBack().setVisible(false);
     inventory.emplaceBack(Item(Item::Type::eArmor, 0.0, 0.0));
     inventory.getBack().setVisible(false);
+    inventory.emplaceBack(Item::Type::eDart, 0.0, 0.0);
+    inventory.getBack().setVisible(false);
     inventory.emplaceBack(Item(Item::Type::eFood, 0.0, 0.0));
     inventory.getBack().setVisible(false);
 
     weaponIndex = 0;
     armorIndex = 1;
-    item1Index = 2;
+    throwIndex = 2;
+    useIndex = 3;
 
     weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0, true);
-    gui.setInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
+    gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
 }
 void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
 {
@@ -3426,7 +3477,7 @@ void Player::update()
                 inventory.emplaceBack(std::move(*itemOpt));
             }
 
-            gui.setInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
+            gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
         }
 
         if (hasAmulet && lastTileX == 40 && lastTileY == 33)
@@ -3471,7 +3522,37 @@ void Player::equipItem(std::int64_t index)
     {
         armorIndex = index;
     }
-    gui.setInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
+    else if (item.getType() == Item::Type::eFood || item.getType() == Item::Type::ePotion)
+    {
+        useIndex = index;
+    }
+    else if (item.getType() == Item::Type::eDart)
+    {
+        throwIndex = index;
+    }
+
+    gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
+}
+void Player::useItem()
+{
+    if (useIndex == -1)
+        return;
+
+    auto const& item = inventory[useIndex];
+    if (item.getType() == Item::Type::eFood)
+    {
+        setNutrition(100);
+        inventory.erase(useIndex);
+        useIndex = -1;
+    }
+    else if (item.getType() == Item::Type::ePotion)
+    {
+        setHealth(100);
+        inventory.erase(useIndex);
+        useIndex = -1;
+    }
+
+    gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
 }
 void Player::setMovement(std::int64_t movementX, std::int64_t movementY)
 {
@@ -3490,6 +3571,12 @@ void Player::setHealth(std::int64_t newHealth)
         gui.showGameOver(false);
         setMovementDirection(0.0, 0.0);
     }
+}
+void Player::setNutrition(std::int64_t newNutrition)
+{
+    nutrition = newNutrition;
+
+    gui.setPlayerNutrition(nutrition / 100.0);
 }
 /*
  * EnemyHandler implementation
@@ -3845,6 +3932,13 @@ void Game::setPlayerMovement(std::int64_t movementX, std::int64_t movementY) con
 
     player.setMovement(movementX, movementY);
 }
+void Game::usePlayerItem() const
+{
+    if (state != State::eRunning && state != State::ePaused)
+        return;
+
+    player.useItem();
+}
 void Game::quitToMainMenu()
 {
     gui.showMainMenu();
@@ -3926,14 +4020,14 @@ void PlayArea::init()
 {
     using enum ButtonType;
 
-    labels[LabelType::eWeaponIcon].init(""sv, 4, 29);
+    labels[LabelType::eWeaponIcon].init(""sv, 5, 29);
     labels[LabelType::eWeaponSlot].init("Weapon[1]"sv, 1, 30);
     labels[LabelType::eArmorIcon].init(""sv, 15, 29);
     labels[LabelType::eArmorSlot].init("Armor[2]"sv, 12, 30);
     labels[LabelType::eItem1Icon].init(""sv, 25, 29);
     labels[LabelType::eItem1Slot].init("Throw[3]"sv, 22, 30);
     labels[LabelType::eItem2Icon].init(""sv, 34, 29);
-    labels[LabelType::eItem2Slot].init("Consume[4]"sv, 32, 30);
+    labels[LabelType::eItem2Slot].init("Use[4]"sv, 32, 30);
 
     buttons[ePause].init(""sv, 26, 1);
     buttons[eHealth].init("       Health       "sv, 0, 1);
@@ -3956,7 +4050,7 @@ void PlayArea::init()
     refreshLabels();
 }
 void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex,
-                               std::int64_t item1Index, std::int64_t item2Index)
+                               std::int64_t throwIndex, std::int64_t useIndex)
 {
     using enum ButtonType;
 
@@ -3967,7 +4061,8 @@ void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int6
     FixedString<32> itemString;
     for (std::size_t i = 0; i < inventory.getSize(); i++)
     {
-        itemString.format("{}|{}", (char)inventory[i].getGlyph(), inventory[i].getName());
+        char slotGlyph = i == weaponIndex ? 'W' : i == armorIndex ? 'A' : i == throwIndex ? 'T' : i == useIndex ? 'U' : ' ';
+        itemString.format("{}|{}|{}", slotGlyph, (char)inventory[i].getGlyph(), inventory[i].getName());
         buttons[(std::size_t)eInventorySlotFirst + i].setText(itemString);
     }
 
@@ -3985,13 +4080,13 @@ void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int6
     labels[LabelType::eArmorIcon].setText(iconString);
     iconString[0] = ' ';
 
-    if (item1Index != -1)
-        iconString[0] = inventory[item1Index].getGlyph();
+    if (throwIndex != -1)
+        iconString[0] = inventory[throwIndex].getGlyph();
     labels[LabelType::eItem1Icon].setText(iconString);
     iconString[0] = ' ';
 
-    if (item2Index != -1)
-        iconString[0] = inventory[item2Index].getGlyph();
+    if (useIndex != -1)
+        iconString[0] = inventory[useIndex].getGlyph();
     labels[LabelType::eItem2Icon].setText(iconString);
 }
 void PlayArea::setPaused(bool paused)
@@ -4008,6 +4103,7 @@ void PlayArea::setPaused(bool paused)
     game.setPaused(paused);
 }
 void PlayArea::setPlayerHealth(double percentage) { buttons[ButtonType::eHealth].setProgress(percentage); }
+void PlayArea::setPlayerNutrition(double percentage) { buttons[ButtonType::eNutrition].setProgress(percentage); }
 void PlayArea::onButtonPressed(ButtonType type)
 {
     using enum ButtonType;
@@ -4481,6 +4577,7 @@ void GUI::setFPS(std::int64_t fps, std::int64_t minFPS)
     fpsLabel.setText(buf.getData());
 }
 void GUI::setPlayerHealth(double percentage) { playArea.setPlayerHealth(percentage); }
+void GUI::setPlayerNutrition(double percentage) { playArea.setPlayerNutrition(percentage); }
 void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
                        std::int64_t item2Index)
 {

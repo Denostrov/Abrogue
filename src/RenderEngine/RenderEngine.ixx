@@ -2330,7 +2330,6 @@ public:
             if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &submitFinishedSemaphores[i]))
                 return false;
         }
-        logger.logInfo("Created synchronization objects");
 
         return true;
     }
