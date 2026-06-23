@@ -103,7 +103,7 @@ public:
     static constexpr std::uint32_t vkAppMinorVersion{1u};
     static constexpr std::uint32_t vkAppPatchVersion{0u};
 
-    static constexpr std::int64_t ticksPerSecond{16};
+    static constexpr std::int64_t ticksPerSecond{8};
     static constexpr std::int64_t tickDurationNS{1000000000 / ticksPerSecond};
     static constexpr double tickDuration{1.0 / ticksPerSecond};
 
@@ -331,7 +331,7 @@ public:
 private:
     static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157, 24, 91, 33, 26, 231, 47, 126, 9, 13};
 
-    Type type{};
+    Type type{Type::COUNT};
     std::int64_t level{};
 
     QuadReference<QuadLayer::eItem> quad;
@@ -344,16 +344,26 @@ export class InputHandler
 public:
     InputHandler() = default;
 
+    void update();
+
     void setChangingControlType(InputControlType type) { changingControlType = type; }
 
     [[nodiscard]] std::pair<float, float> getMousePosition() const;
     void onMouseMoved(float x, float y);
     void onMousePressed(std::uint8_t buttonIndex, float x, float y);
+    void onMouseReleased(std::uint8_t buttonIndex, float x, float y);
 
-    void onButtonPressed(SDL_Scancode scancode, bool pressed);
+    void onButtonPressed(SDL_Scancode scancode);
+    void onButtonReleased(SDL_Scancode scancode);
 
 private:
-    std::array<bool, SDL_SCANCODE_COUNT> pressedButtons{};
+    void handlePress(InputControlType input);
+    void handleRelease(InputControlType input);
+
+    Array<bool, InputControlType::COUNT> pressedInputs;
+    Array<bool, InputControlType::COUNT> heldInputs;
+    Array<bool, InputControlType::COUNT> releasedInputs;
+
     InputControlType changingControlType{InputControlType::COUNT};
 };
 export inline InputHandler inputHandler;
@@ -1069,8 +1079,11 @@ public:
         hoveredButton->setHovered(false);
         hoveredButton = nullptr;
     }
-    void updateMousePressed(std::int64_t x, std::int64_t y)
+    void updateMousePressed(std::int64_t x, std::int64_t y, bool isLeftClick)
     {
+        if (!isLeftClick)
+            return;
+
         if constexpr (HasButtons<ButtonType>)
         {
             for (std::size_t i = 0; i < buttons.getSize(); i++)
@@ -1386,7 +1399,7 @@ public:
     void updateDraw(double deltaTime);
 
     void onMouseMoved(std::int64_t x, std::int64_t y);
-    void onMousePressed(std::int64_t x, std::int64_t y);
+    void onMousePressed(std::int64_t x, std::int64_t y, bool isLeftClick);
 
     void onPauseMenuHotkeyPressed();
     void onDebugHotkeyPressed();
@@ -1400,8 +1413,8 @@ public:
     void setFPS(std::int64_t fps, std::int64_t minFPS);
     void setPlayerHealth(double percentage);
     void setPlayerNutrition(double percentage);
-    void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
-                      std::int64_t item2Index);
+    void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t throwIndex,
+                      std::int64_t useIndex);
 
 private:
     void setCurrentScreen(ScreenType screenType);
@@ -1844,6 +1857,27 @@ void Item::setVisible(bool visible)
 /*
  * InputHandler implementation
  */
+void InputHandler::update()
+{
+    for (std::int32_t i = 0; i < releasedInputs.getSize(); i++)
+    {
+        if (!releasedInputs[i])
+            continue;
+
+        InputControlType input{i};
+        pressedInputs[input] = false;
+        releasedInputs[input] = false;
+        handleRelease(input);
+    }
+
+    for (std::int32_t i = 0; i < pressedInputs.getSize(); i++)
+    {
+        if (!pressedInputs[i])
+            continue;
+
+        heldInputs[i] = true;
+    }
+}
 std::pair<float, float> InputHandler::getMousePosition() const
 {
     float x{}, y{};
@@ -1859,78 +1893,95 @@ void InputHandler::onMouseMoved(float x, float y)
 }
 void InputHandler::onMousePressed(std::uint8_t buttonIndex, float x, float y)
 {
+    onButtonPressed((SDL_Scancode)(buttonIndex + 300));
+
+    if (buttonIndex == 1)
+    {
+        auto [width, height] = renderWindow.getWindowSize();
+        gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight, true);
+    }
+    else if (buttonIndex == 3)
+    {
+        auto [width, height] = renderWindow.getWindowSize();
+        gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight, false);
+    }
+}
+void InputHandler::onMouseReleased(std::uint8_t buttonIndex, float x, float y) { onButtonReleased((SDL_Scancode)(buttonIndex + 300)); }
+void InputHandler::onButtonPressed(SDL_Scancode scancode)
+{
     if (changingControlType != InputControlType::COUNT)
     {
-        configuration.setInputControlScancode(changingControlType, (SDL_Scancode)(buttonIndex + 300));
+        configuration.setInputControlScancode(changingControlType,
+                                              scancode == SDL_SCANCODE_ESCAPE ? configuration.getScancodeFromInputControl(changingControlType) : scancode);
+        pressedInputs[changingControlType] = false;
+        heldInputs[changingControlType] = false;
+        releasedInputs[changingControlType] = false;
         changingControlType = InputControlType::COUNT;
         return;
     }
 
-    auto inputControl = configuration.getInputControlFromScancode((SDL_Scancode)(buttonIndex + 300));
-
-    if (inputControl == InputControlType::eAttack)
+    if (scancode == SDL_SCANCODE_ESCAPE)
     {
-        auto [width, height] = renderWindow.getWindowSize();
-        gui.onMousePressed(x / width * Constants::screenWidth, y / height * Constants::screenHeight);
+        gui.onPauseMenuHotkeyPressed();
+        return;
     }
+
+    auto inputControl = configuration.getInputControlFromScancode(scancode);
+    if (inputControl == InputControlType::COUNT)
+        return;
+
+    pressedInputs[inputControl] = true;
+    handlePress(inputControl);
 }
-void InputHandler::onButtonPressed(SDL_Scancode scancode, bool pressed)
+void InputHandler::onButtonReleased(SDL_Scancode scancode)
 {
-    pressedButtons[scancode] = pressed;
+    auto inputControl = configuration.getInputControlFromScancode(scancode);
+    if (inputControl == InputControlType::COUNT)
+        return;
 
-    if (pressed)
+    if (heldInputs[inputControl])
     {
-        if (changingControlType != InputControlType::COUNT)
-        {
-            configuration.setInputControlScancode(changingControlType,
-                                                  scancode == SDL_SCANCODE_ESCAPE ? configuration.getScancodeFromInputControl(changingControlType) : scancode);
-            changingControlType = InputControlType::COUNT;
-            return;
-        }
-
-        if (scancode == SDL_SCANCODE_ESCAPE)
-        {
-            gui.onPauseMenuHotkeyPressed();
-            return;
-        }
-
-        auto inputControl = configuration.getInputControlFromScancode(scancode);
-
-        if (inputControl == InputControlType::ePause)
-            gui.onPauseHotkeyPressed();
-        else if (inputControl == InputControlType::eDiscoveries)
-            gui.onDiscoveriesHotkeyPressed();
-        else if (inputControl == InputControlType::eDebug)
-            gui.onDebugHotkeyPressed();
-        else if (inputControl == InputControlType::eStopTime)
-            gui.onStopTimeHotkeyPressed();
-        else if (inputControl == InputControlType::eStepTime)
-            gui.onStepTimeHotkeyPressed();
-        else if (inputControl == InputControlType::eMoveUp || inputControl == InputControlType::eMoveLeft || inputControl == InputControlType::eMoveDown ||
-                 inputControl == InputControlType::eMoveRight)
-        {
-            std::int64_t moveRight = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveRight)];
-            std::int64_t moveLeft = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveLeft)];
-            std::int64_t moveDown = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveDown)];
-            std::int64_t moveUp = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveUp)];
-            game.setPlayerMovement(moveRight - moveLeft, moveDown - moveUp);
-        }
-        else if (inputControl == InputControlType::eUse)
-            game.usePlayerItem();
+        pressedInputs[inputControl] = false;
+        heldInputs[inputControl] = false;
+        handleRelease(inputControl);
     }
     else
+        releasedInputs[inputControl] = true;
+}
+void InputHandler::handlePress(InputControlType input)
+{
+    if (input == InputControlType::ePause)
+        gui.onPauseHotkeyPressed();
+    else if (input == InputControlType::eDiscoveries)
+        gui.onDiscoveriesHotkeyPressed();
+    else if (input == InputControlType::eDebug)
+        gui.onDebugHotkeyPressed();
+    else if (input == InputControlType::eStopTime)
+        gui.onStopTimeHotkeyPressed();
+    else if (input == InputControlType::eStepTime)
+        gui.onStepTimeHotkeyPressed();
+    else if (input == InputControlType::eMoveUp || input == InputControlType::eMoveLeft || input == InputControlType::eMoveDown ||
+             input == InputControlType::eMoveRight)
     {
-        auto inputControl = configuration.getInputControlFromScancode(scancode);
-
-        if (inputControl == InputControlType::eMoveUp || inputControl == InputControlType::eMoveLeft || inputControl == InputControlType::eMoveDown ||
-            inputControl == InputControlType::eMoveRight)
-        {
-            std::int64_t moveRight = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveRight)];
-            std::int64_t moveLeft = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveLeft)];
-            std::int64_t moveDown = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveDown)];
-            std::int64_t moveUp = pressedButtons[configuration.getScancodeFromInputControl(InputControlType::eMoveUp)];
-            game.setPlayerMovement(moveRight - moveLeft, moveDown - moveUp);
-        }
+        std::int64_t moveRight = pressedInputs[InputControlType::eMoveRight];
+        std::int64_t moveLeft = pressedInputs[InputControlType::eMoveLeft];
+        std::int64_t moveDown = pressedInputs[InputControlType::eMoveDown];
+        std::int64_t moveUp = pressedInputs[InputControlType::eMoveUp];
+        game.setPlayerMovement(moveRight - moveLeft, moveDown - moveUp);
+    }
+    else if (input == InputControlType::eUse)
+        game.usePlayerItem();
+}
+void InputHandler::handleRelease(InputControlType input)
+{
+    if (input == InputControlType::eMoveUp || input == InputControlType::eMoveLeft || input == InputControlType::eMoveDown ||
+        input == InputControlType::eMoveRight)
+    {
+        std::int64_t moveRight = pressedInputs[InputControlType::eMoveRight];
+        std::int64_t moveLeft = pressedInputs[InputControlType::eMoveLeft];
+        std::int64_t moveDown = pressedInputs[InputControlType::eMoveDown];
+        std::int64_t moveUp = pressedInputs[InputControlType::eMoveUp];
+        game.setPlayerMovement(moveRight - moveLeft, moveDown - moveUp);
     }
 }
 /*
@@ -2878,7 +2929,7 @@ void Map::generateLevel()
         }
     }
 
-    for (std::int64_t i = 0; i < 20; i++)
+    for (std::int64_t i = 0; i < 50; i++)
     {
         auto const& room = getRandomRoom();
         std::int64_t spawnX = room.originX + mapRandom.generate() % room.width;
@@ -3431,13 +3482,13 @@ Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0
     setMaxVelocity(velocity);
     setHealth(100);
 
-    inventory.emplaceBack(Item(Item::Type::eWeapon, 0.0, 0.0));
+    inventory.emplaceBack(Item::Type::eWeapon, 0.0, 0.0);
     inventory.getBack().setVisible(false);
-    inventory.emplaceBack(Item(Item::Type::eArmor, 0.0, 0.0));
+    inventory.emplaceBack(Item::Type::eArmor, 0.0, 0.0);
     inventory.getBack().setVisible(false);
     inventory.emplaceBack(Item::Type::eDart, 0.0, 0.0);
     inventory.getBack().setVisible(false);
-    inventory.emplaceBack(Item(Item::Type::eFood, 0.0, 0.0));
+    inventory.emplaceBack(Item::Type::eFood, 0.0, 0.0);
     inventory.getBack().setVisible(false);
 
     weaponIndex = 0;
@@ -3543,12 +3594,24 @@ void Player::useItem()
     {
         setNutrition(100);
         inventory.erase(useIndex);
+        if (weaponIndex > useIndex)
+            weaponIndex--;
+        if (armorIndex > useIndex)
+            armorIndex--;
+        if (throwIndex > useIndex)
+            throwIndex--;
         useIndex = -1;
     }
     else if (item.getType() == Item::Type::ePotion)
     {
         setHealth(100);
         inventory.erase(useIndex);
+        if (weaponIndex > useIndex)
+            weaponIndex--;
+        if (armorIndex > useIndex)
+            armorIndex--;
+        if (throwIndex > useIndex)
+            throwIndex--;
         useIndex = -1;
     }
 
@@ -3865,6 +3928,7 @@ bool Game::update()
     while (gameDeltaTimeNS >= adjustedTickDuration)
     {
         advanceStep();
+        inputHandler.update();
 
         gameDeltaTimeNS -= adjustedTickDuration;
 
@@ -4038,7 +4102,7 @@ void PlayArea::init()
     buttons[eSearch].init(""sv, 11, 35);
     buttons[eInventory].init("Inventory"sv, 0, 6);
 
-    for (std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst; i++)
+    for (std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst + 1; i++)
         buttons[(std::size_t)eInventorySlotFirst + i].init(""sv, 1, 7 + i);
 
     buttons[eDepth].init("Depth:"sv, 0, 35);
@@ -4399,13 +4463,13 @@ void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 {
     executeOnScreen(activeScreenType, [x, y](auto& screen) { screen.updateMouseMoved(x, y); });
 }
-void GUI::onMousePressed(std::int64_t x, std::int64_t y)
+void GUI::onMousePressed(std::int64_t x, std::int64_t y, bool isLeftClick)
 {
     // Handle player actions when pressing on the map
-    if (activeScreenType == ScreenType::ePlayArea && !playArea.getPaused() && x >= Constants::mapOffset)
+    if (activeScreenType == ScreenType::ePlayArea && !playArea.getPaused() && x >= Constants::mapOffset && isLeftClick)
         player.onMousePressed(x - Constants::mapOffset, y);
 
-    executeOnScreen(activeScreenType, [x, y](auto& screen) { screen.updateMousePressed(x, y); });
+    executeOnScreen(activeScreenType, [x, y, isLeftClick](auto& screen) { screen.updateMousePressed(x, y, isLeftClick); });
 }
 void GUI::onPauseMenuHotkeyPressed()
 {
@@ -4578,8 +4642,8 @@ void GUI::setFPS(std::int64_t fps, std::int64_t minFPS)
 }
 void GUI::setPlayerHealth(double percentage) { playArea.setPlayerHealth(percentage); }
 void GUI::setPlayerNutrition(double percentage) { playArea.setPlayerNutrition(percentage); }
-void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t item1Index,
-                       std::int64_t item2Index)
+void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t throwIndex,
+                       std::int64_t useIndex)
 {
-    playArea.updateInventory(inventory, gold, weaponIndex, armorIndex, item1Index, item2Index);
+    playArea.updateInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
 }

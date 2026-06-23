@@ -29,13 +29,16 @@ SDL_AppResult SDL_AppEvent(void*, SDL_Event* event)
         game.refreshWindowState();
         break;
     case SDL_EVENT_KEY_DOWN:
-        inputHandler.onButtonPressed(event->key.scancode, true);
+        inputHandler.onButtonPressed(event->key.scancode);
         break;
     case SDL_EVENT_KEY_UP:
-        inputHandler.onButtonPressed(event->key.scancode, false);
+        inputHandler.onButtonReleased(event->key.scancode);
         break;
     case SDL_EVENT_MOUSE_BUTTON_DOWN:
         inputHandler.onMousePressed(event->button.button, event->button.x, event->button.y);
+        break;
+    case SDL_EVENT_MOUSE_BUTTON_UP:
+        inputHandler.onMouseReleased(event->button.button, event->button.x, event->button.y);
         break;
     case SDL_EVENT_MOUSE_MOTION:
         inputHandler.onMouseMoved(event->motion.x, event->motion.y);
