@@ -40,6 +40,12 @@ enum class InputControlType
     eAttack,
     eThrow,
     eUse,
+    eSwapWeapon,
+    eSwapArmor,
+    eSwapThrowable,
+    eSwapUsable,
+    eSwapRingFirst,
+    eSwapRingSecond,
     ePause,
     eSearch,
     eDiscoveries,
@@ -435,6 +441,12 @@ private:
                                                                                   static_cast<SDL_Scancode>(301),
                                                                                   static_cast<SDL_Scancode>(302),
                                                                                   SDL_SCANCODE_E,
+                                                                                  SDL_SCANCODE_1,
+                                                                                  SDL_SCANCODE_2,
+                                                                                  SDL_SCANCODE_3,
+                                                                                  SDL_SCANCODE_4,
+                                                                                  SDL_SCANCODE_5,
+                                                                                  SDL_SCANCODE_6,
                                                                                   SDL_SCANCODE_SPACE,
                                                                                   SDL_SCANCODE_Z,
                                                                                   SDL_SCANCODE_C,
@@ -583,11 +595,17 @@ public:
         std::int64_t gold{};
         FixedVector<Item, 20> items;
         std::optional<Item> weapon;
+        std::int64_t weaponSwapIndex{-1};
         std::optional<Item> armor;
+        std::int64_t armorSwapIndex{-1};
         std::optional<Item> throwable;
+        std::int64_t throwableSwapIndex{-1};
         std::optional<Item> usable;
+        std::int64_t usableSwapIndex{-1};
         std::optional<Item> ringFirst;
+        std::int64_t ringFirstSwapIndex{-1};
         std::optional<Item> ringSecond;
+        std::int64_t ringSecondSwapIndex{-1};
         bool hasAmulet{};
     };
 
@@ -603,6 +621,12 @@ public:
     void takeDamage(std::int64_t damage);
     void equipItem(std::int64_t index, bool isThrow);
     void useItem();
+    void swapWeapon();
+    void swapArmor();
+    void swapThrowable();
+    void swapUsable();
+    void swapRingFirst();
+    void swapRingSecond();
 
     [[nodiscard]] auto getStealthRange() const { return stealthRange; }
 
@@ -2366,6 +2390,12 @@ bool Configuration::loadOptions()
     readInputControl("controlAttack"sv, InputControlType::eAttack);
     readInputControl("controlThrow"sv, InputControlType::eThrow);
     readInputControl("controlUse"sv, InputControlType::eUse);
+    readInputControl("controlSwapWeapon"sv, InputControlType::eSwapWeapon);
+    readInputControl("controlSwapArmor"sv, InputControlType::eSwapArmor);
+    readInputControl("controlSwapThrowable"sv, InputControlType::eSwapThrowable);
+    readInputControl("controlSwapUsable"sv, InputControlType::eSwapUsable);
+    readInputControl("controlSwapRingFirst"sv, InputControlType::eSwapRingFirst);
+    readInputControl("controlSwapRingSecond"sv, InputControlType::eSwapRingSecond);
     readInputControl("controlPause"sv, InputControlType::ePause);
     readInputControl("controlSearch"sv, InputControlType::eSearch);
     readInputControl("controlDiscoveries"sv, InputControlType::eDiscoveries);
@@ -2389,7 +2419,13 @@ bool Configuration::saveOptions()
     configJSON["controlMoveRight"sv] = inputControlToScancode[InputControlType::eMoveRight];
     configJSON["controlAttack"sv] = inputControlToScancode[InputControlType::eAttack];
     configJSON["controlThrow"sv] = inputControlToScancode[InputControlType::eThrow];
-    configJSON["controlUse"] = inputControlToScancode[InputControlType::eUse];
+    configJSON["controlUse"sv] = inputControlToScancode[InputControlType::eUse];
+    configJSON["controlSwapWeapon"sv] = inputControlToScancode[InputControlType::eSwapWeapon];
+    configJSON["controlSwapArmor"sv] = inputControlToScancode[InputControlType::eSwapArmor];
+    configJSON["controlSwapThrowable"sv] = inputControlToScancode[InputControlType::eSwapThrowable];
+    configJSON["controlSwapUsable"sv] = inputControlToScancode[InputControlType::eSwapUsable];
+    configJSON["controlSwapRingFirst"sv] = inputControlToScancode[InputControlType::eSwapRingFirst];
+    configJSON["controlSwapRingSecond"sv] = inputControlToScancode[InputControlType::eSwapRingSecond];
     configJSON["controlPause"sv] = inputControlToScancode[InputControlType::ePause];
     configJSON["controlSearch"sv] = inputControlToScancode[InputControlType::eSearch];
     configJSON["controlDiscoveries"sv] = inputControlToScancode[InputControlType::eDiscoveries];
