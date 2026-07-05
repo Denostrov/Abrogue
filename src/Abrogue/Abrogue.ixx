@@ -264,6 +264,14 @@ public:
         return {x + (nextX - x) * interpolationCoefficient, y + (nextY - y) * interpolationCoefficient};
     }
 
+    void setPosition(double newX, double newY)
+    {
+        x = newX;
+        y = newY;
+        nextX = x;
+        nextY = y;
+    }
+
 protected:
     void setMass(double newMass) { mass = newMass; }
     void setFrictionCoefficient(double newFriction) { frictionCoefficient = newFriction; }
@@ -514,11 +522,6 @@ class Map
         std::array<bool, Constants::mapTileCount> tilesOccupiedMask{};
     };
 
-    struct DistanceFieldTile
-    {
-        std::int64_t kingDistance{};
-    };
-
 public:
     Map() = default;
     void init();
@@ -527,6 +530,7 @@ public:
     void updateDraw(double deltaTime);
 
     [[nodiscard]] std::optional<Item> pickupItem(std::int64_t x, std::int64_t y, bool onlyGold);
+    void addItem(std::int64_t x, std::int64_t y, Item&& item);
 
     [[nodiscard]] std::int64_t getDepth() const { return 1; }
     [[nodiscard]] Room const& getRandomRoom() const;
@@ -574,16 +578,30 @@ inline Map map;
 class Player : public PhysicsComponent
 {
 public:
+    struct Inventory
+    {
+        std::int64_t gold{};
+        FixedVector<Item, 20> items;
+        std::optional<Item> weapon;
+        std::optional<Item> armor;
+        std::optional<Item> throwable;
+        std::optional<Item> usable;
+        std::optional<Item> ringFirst;
+        std::optional<Item> ringSecond;
+        bool hasAmulet{};
+    };
+
     Player() = default;
     Player(double velocity);
 
-    void onMousePressed(std::uint32_t x, std::uint32_t y);
+    void startAttack(std::uint32_t x, std::uint32_t y);
+    void startThrow(std::uint32_t x, std::uint32_t y);
 
     void update();
     void updateDraw(double deltaTime);
 
     void takeDamage(std::int64_t damage);
-    void equipItem(std::int64_t index);
+    void equipItem(std::int64_t index, bool isThrow);
     void useItem();
 
     [[nodiscard]] auto getStealthRange() const { return stealthRange; }
@@ -595,17 +613,11 @@ public:
     Weapon weapon;
     std::int64_t health{};
     std::int64_t nutrition{};
-    std::int64_t gold{};
     std::int64_t stealthRange{7};
 
     std::int64_t lastTileX{}, lastTileY{};
 
-    FixedVector<Item, 20> inventory;
-    std::int64_t weaponIndex{-1};
-    std::int64_t armorIndex{-1};
-    std::int64_t throwIndex{-1};
-    std::int64_t useIndex{-1};
-    bool hasAmulet{};
+    Inventory inventory;
 
     QuadReference<QuadLayer::eEntity> quadReference;
 };
@@ -1079,11 +1091,8 @@ public:
         hoveredButton->setHovered(false);
         hoveredButton = nullptr;
     }
-    void updateMousePressed(std::int64_t x, std::int64_t y, bool isLeftClick)
+    void updateMousePressed(std::int64_t x, std::int64_t y, bool isLeftButton)
     {
-        if (!isLeftClick)
-            return;
-
         if constexpr (HasButtons<ButtonType>)
         {
             for (std::size_t i = 0; i < buttons.getSize(); i++)
@@ -1091,30 +1100,37 @@ public:
                 if (!buttons[i].checkCollision(x, y))
                     continue;
 
-                static_cast<Derived*>(this)->onButtonPressed((ButtonType)i);
+                if (isLeftButton)
+                    static_cast<Derived*>(this)->onButtonLeftClicked((ButtonType)i);
+                else
+                    static_cast<Derived*>(this)->onButtonRightClicked((ButtonType)i);
+
                 return;
             }
         }
 
         if constexpr (HasButtons<TabButtonType>)
         {
-            for (std::size_t i = 0; i < tabButtons.getSize(); i++)
+            if (isLeftButton)
             {
-                if (!tabButtons[i].checkCollision(x, y))
-                    continue;
-
-                if (pressedTabButtonType != TabButtonType::COUNT)
-                    tabButtons[pressedTabButtonType].setPressed(false);
-
-                pressedTabButtonType = (TabButtonType)i;
-
-                if (pressedTabButtonType != TabButtonType::COUNT)
+                for (std::size_t i = 0; i < tabButtons.getSize(); i++)
                 {
-                    tabButtons[i].setPressed(true);
-                    static_cast<Derived*>(this)->onTabButtonPressed(pressedTabButtonType);
-                }
+                    if (!tabButtons[i].checkCollision(x, y))
+                        continue;
 
-                return;
+                    if (pressedTabButtonType != TabButtonType::COUNT)
+                        tabButtons[pressedTabButtonType].setPressed(false);
+
+                    pressedTabButtonType = (TabButtonType)i;
+
+                    if (pressedTabButtonType != TabButtonType::COUNT)
+                    {
+                        tabButtons[i].setPressed(true);
+                        static_cast<Derived*>(this)->onTabButtonPressed(pressedTabButtonType);
+                    }
+
+                    return;
+                }
             }
         }
     }
@@ -1124,7 +1140,7 @@ public:
     {
         logger.extraAssert(type < ButtonType::COUNT, "invalid button type"sv);
 
-        static_cast<Derived*>(this)->onButtonPressed(type);
+        static_cast<Derived*>(this)->onButtonLeftClicked(type);
     }
 
     void setTabButtonPressed(TabButtonType type)
@@ -1196,7 +1212,8 @@ class PauseMenu : public ScreenComponent<PauseMenu, EmptyEnumType, PauseMenuButt
 public:
     void init();
 
-    void onButtonPressed(ButtonType type) const;
+    void onButtonLeftClicked(ButtonType type) const;
+    void onButtonRightClicked(ButtonType type) const {}
 };
 
 /*
@@ -1217,19 +1234,14 @@ class MainMenu : public ScreenComponent<MainMenu, EmptyEnumType, MainMenuButtonT
 public:
     void init();
 
-    void onButtonPressed(ButtonType type);
+    void onButtonLeftClicked(ButtonType type);
+    void onButtonRightClicked(ButtonType type) const {}
 };
 
 enum class PlayAreaLabelType
 {
-    eWeaponIcon,
-    eWeaponSlot,
-    eArmorIcon,
-    eArmorSlot,
-    eItem1Icon,
-    eItem1Slot,
-    eItem2Icon,
-    eItem2Slot,
+    eGold,
+    eInventory,
     COUNT
 };
 enum class PlayAreaButtonType
@@ -1237,9 +1249,13 @@ enum class PlayAreaButtonType
     ePause,
     eHealth,
     eNutrition,
-    eGold,
-    eInventory,
-    eInventorySlotFirst = eInventory + 1,
+    eWeapon,
+    eArmor,
+    eThrow,
+    eUse,
+    eRingFirst,
+    eRingSecond,
+    eInventorySlotFirst,
     eInventorySlotLast = eInventorySlotFirst + 19,
     eDepth,
     eSearch,
@@ -1260,11 +1276,11 @@ class PlayArea : public ScreenComponent<PlayArea, PlayAreaLabelType, PlayAreaBut
 public:
     void init();
 
-    void onButtonPressed(ButtonType type);
+    void onButtonLeftClicked(ButtonType type);
+    void onButtonRightClicked(ButtonType type);
     void onTabButtonPressed(TabButtonType type) const;
 
-    void updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t throwIndex,
-                         std::int64_t useIndex);
+    void updateInventory(Player::Inventory const& inventory);
 
     [[nodiscard]] bool getPaused() const { return buttons[ButtonType::ePause].getPressed(); }
     void setPaused(bool paused);
@@ -1320,7 +1336,8 @@ public:
     void init();
 
     // Enable or disable the corresponding debug option
-    void onButtonPressed(ButtonType type);
+    void onButtonLeftClicked(ButtonType type);
+    void onButtonRightClicked(ButtonType type) {}
 
     // Disable all debug options
     void resetToDefault();
@@ -1363,7 +1380,8 @@ class OptionsMenu : public ScreenComponent<OptionsMenu, OptionsMenuLabelType, Op
 public:
     void init();
 
-    void onButtonPressed(ButtonType type);
+    void onButtonLeftClicked(ButtonType type);
+    void onButtonRightClicked(ButtonType type) {}
 
     void refreshLabels();
 };
@@ -1399,7 +1417,7 @@ public:
     void updateDraw(double deltaTime);
 
     void onMouseMoved(std::int64_t x, std::int64_t y);
-    void onMousePressed(std::int64_t x, std::int64_t y, bool isLeftClick);
+    void onMousePressed(std::int64_t x, std::int64_t y, bool isLeftButton);
 
     void onPauseMenuHotkeyPressed();
     void onDebugHotkeyPressed();
@@ -1413,8 +1431,7 @@ public:
     void setFPS(std::int64_t fps, std::int64_t minFPS);
     void setPlayerHealth(double percentage);
     void setPlayerNutrition(double percentage);
-    void setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t throwIndex,
-                      std::int64_t useIndex);
+    void setInventory(Player::Inventory const& inventory);
 
 private:
     void setCurrentScreen(ScreenType screenType);
@@ -2594,12 +2611,18 @@ std::optional<Item> Map::pickupItem(std::int64_t x, std::int64_t y, bool onlyGol
             continue;
 
         items[i].setVisible(false);
-        std::optional<Item> result(std::move(items[i]));
+        std::optional result(std::move(items[i]));
         items.erase(i);
         return result;
     }
 
     return std::nullopt;
+}
+void Map::addItem(std::int64_t x, std::int64_t y, Item&& item)
+{
+    item.setPosition(x, y);
+    item.setVisible(true);
+    items.emplaceBack(std::move(item));
 }
 Map::Room const& Map::getRandomRoom() const { return levelData.rooms[mapRandom.generate() % levelData.roomCount]; }
 FixedVector<std::pair<std::int64_t, std::int64_t>, 32> Map::getPath(std::int64_t startX, std::int64_t startY, std::int64_t endX, std::int64_t endY) const
@@ -3482,27 +3505,32 @@ Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0
     setMaxVelocity(velocity);
     setHealth(100);
 
-    inventory.emplaceBack(Item::Type::eWeapon, 0.0, 0.0);
-    inventory.getBack().setVisible(false);
-    inventory.emplaceBack(Item::Type::eArmor, 0.0, 0.0);
-    inventory.getBack().setVisible(false);
-    inventory.emplaceBack(Item::Type::eDart, 0.0, 0.0);
-    inventory.getBack().setVisible(false);
-    inventory.emplaceBack(Item::Type::eFood, 0.0, 0.0);
-    inventory.getBack().setVisible(false);
-
-    weaponIndex = 0;
-    armorIndex = 1;
-    throwIndex = 2;
-    useIndex = 3;
+    inventory.weapon = Item(Item::Type::eWeapon, 0.0, 0.0);
+    inventory.weapon->setVisible(false);
+    inventory.armor = Item(Item::Type::eArmor, 0.0, 0.0);
+    inventory.armor->setVisible(false);
+    inventory.throwable = Item(Item::Type::eDart, 0.0, 0.0);
+    inventory.throwable->setVisible(false);
+    inventory.usable = Item(Item::Type::eFood, 0.0, 0.0);
+    inventory.usable->setVisible(false);
 
     weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0, true);
-    gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
+    gui.setInventory(inventory);
 }
-void Player::onMousePressed(std::uint32_t x, std::uint32_t y)
+void Player::startAttack(std::uint32_t x, std::uint32_t y)
 {
     auto [positionX, positionY] = getPosition();
     weapon.startAttack(positionX, positionY, x + 0.5, y + 0.5);
+}
+void Player::startThrow(std::uint32_t x, std::uint32_t y)
+{
+    if (!inventory.throwable)
+        return;
+
+    auto [positionX, positionY] = getPosition();
+    map.addItem(positionX, positionY, std::move(inventory.throwable.value()));
+    inventory.throwable = std::nullopt;
+    gui.setInventory(inventory);
 }
 void Player::update()
 {
@@ -3516,22 +3544,22 @@ void Player::update()
         lastTileX = (std::int64_t)positionX;
         lastTileY = (std::int64_t)positionY;
 
-        if (auto itemOpt = map.pickupItem(lastTileX, lastTileY, inventory.isFull()))
+        if (auto itemOpt = map.pickupItem(lastTileX, lastTileY, inventory.items.isFull()))
         {
             if (itemOpt->getType() == Item::Type::eGold)
-                gold++;
+                inventory.gold++;
             else
             {
                 if (itemOpt->getType() == Item::Type::eAmulet)
-                    hasAmulet = true;
+                    inventory.hasAmulet = true;
 
-                inventory.emplaceBack(std::move(*itemOpt));
+                inventory.items.emplaceBack(std::move(*itemOpt));
             }
 
-            gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
+            gui.setInventory(inventory);
         }
 
-        if (hasAmulet && lastTileX == 40 && lastTileY == 33)
+        if (inventory.hasAmulet && lastTileX == 40 && lastTileY == 33)
             gui.showGameOver(true);
     }
 }
@@ -3548,9 +3576,9 @@ void Player::takeDamage(std::int64_t damage)
     if (health == 0)
         return;
 
-    if (armorIndex != -1)
+    if (inventory.armor)
     {
-        damage /= inventory[armorIndex].getLevel() + 1;
+        damage /= inventory.armor->getLevel() + 1;
     }
 
     std::int64_t newHealth = health - damage;
@@ -3559,63 +3587,86 @@ void Player::takeDamage(std::int64_t damage)
 
     setHealth(newHealth);
 }
-void Player::equipItem(std::int64_t index)
+void Player::equipItem(std::int64_t index, bool isThrow)
 {
-    logger.extraAssert(index < inventory.getSize(), "Item index out of range");
+    logger.extraAssert(index < inventory.items.getSize(), "Item index out of range");
 
-    auto const& item = inventory[index];
-    if (item.getType() == Item::Type::eWeapon)
+    auto& item = inventory.items[index];
+    if (isThrow)
     {
-        weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0 / (item.getLevel() + 1), true);
-        weaponIndex = index;
+        if (inventory.throwable)
+            std::swap(inventory.throwable.value(), item);
+        else
+        {
+            inventory.throwable = std::move(item);
+            inventory.items.erase(index);
+        }
     }
-    else if (item.getType() == Item::Type::eArmor)
+    else
     {
-        armorIndex = index;
-    }
-    else if (item.getType() == Item::Type::eFood || item.getType() == Item::Type::ePotion)
-    {
-        useIndex = index;
-    }
-    else if (item.getType() == Item::Type::eDart)
-    {
-        throwIndex = index;
+        if (item.getType() == Item::Type::eWeapon)
+        {
+            weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0 / (item.getLevel() + 1), true);
+            if (inventory.weapon)
+                std::swap(inventory.weapon.value(), item);
+            else
+            {
+                inventory.weapon = std::move(item);
+                inventory.items.erase(index);
+            }
+        }
+        else if (item.getType() == Item::Type::eArmor)
+        {
+            if (inventory.armor)
+                std::swap(inventory.armor.value(), item);
+            else
+            {
+                inventory.armor = std::move(item);
+                inventory.items.erase(index);
+            }
+        }
+        else if (item.getType() == Item::Type::eFood || item.getType() == Item::Type::ePotion)
+        {
+            if (inventory.usable)
+                std::swap(inventory.usable.value(), item);
+            else
+            {
+                inventory.usable = std::move(item);
+                inventory.items.erase(index);
+            }
+        }
+        else if (item.getType() == Item::Type::eDart)
+        {
+            if (inventory.throwable)
+                std::swap(inventory.throwable.value(), item);
+            else
+            {
+                inventory.throwable = std::move(item);
+                inventory.items.erase(index);
+            }
+        }
     }
 
-    gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
+    gui.setInventory(inventory);
 }
 void Player::useItem()
 {
-    if (useIndex == -1)
+    if (!inventory.usable)
         return;
 
-    auto const& item = inventory[useIndex];
+    auto const& item = inventory.usable.value();
     if (item.getType() == Item::Type::eFood)
     {
         setNutrition(100);
-        inventory.erase(useIndex);
-        if (weaponIndex > useIndex)
-            weaponIndex--;
-        if (armorIndex > useIndex)
-            armorIndex--;
-        if (throwIndex > useIndex)
-            throwIndex--;
-        useIndex = -1;
+        inventory.usable = std::nullopt;
     }
     else if (item.getType() == Item::Type::ePotion)
     {
         setHealth(100);
-        inventory.erase(useIndex);
-        if (weaponIndex > useIndex)
-            weaponIndex--;
-        if (armorIndex > useIndex)
-            armorIndex--;
-        if (throwIndex > useIndex)
-            throwIndex--;
-        useIndex = -1;
+        inventory.usable = std::nullopt;
     }
 
-    gui.setInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
+    gui.setInventory(inventory);
 }
 void Player::setMovement(std::int64_t movementX, std::int64_t movementY)
 {
@@ -4044,7 +4095,7 @@ void PauseMenu::init()
     buttons[eAbandonGame].init("Abandon game"sv, 57, 17);
     buttons[eSaveAndQuit].init("Save and quit"sv, 57, 18);
 }
-void PauseMenu::onButtonPressed(ButtonType type) const
+void PauseMenu::onButtonLeftClicked(ButtonType type) const
 {
     using enum ButtonType;
 
@@ -4066,7 +4117,7 @@ void MainMenu::init()
     buttons[eOptions].init("Options"sv, 121, 31);
     buttons[eQuitToDesktop].init("Quit to desktop"sv, 113, 32);
 }
-void MainMenu::onButtonPressed(MainMenuButtonType type)
+void MainMenu::onButtonLeftClicked(MainMenuButtonType type)
 {
     using enum MainMenuButtonType;
 
@@ -4084,26 +4135,24 @@ void PlayArea::init()
 {
     using enum ButtonType;
 
-    labels[LabelType::eWeaponIcon].init(""sv, 5, 29);
-    labels[LabelType::eWeaponSlot].init("Weapon[1]"sv, 1, 30);
-    labels[LabelType::eArmorIcon].init(""sv, 15, 29);
-    labels[LabelType::eArmorSlot].init("Armor[2]"sv, 12, 30);
-    labels[LabelType::eItem1Icon].init(""sv, 25, 29);
-    labels[LabelType::eItem1Slot].init("Throw[3]"sv, 22, 30);
-    labels[LabelType::eItem2Icon].init(""sv, 34, 29);
-    labels[LabelType::eItem2Slot].init("Use[4]"sv, 32, 30);
+    labels[LabelType::eGold].init("Gold:0"sv, 0, 11);
+    labels[LabelType::eInventory].init("Inventory:"sv, 0, 12);
 
     buttons[ePause].init(""sv, 26, 1);
     buttons[eHealth].init("       Health       "sv, 0, 1);
     buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
     buttons[eNutrition].init("     Nutrition      "sv, 0, 2);
     buttons[eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
-    buttons[eGold].init("Gold:0"sv, 0, 5);
+    buttons[eWeapon].init("Weapon[1]:"sv, 0, 4);
+    buttons[eArmor].init(" Armor[2]:"sv, 0, 5);
+    buttons[eThrow].init(" Throw[3]:"sv, 0, 6);
+    buttons[eUse].init("   Use[4]:"sv, 0, 7);
+    buttons[eRingFirst].init("  Ring[5]:"sv, 0, 8);
+    buttons[eRingSecond].init("  Ring[6]:"sv, 0, 9);
     buttons[eSearch].init(""sv, 11, 35);
-    buttons[eInventory].init("Inventory"sv, 0, 6);
 
     for (std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst + 1; i++)
-        buttons[(std::size_t)eInventorySlotFirst + i].init(""sv, 1, 7 + i);
+        buttons[(std::size_t)eInventorySlotFirst + i].init(""sv, 1, 13 + i);
 
     buttons[eDepth].init("Depth:"sv, 0, 35);
 
@@ -4113,45 +4162,59 @@ void PlayArea::init()
 
     refreshLabels();
 }
-void PlayArea::updateInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex,
-                               std::int64_t throwIndex, std::int64_t useIndex)
+void PlayArea::updateInventory(Player::Inventory const& inventory)
 {
     using enum ButtonType;
 
     FixedString<32> goldString;
-    goldString.format("Gold:{}", gold);
-    buttons[eGold].setText(goldString);
+    goldString.format("Gold:{}", inventory.gold);
+    labels[LabelType::eGold].setText(goldString);
 
     FixedString<32> itemString;
-    for (std::size_t i = 0; i < inventory.getSize(); i++)
+    if (inventory.weapon)
+        itemString.format("Weapon[1]:|{}|{}", (char)inventory.weapon->getGlyph(), inventory.weapon->getName());
+    else
+        itemString.format("Weapon[1]:");
+    buttons[eWeapon].setText(itemString);
+
+    if (inventory.armor)
+        itemString.format(" Armor[2]:|{}|{}", (char)inventory.armor->getGlyph(), inventory.armor->getName());
+    else
+        itemString.format(" Armor[2]:");
+    buttons[eArmor].setText(itemString);
+
+    if (inventory.throwable)
+        itemString.format(" Throw[3]:|{}|{}", (char)inventory.throwable->getGlyph(), inventory.throwable->getName());
+    else
+        itemString.format(" Throw[3]:");
+    buttons[eThrow].setText(itemString);
+
+    if (inventory.usable)
+        itemString.format("   Use[4]:|{}|{}", (char)inventory.usable->getGlyph(), inventory.usable->getName());
+    else
+        itemString.format("   Use[4]:");
+    buttons[eUse].setText(itemString);
+
+    if (inventory.ringFirst)
+        itemString.format("  Ring[5]:|{}|{}", (char)inventory.ringFirst->getGlyph(), inventory.ringFirst->getName());
+    else
+        itemString.format("  Ring[5]:");
+    buttons[eRingFirst].setText(itemString);
+
+    if (inventory.ringSecond)
+        itemString.format("  Ring[6]:|{}|{}", (char)inventory.ringSecond->getGlyph(), inventory.ringSecond->getName());
+    else
+        itemString.format("  Ring[6]:");
+    buttons[eRingSecond].setText(itemString);
+
+    for (std::size_t i = 0; i < inventory.items.getSize(); i++)
     {
-        char slotGlyph = i == weaponIndex ? 'W' : i == armorIndex ? 'A' : i == throwIndex ? 'T' : i == useIndex ? 'U' : ' ';
-        itemString.format("{}|{}|{}", slotGlyph, (char)inventory[i].getGlyph(), inventory[i].getName());
+        itemString.format(" |{}|{}", (char)inventory.items[i].getGlyph(), inventory.items[i].getName());
         buttons[(std::size_t)eInventorySlotFirst + i].setText(itemString);
     }
 
-    for (std::size_t i = inventory.getSize(); i < 20; i++)
+    for (std::size_t i = inventory.items.getSize(); i < 20; i++)
         buttons[(std::size_t)eInventorySlotFirst + i].setText(""sv);
-
-    FixedString iconString{" "};
-    if (weaponIndex != -1)
-        iconString[0] = inventory[weaponIndex].getGlyph();
-    labels[LabelType::eWeaponIcon].setText(iconString);
-    iconString[0] = ' ';
-
-    if (armorIndex != -1)
-        iconString[0] = inventory[armorIndex].getGlyph();
-    labels[LabelType::eArmorIcon].setText(iconString);
-    iconString[0] = ' ';
-
-    if (throwIndex != -1)
-        iconString[0] = inventory[throwIndex].getGlyph();
-    labels[LabelType::eItem1Icon].setText(iconString);
-    iconString[0] = ' ';
-
-    if (useIndex != -1)
-        iconString[0] = inventory[useIndex].getGlyph();
-    labels[LabelType::eItem2Icon].setText(iconString);
 }
 void PlayArea::setPaused(bool paused)
 {
@@ -4168,7 +4231,7 @@ void PlayArea::setPaused(bool paused)
 }
 void PlayArea::setPlayerHealth(double percentage) { buttons[ButtonType::eHealth].setProgress(percentage); }
 void PlayArea::setPlayerNutrition(double percentage) { buttons[ButtonType::eNutrition].setProgress(percentage); }
-void PlayArea::onButtonPressed(ButtonType type)
+void PlayArea::onButtonLeftClicked(ButtonType type)
 {
     using enum ButtonType;
 
@@ -4178,7 +4241,17 @@ void PlayArea::onButtonPressed(ButtonType type)
     if (type >= eInventorySlotFirst && type <= eInventorySlotLast)
     {
         auto inventoryIndex = (std::int64_t)type - (std::int64_t)eInventorySlotFirst;
-        player.equipItem(inventoryIndex);
+        player.equipItem(inventoryIndex, false);
+    }
+}
+void PlayArea::onButtonRightClicked(ButtonType type)
+{
+    using enum ButtonType;
+
+    if (type >= eInventorySlotFirst && type <= eInventorySlotLast)
+    {
+        auto inventoryIndex = (std::int64_t)type - (std::int64_t)eInventorySlotFirst;
+        player.equipItem(inventoryIndex, true);
     }
 }
 void PlayArea::onTabButtonPressed(TabButtonType type) const
@@ -4241,7 +4314,7 @@ void DebugMenu::init()
 
     refreshLabels();
 }
-void DebugMenu::onButtonPressed(ButtonType type)
+void DebugMenu::onButtonLeftClicked(ButtonType type)
 {
     using enum ButtonType;
 
@@ -4275,13 +4348,13 @@ void DebugMenu::resetToDefault()
     using enum ButtonType;
 
     if (buttons[eStopTime].getPressed())
-        onButtonPressed(eStopTime);
+        onButtonLeftClicked(eStopTime);
 
     if (buttons[eShowDamage].getPressed())
-        onButtonPressed(eShowDamage);
+        onButtonLeftClicked(eShowDamage);
 
     if (buttons[eShowViewcone].getPressed())
-        onButtonPressed(eShowViewcone);
+        onButtonLeftClicked(eShowViewcone);
 }
 void DebugMenu::refreshLabels()
 {
@@ -4323,7 +4396,7 @@ void OptionsMenu::init()
 
     refreshLabels();
 }
-void OptionsMenu::onButtonPressed(ButtonType type)
+void OptionsMenu::onButtonLeftClicked(ButtonType type)
 {
     using enum ButtonType;
 
@@ -4463,13 +4536,13 @@ void GUI::onMouseMoved(std::int64_t x, std::int64_t y)
 {
     executeOnScreen(activeScreenType, [x, y](auto& screen) { screen.updateMouseMoved(x, y); });
 }
-void GUI::onMousePressed(std::int64_t x, std::int64_t y, bool isLeftClick)
+void GUI::onMousePressed(std::int64_t x, std::int64_t y, bool isLeftButton)
 {
     // Handle player actions when pressing on the map
-    if (activeScreenType == ScreenType::ePlayArea && !playArea.getPaused() && x >= Constants::mapOffset && isLeftClick)
-        player.onMousePressed(x - Constants::mapOffset, y);
+    if (activeScreenType == ScreenType::ePlayArea && !playArea.getPaused() && x >= Constants::mapOffset)
+        isLeftButton ? player.startAttack(x - Constants::mapOffset, y) : player.startThrow(x - Constants::mapOffset, y);
 
-    executeOnScreen(activeScreenType, [x, y, isLeftClick](auto& screen) { screen.updateMousePressed(x, y, isLeftClick); });
+    executeOnScreen(activeScreenType, [x, y, isLeftButton](auto& screen) { screen.updateMousePressed(x, y, isLeftButton); });
 }
 void GUI::onPauseMenuHotkeyPressed()
 {
@@ -4642,8 +4715,4 @@ void GUI::setFPS(std::int64_t fps, std::int64_t minFPS)
 }
 void GUI::setPlayerHealth(double percentage) { playArea.setPlayerHealth(percentage); }
 void GUI::setPlayerNutrition(double percentage) { playArea.setPlayerNutrition(percentage); }
-void GUI::setInventory(FixedVector<Item, 20> const& inventory, std::int64_t gold, std::int64_t weaponIndex, std::int64_t armorIndex, std::int64_t throwIndex,
-                       std::int64_t useIndex)
-{
-    playArea.updateInventory(inventory, gold, weaponIndex, armorIndex, throwIndex, useIndex);
-}
+void GUI::setInventory(Player::Inventory const& inventory) { playArea.updateInventory(inventory); }
