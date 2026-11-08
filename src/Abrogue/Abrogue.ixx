@@ -2,7 +2,6 @@ export module Abrogue;
 
 import RenderEngine;
 import Helpers;
-import JSON;
 
 import std;
 
@@ -73,7 +72,7 @@ enum class EmptyEnumType
 struct EnemyData
 {
     FixedString<16> name;
-    std::uint8_t symbol{};
+    char symbol{};
     Color color{};
     double speed{10.0};
     double mass{10.0};
@@ -94,8 +93,8 @@ struct EnemyData
 class Constants
 {
 public:
-    static constexpr auto configFileName{"config.json"sv};
-    static constexpr auto dataFileName{"data.json"sv};
+    static constexpr auto configFileName{"config.dat"};
+    static constexpr auto dataFileName{"data.dat"};
 
     static constexpr auto appName{"Abrogue"sv};
     static constexpr auto appVersion{"0.1"sv};
@@ -415,10 +414,6 @@ public:
     [[nodiscard]] optCRef<EnemyData> getSuitableEnemy();
 
 private:
-    static nlohmann::json openJSONFile(std::string_view fileName);
-    template <class Value>
-    void readJSONValue(nlohmann::json const& json, std::string_view key, Value& value);
-
     bool loadOptions();
     void loadData();
 
@@ -2340,22 +2335,11 @@ void Configuration::setDefaultControls()
         setInputControlScancode(static_cast<InputControlType>(i), defaultControls[i]);
 }
 optCRef<EnemyData> Configuration::getSuitableEnemy() { return enemyData[mapRandom.generate() % enemyData.getSize()]; }
-nlohmann::json Configuration::openJSONFile(std::string_view fileName)
-{
-    nlohmann::json result;
-
-    auto configFile = std::ifstream(fileName.data(), std::ios::in | std::ios::binary);
-    if (!configFile)
-        return result;
-
-    result = nlohmann::json::parse(configFile, nullptr, false);
-    return result;
-}
 bool Configuration::loadOptions()
 {
     // Try opening configuration file
-    auto configJSON = openJSONFile(Constants::configFileName);
-    if (configJSON.is_discarded() || !configJSON.is_object())
+    DatReader configDat;
+    if (!configDat.init(Constants::configFileName))
     {
         setDefaultControls();
 
@@ -2364,116 +2348,155 @@ bool Configuration::loadOptions()
             return false;
 
         // If still can't open, give up
-        configJSON = openJSONFile(Constants::configFileName);
-        if (configJSON.is_discarded() || !configJSON.is_object())
+        if (!configDat.init(Constants::configFileName))
         {
-            logger.logError("Couldn't open created config file, check if game folder needs admin permissions"sv);
+            logger.logError("Couldn't open created config file, check the game folder permissions"sv);
             return false;
         }
     }
 
-    readJSONValue(configJSON, "windowWidth"sv, windowWidth);
-    readJSONValue(configJSON, "windowHeight"sv, windowHeight);
-    readJSONValue(configJSON, "windowFullscreen"sv, isFullscreen);
-    readJSONValue(configJSON, "windowMaximized"sv, isMaximized);
-
-    auto readInputControl = [this, &configJSON](std::string_view optionName, InputControlType type)
+    auto readInputControl = [this, &configDat](InputControlType type)
     {
         SDL_Scancode scancode{};
-        readJSONValue(configJSON, optionName, scancode);
+        configDat.readValue(scancode);
         setInputControlScancode(type, scancode);
     };
-    readInputControl("controlMoveUp"sv, InputControlType::eMoveUp);
-    readInputControl("controlMoveDown"sv, InputControlType::eMoveDown);
-    readInputControl("controlMoveLeft"sv, InputControlType::eMoveLeft);
-    readInputControl("controlMoveRight"sv, InputControlType::eMoveRight);
-    readInputControl("controlAttack"sv, InputControlType::eAttack);
-    readInputControl("controlThrow"sv, InputControlType::eThrow);
-    readInputControl("controlUse"sv, InputControlType::eUse);
-    readInputControl("controlSwapWeapon"sv, InputControlType::eSwapWeapon);
-    readInputControl("controlSwapArmor"sv, InputControlType::eSwapArmor);
-    readInputControl("controlSwapThrowable"sv, InputControlType::eSwapThrowable);
-    readInputControl("controlSwapUsable"sv, InputControlType::eSwapUsable);
-    readInputControl("controlSwapRingFirst"sv, InputControlType::eSwapRingFirst);
-    readInputControl("controlSwapRingSecond"sv, InputControlType::eSwapRingSecond);
-    readInputControl("controlPause"sv, InputControlType::ePause);
-    readInputControl("controlSearch"sv, InputControlType::eSearch);
-    readInputControl("controlDiscoveries"sv, InputControlType::eDiscoveries);
-    readInputControl("controlDebug"sv, InputControlType::eDebug);
-    readInputControl("controlStopTime"sv, InputControlType::eStopTime);
-    readInputControl("controlStepTime"sv, InputControlType::eStepTime);
+
+    while (configDat.getIsValid())
+    {
+        auto const& key = configDat.getKey();
+        if (key == "windowWidth"sv)
+            configDat.readValue(windowWidth);
+        else if (key == "windowHeight"sv)
+            configDat.readValue(windowHeight);
+        else if (key == "windowFullscreen"sv)
+            configDat.readValue(isFullscreen);
+        else if (key == "windowMaximized"sv)
+            configDat.readValue(isMaximized);
+        else if (key == "controlMoveUp"sv)
+            readInputControl(InputControlType::eMoveUp);
+        else if (key == "controlMoveDown"sv)
+            readInputControl(InputControlType::eMoveDown);
+        else if (key == "controlMoveLeft"sv)
+            readInputControl(InputControlType::eMoveLeft);
+        else if (key == "controlMoveRight"sv)
+            readInputControl(InputControlType::eMoveRight);
+        else if (key == "controlAttack"sv)
+            readInputControl(InputControlType::eAttack);
+        else if (key == "controlThrow"sv)
+            readInputControl(InputControlType::eThrow);
+        else if (key == "controlUse"sv)
+            readInputControl(InputControlType::eUse);
+        else if (key == "controlSwapWeapon"sv)
+            readInputControl(InputControlType::eSwapWeapon);
+        else if (key == "controlSwapArmor"sv)
+            readInputControl(InputControlType::eSwapArmor);
+        else if (key == "controlSwapThrowable"sv)
+            readInputControl(InputControlType::eSwapThrowable);
+        else if (key == "controlSwapUsable"sv)
+            readInputControl(InputControlType::eSwapUsable);
+        else if (key == "controlSwapRingFirst"sv)
+            readInputControl(InputControlType::eSwapRingFirst);
+        else if (key == "controlSwapRingSecond"sv)
+            readInputControl(InputControlType::eSwapRingSecond);
+        else if (key == "controlPause"sv)
+            readInputControl(InputControlType::ePause);
+        else if (key == "controlSearch"sv)
+            readInputControl(InputControlType::eSearch);
+        else if (key == "controlDiscoveries"sv)
+            readInputControl(InputControlType::eDiscoveries);
+        else if (key == "controlDebug"sv)
+            readInputControl(InputControlType::eDebug);
+        else if (key == "controlStopTime"sv)
+            readInputControl(InputControlType::eStopTime);
+        else if (key == "controlStepTime"sv)
+            readInputControl(InputControlType::eStepTime);
+        else
+            break;
+    }
+
+    configDat.cleanup();
 
     return true;
 }
 bool Configuration::saveOptions()
 {
-    nlohmann::json configJSON;
-    configJSON["windowWidth"sv] = windowWidth;
-    configJSON["windowHeight"sv] = windowHeight;
-    configJSON["windowFullscreen"sv] = isFullscreen;
-    configJSON["windowMaximized"sv] = isMaximized;
-
-    configJSON["controlMoveUp"sv] = inputControlToScancode[InputControlType::eMoveUp];
-    configJSON["controlMoveDown"sv] = inputControlToScancode[InputControlType::eMoveDown];
-    configJSON["controlMoveLeft"sv] = inputControlToScancode[InputControlType::eMoveLeft];
-    configJSON["controlMoveRight"sv] = inputControlToScancode[InputControlType::eMoveRight];
-    configJSON["controlAttack"sv] = inputControlToScancode[InputControlType::eAttack];
-    configJSON["controlThrow"sv] = inputControlToScancode[InputControlType::eThrow];
-    configJSON["controlUse"sv] = inputControlToScancode[InputControlType::eUse];
-    configJSON["controlSwapWeapon"sv] = inputControlToScancode[InputControlType::eSwapWeapon];
-    configJSON["controlSwapArmor"sv] = inputControlToScancode[InputControlType::eSwapArmor];
-    configJSON["controlSwapThrowable"sv] = inputControlToScancode[InputControlType::eSwapThrowable];
-    configJSON["controlSwapUsable"sv] = inputControlToScancode[InputControlType::eSwapUsable];
-    configJSON["controlSwapRingFirst"sv] = inputControlToScancode[InputControlType::eSwapRingFirst];
-    configJSON["controlSwapRingSecond"sv] = inputControlToScancode[InputControlType::eSwapRingSecond];
-    configJSON["controlPause"sv] = inputControlToScancode[InputControlType::ePause];
-    configJSON["controlSearch"sv] = inputControlToScancode[InputControlType::eSearch];
-    configJSON["controlDiscoveries"sv] = inputControlToScancode[InputControlType::eDiscoveries];
-    configJSON["controlDebug"sv] = inputControlToScancode[InputControlType::eDebug];
-    configJSON["controlStopTime"sv] = inputControlToScancode[InputControlType::eStopTime];
-    configJSON["controlStepTime"sv] = inputControlToScancode[InputControlType::eStepTime];
-
-    std::ofstream configFile(Constants::configFileName.data(), std::ios::out | std::ios::binary);
-    if (!configFile)
+    DatWriter configDat;
+    if (!configDat.init(Constants::configFileName))
     {
-        logger.logError("Couldn't create config file, check if game folder needs admin permissions"sv);
+        logger.logError("Couldn't create config file, check the game folder permissions"sv);
         return false;
     }
 
-    configFile << std::setw(4) << configJSON << std::endl;
+    configDat.writeValue("windowWidth"sv, windowWidth);
+    configDat.writeValue("windowHeight"sv, windowHeight);
+    configDat.writeValue("windowFullscreen"sv, isFullscreen);
+    configDat.writeValue("windowMaximized"sv, isMaximized);
+
+    configDat.writeValue("controlMoveUp"sv, inputControlToScancode[InputControlType::eMoveUp]);
+    configDat.writeValue("controlMoveDown"sv, inputControlToScancode[InputControlType::eMoveDown]);
+    configDat.writeValue("controlMoveLeft"sv, inputControlToScancode[InputControlType::eMoveLeft]);
+    configDat.writeValue("controlMoveRight"sv, inputControlToScancode[InputControlType::eMoveRight]);
+    configDat.writeValue("controlAttack"sv, inputControlToScancode[InputControlType::eAttack]);
+    configDat.writeValue("controlThrow"sv, inputControlToScancode[InputControlType::eThrow]);
+    configDat.writeValue("controlUse"sv, inputControlToScancode[InputControlType::eUse]);
+    configDat.writeValue("controlSwapWeapon"sv, inputControlToScancode[InputControlType::eSwapWeapon]);
+    configDat.writeValue("controlSwapArmor"sv, inputControlToScancode[InputControlType::eSwapArmor]);
+    configDat.writeValue("controlSwapThrowable"sv, inputControlToScancode[InputControlType::eSwapThrowable]);
+    configDat.writeValue("controlSwapUsable"sv, inputControlToScancode[InputControlType::eSwapUsable]);
+    configDat.writeValue("controlSwapRingFirst"sv, inputControlToScancode[InputControlType::eSwapRingFirst]);
+    configDat.writeValue("controlSwapRingSecond"sv, inputControlToScancode[InputControlType::eSwapRingSecond]);
+    configDat.writeValue("controlPause"sv, inputControlToScancode[InputControlType::ePause]);
+    configDat.writeValue("controlSearch"sv, inputControlToScancode[InputControlType::eSearch]);
+    configDat.writeValue("controlDiscoveries"sv, inputControlToScancode[InputControlType::eDiscoveries]);
+    configDat.writeValue("controlDebug"sv, inputControlToScancode[InputControlType::eDebug]);
+    configDat.writeValue("controlStopTime"sv, inputControlToScancode[InputControlType::eStopTime]);
+    configDat.writeValue("controlStepTime"sv, inputControlToScancode[InputControlType::eStepTime]);
+
     return true;
 }
 void Configuration::loadData()
 {
-    auto dataJSON = openJSONFile(Constants::dataFileName);
-    if (dataJSON.is_discarded() || !dataJSON.is_object())
+    DatReader reader;
+    if (!reader.init(Constants::dataFileName))
         return;
 
-    if (dataJSON.contains("enemies") && dataJSON["enemies"].is_array())
+    while (reader.getIsValid())
     {
-        auto const& enemyArrayJSON = dataJSON["enemies"];
-        if (enemyArrayJSON.size() > enemyData.getCapacity())
-            logger.logInfo("Too many enemy types in config"sv);
-
-        for (std::size_t i{}; i < std::min(enemyArrayJSON.size(), enemyData.getCapacity()); i++)
+        auto const& key = reader.getKey();
+        if (key == "name"sv)
         {
-            auto const& enemyJSON = enemyArrayJSON[i];
-
             EnemyData data;
-            readJSONValue(enemyJSON, "name"sv, data.name);
-            readJSONValue(enemyJSON, "symbol"sv, data.symbol);
-            readJSONValue(enemyJSON, "color"sv, data.color);
-            readJSONValue(enemyJSON, "speed"sv, data.speed);
-            readJSONValue(enemyJSON, "mass"sv, data.mass);
-            readJSONValue(enemyJSON, "weaponColor"sv, data.weaponColor);
-            readJSONValue(enemyJSON, "damage"sv, data.damage);
-            readJSONValue(enemyJSON, "attackTime"sv, data.attackTime);
-
-            FixedString<16> weaponType;
-            readJSONValue(enemyJSON, "weaponType"sv, weaponType);
-            data.weaponType = weaponType == "dagger"sv ? WeaponType::eDagger : weaponType == "club"sv ? WeaponType::eClub : WeaponType::eClaw;
-
-            enemyData.emplaceBack(data);
+            reader.readValue(data.name);
+            while (reader.getIsValid())
+            {
+                auto const& enemyKey = reader.getKey();
+                if (enemyKey == "symbol"sv)
+                    reader.readValue(data.symbol);
+                else if (enemyKey == "color"sv)
+                    reader.readValue(data.color);
+                else if (enemyKey == "speed"sv)
+                    reader.readValue(data.speed);
+                else if (enemyKey == "mass"sv)
+                    reader.readValue(data.mass);
+                else if (enemyKey == "weaponColor"sv)
+                    reader.readValue(data.weaponColor);
+                else if (enemyKey == "damage"sv)
+                    reader.readValue(data.damage);
+                else if (enemyKey == "attackTime"sv)
+                    reader.readValue(data.attackTime);
+                else if (enemyKey == "weaponType"sv)
+                {
+                    FixedString<16> weaponType;
+                    reader.readValue(weaponType);
+                    data.weaponType = weaponType == "dagger"sv ? WeaponType::eDagger : weaponType == "club"sv ? WeaponType::eClub : WeaponType::eClaw;
+                }
+                else
+                {
+                    enemyData.emplaceBack(data);
+                    break;
+                }
+            }
         }
     }
 }
@@ -2489,113 +2512,6 @@ void Configuration::setInputControlScancode(InputControlType type, SDL_Scancode 
     inputControlToScancode[type] = scancode;
 
     gui.refreshScreens();
-}
-template <class Value>
-void Configuration::readJSONValue(nlohmann::json const& json, std::string_view key, Value& value)
-{
-    if (!json.contains(key))
-    {
-        logger.logInfo("Requested key not found in JSON"sv);
-        return;
-    }
-
-    auto const& jsonValue = json[key];
-
-    using ValueType = std::decay_t<decltype(value)>;
-
-    if constexpr (std::is_same_v<ValueType, std::uint8_t>)
-    {
-        if (!jsonValue.is_string() || jsonValue.size() != 1)
-        {
-            logger.logInfo("Requested JSON value was not a char"sv);
-            return;
-        }
-
-        value = jsonValue.get<std::string>()[0];
-    }
-    else if constexpr (IsLikeStringView<ValueType>)
-    {
-        if (!jsonValue.is_string())
-        {
-            logger.logInfo("Requested JSON value was not a string"sv);
-            return;
-        }
-
-        auto str = jsonValue.get<std::string>();
-        if (str.size() > value.getCapacity())
-        {
-            logger.logInfo("Requested JSON string is too big for storage"sv);
-            str.resize(value.getCapacity());
-        }
-
-        value = str;
-    }
-    else if constexpr (std::is_same_v<ValueType, Color>)
-    {
-        if (!jsonValue.is_array() || jsonValue.size() != 4)
-        {
-            logger.logInfo("Requested JSON value was not a color array"sv);
-            return;
-        }
-
-        for (std::uint64_t i = 0; i < 4; i++)
-        {
-            if (!jsonValue[i].is_number_integer())
-            {
-                logger.logInfo("Requested JSON value inside a color array was not an integer"sv);
-                return;
-            }
-        }
-
-        value.r = jsonValue[0].get<std::uint8_t>();
-        value.g = jsonValue[1].get<std::uint8_t>();
-        value.b = jsonValue[2].get<std::uint8_t>();
-        value.a = jsonValue[3].get<std::uint8_t>();
-    }
-    else if constexpr (std::is_same_v<ValueType, bool>)
-    {
-        if (!json[key].is_boolean())
-        {
-            logger.logInfo("Requested JSON value was not a boolean"sv);
-            return;
-        }
-
-        value = json[key].get<bool>();
-    }
-    else if constexpr (std::is_integral_v<ValueType>)
-    {
-        if (!json[key].is_number_integer())
-        {
-            logger.logInfo("Requested JSON value was not an integer"sv);
-            return;
-        }
-
-        value = json[key].get<ValueType>();
-    }
-    else if constexpr (std::is_floating_point_v<ValueType>)
-    {
-        if (!json[key].is_number())
-        {
-            logger.logInfo("Requested JSON value was not a number"sv);
-            return;
-        }
-
-        value = json[key].get<ValueType>();
-    }
-    else if constexpr (std::is_enum_v<ValueType>)
-    {
-        if (!json[key].is_number_unsigned())
-        {
-            logger.logInfo("Requested JSON value was not an enum"sv);
-            return;
-        }
-
-        value = static_cast<ValueType>(json[key].get<std::size_t>());
-    }
-    else
-    {
-        logger.logInfo("Requested JSON value of unknown type"sv);
-    }
 }
 /*
  * Map implementation

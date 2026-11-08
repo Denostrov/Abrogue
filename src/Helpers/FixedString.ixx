@@ -26,7 +26,10 @@ public:
     template <std::size_t StrSize>
     constexpr auto& operator=(FixedString<StrSize> const& str)
     {
-        static_assert(str.getSize() <= N, "FixedString assignment: source FixedString exceeds capacity");
+        if !consteval
+        {
+            logger.extraAssert(str.getSize() <= N, "FixedString assignment: source FixedString exceeds capacity"sv);
+        }
 
         currentSize = str.getSize();
         for (std::size_t i = 0; i < currentSize; i++)
@@ -88,17 +91,33 @@ public:
         return std::string_view(data, currentSize);
     }
 
-    template <std::same_as<std::string_view>... Args>
+    template <class... Args>
     constexpr void append(std::string_view val, Args... args)
     {
         if !consteval
         {
-            logger.extraAssert(currentSize + val.size() <= N, "FixedString append: source string_view exceeds capacity"sv);
+            logger.extraAssert(currentSize + val.size() <= N, "FixedString append: data buffer can't fit string_view"sv);
         }
 
         for (std::size_t i = currentSize, j = 0; j < val.size(); i++, j++)
             data[i] = val[j];
         currentSize += val.size();
+
+        if constexpr (sizeof...(Args) > 0)
+        {
+            append(args...);
+        }
+    }
+    template <class... Args>
+    constexpr void append(char c, Args... args)
+    {
+        if !consteval
+        {
+            logger.extraAssert(currentSize + 1 <= N, "FixedString append: data buffer can't fit char"sv);
+        }
+
+        data[currentSize] = c;
+        currentSize++;
 
         if constexpr (sizeof...(Args) > 0)
         {
@@ -116,6 +135,11 @@ public:
         return *this;
     }
 
+    constexpr void clear()
+    {
+        currentSize = 0;
+    }
+
     //Format arguments using std::format and store them
     //Assert if size of formatted string exceeds capacity
     template <class... Args>
@@ -131,6 +155,7 @@ public:
 
     [[nodiscard]] constexpr auto getData() const { return data; }
     [[nodiscard]] constexpr auto getSize() const { return currentSize; }
+    [[nodiscard]] constexpr auto getIsFull() const { return currentSize == N; }
     [[nodiscard]] static constexpr auto getCapacity() { return N; }
 
     template <class Self>
