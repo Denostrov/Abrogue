@@ -1,26 +1,28 @@
 module;
 
-#include <vulkan/vk_platform.h>
-#include <vulkan/vulkan_core.h>
-#include <vulkan/vulkan_hpp_macros.hpp>
-
 #include "SDL3/SDL_vulkan.h"
+#include "vulkan/vk_platform.h"
 
 export module RenderEngine;
 
+import Vulkan;
 import Helpers;
-import ImageLoader;
-
-import GLM;
-
-import std;
 
 using namespace std::literals;
 
 /*
  * Layers for defining draw order
  */
-export enum class QuadLayer { eMap, eItem, eEntity, eMapOverlay, ePopupBackground, ePopup, COUNT };
+export enum class QuadLayer
+{
+    eMap,
+    eItem,
+    eEntity,
+    eMapOverlay,
+    ePopupBackground,
+    ePopup,
+    COUNT
+};
 
 /*
  * String conversions for Vulkan enums
@@ -29,103 +31,103 @@ constexpr std::string_view enumToStr(VkResult result)
 {
     switch (result)
     {
-    case VK_SUCCESS:
+    case VkResult::VK_SUCCESS:
         return "Success"sv;
-    case VK_NOT_READY:
+    case VkResult::VK_NOT_READY:
         return "NotReady"sv;
-    case VK_TIMEOUT:
+    case VkResult::VK_TIMEOUT:
         return "Timeout"sv;
-    case VK_EVENT_SET:
+    case VkResult::VK_EVENT_SET:
         return "EventSet"sv;
-    case VK_EVENT_RESET:
+    case VkResult::VK_EVENT_RESET:
         return "EventReset"sv;
-    case VK_INCOMPLETE:
+    case VkResult::VK_INCOMPLETE:
         return "Incomplete"sv;
-    case VK_ERROR_OUT_OF_HOST_MEMORY:
+    case VkResult::VK_ERROR_OUT_OF_HOST_MEMORY:
         return "ErrorOutOfHostMemory"sv;
-    case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+    case VkResult::VK_ERROR_OUT_OF_DEVICE_MEMORY:
         return "ErrorOutOfDeviceMemory"sv;
-    case VK_ERROR_INITIALIZATION_FAILED:
+    case VkResult::VK_ERROR_INITIALIZATION_FAILED:
         return "ErrorInitializationFailed"sv;
-    case VK_ERROR_DEVICE_LOST:
+    case VkResult::VK_ERROR_DEVICE_LOST:
         return "ErrorDeviceLost"sv;
-    case VK_ERROR_MEMORY_MAP_FAILED:
+    case VkResult::VK_ERROR_MEMORY_MAP_FAILED:
         return "ErrorMemoryMapFailed"sv;
-    case VK_ERROR_LAYER_NOT_PRESENT:
+    case VkResult::VK_ERROR_LAYER_NOT_PRESENT:
         return "ErrorLayerNotPresent"sv;
-    case VK_ERROR_EXTENSION_NOT_PRESENT:
+    case VkResult::VK_ERROR_EXTENSION_NOT_PRESENT:
         return "ErrorExtensionNotPresent"sv;
-    case VK_ERROR_FEATURE_NOT_PRESENT:
+    case VkResult::VK_ERROR_FEATURE_NOT_PRESENT:
         return "ErrorFeatureNotPresent"sv;
-    case VK_ERROR_INCOMPATIBLE_DRIVER:
+    case VkResult::VK_ERROR_INCOMPATIBLE_DRIVER:
         return "ErrorIncompatibleDriver"sv;
-    case VK_ERROR_TOO_MANY_OBJECTS:
+    case VkResult::VK_ERROR_TOO_MANY_OBJECTS:
         return "ErrorTooManyObjects"sv;
-    case VK_ERROR_FORMAT_NOT_SUPPORTED:
+    case VkResult::VK_ERROR_FORMAT_NOT_SUPPORTED:
         return "ErrorFormatNotSupported"sv;
-    case VK_ERROR_FRAGMENTED_POOL:
+    case VkResult::VK_ERROR_FRAGMENTED_POOL:
         return "ErrorFragmentedPool"sv;
-    case VK_ERROR_UNKNOWN:
+    case VkResult::VK_ERROR_UNKNOWN:
         return "ErrorUnknown"sv;
-    case VK_ERROR_OUT_OF_POOL_MEMORY:
+    case VkResult::VK_ERROR_OUT_OF_POOL_MEMORY:
         return "ErrorOutOfPoolMemory"sv;
-    case VK_ERROR_INVALID_EXTERNAL_HANDLE:
+    case VkResult::VK_ERROR_INVALID_EXTERNAL_HANDLE:
         return "ErrorInvalidExternalHandle"sv;
-    case VK_ERROR_FRAGMENTATION:
+    case VkResult::VK_ERROR_FRAGMENTATION:
         return "ErrorFragmentation"sv;
-    case VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:
+    case VkResult::VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS:
         return "ErrorInvalidOpaqueCaptureAddress"sv;
-    case VK_PIPELINE_COMPILE_REQUIRED:
+    case VkResult::VK_PIPELINE_COMPILE_REQUIRED:
         return "PipelineCompileRequired"sv;
-    case VK_ERROR_NOT_PERMITTED:
+    case VkResult::VK_ERROR_NOT_PERMITTED:
         return "ErrorNotPermitted"sv;
-    case VK_ERROR_SURFACE_LOST_KHR:
+    case VkResult::VK_ERROR_SURFACE_LOST_KHR:
         return "ErrorSurfaceLostKHR"sv;
-    case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+    case VkResult::VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
         return "ErrorNativeWindowInUseKHR"sv;
-    case VK_SUBOPTIMAL_KHR:
+    case VkResult::VK_SUBOPTIMAL_KHR:
         return "SuboptimalKHR"sv;
-    case VK_ERROR_OUT_OF_DATE_KHR:
+    case VkResult::VK_ERROR_OUT_OF_DATE_KHR:
         return "ErrorOutOfDateKHR"sv;
-    case VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
+    case VkResult::VK_ERROR_INCOMPATIBLE_DISPLAY_KHR:
         return "ErrorIncompatibleDisplayKHR"sv;
-    case VK_ERROR_VALIDATION_FAILED_EXT:
+    case VkResult::VK_ERROR_VALIDATION_FAILED_EXT:
         return "ErrorValidationFailedEXT"sv;
-    case VK_ERROR_INVALID_SHADER_NV:
+    case VkResult::VK_ERROR_INVALID_SHADER_NV:
         return "ErrorInvalidShaderNV"sv;
-    case VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:
+    case VkResult::VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR:
         return "ErrorImageUsageNotSupportedKHR"sv;
-    case VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:
+    case VkResult::VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR:
         return "ErrorVideoPictureLayoutNotSupportedKHR"sv;
-    case VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:
+    case VkResult::VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR:
         return "ErrorVideoProfileOperationNotSupportedKHR"sv;
-    case VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:
+    case VkResult::VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR:
         return "ErrorVideoProfileFormatNotSupportedKHR"sv;
-    case VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:
+    case VkResult::VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR:
         return "ErrorVideoProfileCodecNotSupportedKHR"sv;
-    case VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:
+    case VkResult::VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR:
         return "ErrorVideoStdVersionNotSupportedKHR"sv;
-    case VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
+    case VkResult::VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT:
         return "ErrorInvalidDrmFormatModifierPlaneLayoutEXT"sv;
-    case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
+    case VkResult::VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
         return "ErrorFullScreenExclusiveModeLostEXT"sv;
-    case VK_THREAD_IDLE_KHR:
+    case VkResult::VK_THREAD_IDLE_KHR:
         return "ThreadIdleKHR"sv;
-    case VK_THREAD_DONE_KHR:
+    case VkResult::VK_THREAD_DONE_KHR:
         return "ThreadDoneKHR"sv;
-    case VK_OPERATION_DEFERRED_KHR:
+    case VkResult::VK_OPERATION_DEFERRED_KHR:
         return "OperationDeferredKHR"sv;
-    case VK_OPERATION_NOT_DEFERRED_KHR:
+    case VkResult::VK_OPERATION_NOT_DEFERRED_KHR:
         return "OperationNotDeferredKHR"sv;
-    case VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:
+    case VkResult::VK_ERROR_INVALID_VIDEO_STD_PARAMETERS_KHR:
         return "ErrorInvalidVideoStdParametersKHR"sv;
-    case VK_ERROR_COMPRESSION_EXHAUSTED_EXT:
+    case VkResult::VK_ERROR_COMPRESSION_EXHAUSTED_EXT:
         return "ErrorCompressionExhaustedEXT"sv;
-    case VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT:
+    case VkResult::VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT:
         return "IncompatibleShaderBinaryEXT"sv;
-    case VK_PIPELINE_BINARY_MISSING_KHR:
+    case VkResult::VK_PIPELINE_BINARY_MISSING_KHR:
         return "PipelineBinaryMissingKHR"sv;
-    case VK_ERROR_NOT_ENOUGH_SPACE_KHR:
+    case VkResult::VK_ERROR_NOT_ENOUGH_SPACE_KHR:
         return "ErrorNotEnoughSpaceKHR"sv;
     default:
         return "unknown result"sv;
@@ -135,535 +137,535 @@ constexpr std::string_view enumToStr(VkFormat format)
 {
     switch (format)
     {
-    case VK_FORMAT_UNDEFINED:
+    case VkFormat::VK_FORMAT_UNDEFINED:
         return "Undefined"sv;
-    case VK_FORMAT_R4G4_UNORM_PACK8:
+    case VkFormat::VK_FORMAT_R4G4_UNORM_PACK8:
         return "R4G4UnormPack8"sv;
-    case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_R4G4B4A4_UNORM_PACK16:
         return "R4G4B4A4UnormPack16"sv;
-    case VK_FORMAT_B4G4R4A4_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_B4G4R4A4_UNORM_PACK16:
         return "B4G4R4A4UnormPack16"sv;
-    case VK_FORMAT_R5G6B5_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_R5G6B5_UNORM_PACK16:
         return "R5G6B5UnormPack16"sv;
-    case VK_FORMAT_B5G6R5_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_B5G6R5_UNORM_PACK16:
         return "B5G6R5UnormPack16"sv;
-    case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_R5G5B5A1_UNORM_PACK16:
         return "R5G5B5A1UnormPack16"sv;
-    case VK_FORMAT_B5G5R5A1_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_B5G5R5A1_UNORM_PACK16:
         return "B5G5R5A1UnormPack16"sv;
-    case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_A1R5G5B5_UNORM_PACK16:
         return "A1R5G5B5UnormPack16"sv;
-    case VK_FORMAT_R8_UNORM:
+    case VkFormat::VK_FORMAT_R8_UNORM:
         return "R8Unorm"sv;
-    case VK_FORMAT_R8_SNORM:
+    case VkFormat::VK_FORMAT_R8_SNORM:
         return "R8Snorm"sv;
-    case VK_FORMAT_R8_USCALED:
+    case VkFormat::VK_FORMAT_R8_USCALED:
         return "R8Uscaled"sv;
-    case VK_FORMAT_R8_SSCALED:
+    case VkFormat::VK_FORMAT_R8_SSCALED:
         return "R8Sscaled"sv;
-    case VK_FORMAT_R8_UINT:
+    case VkFormat::VK_FORMAT_R8_UINT:
         return "R8Uint"sv;
-    case VK_FORMAT_R8_SINT:
+    case VkFormat::VK_FORMAT_R8_SINT:
         return "R8Sint"sv;
-    case VK_FORMAT_R8_SRGB:
+    case VkFormat::VK_FORMAT_R8_SRGB:
         return "R8Srgb"sv;
-    case VK_FORMAT_R8G8_UNORM:
+    case VkFormat::VK_FORMAT_R8G8_UNORM:
         return "R8G8Unorm"sv;
-    case VK_FORMAT_R8G8_SNORM:
+    case VkFormat::VK_FORMAT_R8G8_SNORM:
         return "R8G8Snorm"sv;
-    case VK_FORMAT_R8G8_USCALED:
+    case VkFormat::VK_FORMAT_R8G8_USCALED:
         return "R8G8Uscaled"sv;
-    case VK_FORMAT_R8G8_SSCALED:
+    case VkFormat::VK_FORMAT_R8G8_SSCALED:
         return "R8G8Sscaled"sv;
-    case VK_FORMAT_R8G8_UINT:
+    case VkFormat::VK_FORMAT_R8G8_UINT:
         return "R8G8Uint"sv;
-    case VK_FORMAT_R8G8_SINT:
+    case VkFormat::VK_FORMAT_R8G8_SINT:
         return "R8G8Sint"sv;
-    case VK_FORMAT_R8G8_SRGB:
+    case VkFormat::VK_FORMAT_R8G8_SRGB:
         return "R8G8Srgb"sv;
-    case VK_FORMAT_R8G8B8_UNORM:
+    case VkFormat::VK_FORMAT_R8G8B8_UNORM:
         return "R8G8B8Unorm"sv;
-    case VK_FORMAT_R8G8B8_SNORM:
+    case VkFormat::VK_FORMAT_R8G8B8_SNORM:
         return "R8G8B8Snorm"sv;
-    case VK_FORMAT_R8G8B8_USCALED:
+    case VkFormat::VK_FORMAT_R8G8B8_USCALED:
         return "R8G8B8Uscaled"sv;
-    case VK_FORMAT_R8G8B8_SSCALED:
+    case VkFormat::VK_FORMAT_R8G8B8_SSCALED:
         return "R8G8B8Sscaled"sv;
-    case VK_FORMAT_R8G8B8_UINT:
+    case VkFormat::VK_FORMAT_R8G8B8_UINT:
         return "R8G8B8Uint"sv;
-    case VK_FORMAT_R8G8B8_SINT:
+    case VkFormat::VK_FORMAT_R8G8B8_SINT:
         return "R8G8B8Sint"sv;
-    case VK_FORMAT_R8G8B8_SRGB:
+    case VkFormat::VK_FORMAT_R8G8B8_SRGB:
         return "R8G8B8Srgb"sv;
-    case VK_FORMAT_B8G8R8_UNORM:
+    case VkFormat::VK_FORMAT_B8G8R8_UNORM:
         return "B8G8R8Unorm"sv;
-    case VK_FORMAT_B8G8R8_SNORM:
+    case VkFormat::VK_FORMAT_B8G8R8_SNORM:
         return "B8G8R8Snorm"sv;
-    case VK_FORMAT_B8G8R8_USCALED:
+    case VkFormat::VK_FORMAT_B8G8R8_USCALED:
         return "B8G8R8Uscaled"sv;
-    case VK_FORMAT_B8G8R8_SSCALED:
+    case VkFormat::VK_FORMAT_B8G8R8_SSCALED:
         return "B8G8R8Sscaled"sv;
-    case VK_FORMAT_B8G8R8_UINT:
+    case VkFormat::VK_FORMAT_B8G8R8_UINT:
         return "B8G8R8Uint"sv;
-    case VK_FORMAT_B8G8R8_SINT:
+    case VkFormat::VK_FORMAT_B8G8R8_SINT:
         return "B8G8R8Sint"sv;
-    case VK_FORMAT_B8G8R8_SRGB:
+    case VkFormat::VK_FORMAT_B8G8R8_SRGB:
         return "B8G8R8Srgb"sv;
-    case VK_FORMAT_R8G8B8A8_UNORM:
+    case VkFormat::VK_FORMAT_R8G8B8A8_UNORM:
         return "R8G8B8A8Unorm"sv;
-    case VK_FORMAT_R8G8B8A8_SNORM:
+    case VkFormat::VK_FORMAT_R8G8B8A8_SNORM:
         return "R8G8B8A8Snorm"sv;
-    case VK_FORMAT_R8G8B8A8_USCALED:
+    case VkFormat::VK_FORMAT_R8G8B8A8_USCALED:
         return "R8G8B8A8Uscaled"sv;
-    case VK_FORMAT_R8G8B8A8_SSCALED:
+    case VkFormat::VK_FORMAT_R8G8B8A8_SSCALED:
         return "R8G8B8A8Sscaled"sv;
-    case VK_FORMAT_R8G8B8A8_UINT:
+    case VkFormat::VK_FORMAT_R8G8B8A8_UINT:
         return "R8G8B8A8Uint"sv;
-    case VK_FORMAT_R8G8B8A8_SINT:
+    case VkFormat::VK_FORMAT_R8G8B8A8_SINT:
         return "R8G8B8A8Sint"sv;
-    case VK_FORMAT_R8G8B8A8_SRGB:
+    case VkFormat::VK_FORMAT_R8G8B8A8_SRGB:
         return "R8G8B8A8Srgb"sv;
-    case VK_FORMAT_B8G8R8A8_UNORM:
+    case VkFormat::VK_FORMAT_B8G8R8A8_UNORM:
         return "B8G8R8A8Unorm"sv;
-    case VK_FORMAT_B8G8R8A8_SNORM:
+    case VkFormat::VK_FORMAT_B8G8R8A8_SNORM:
         return "B8G8R8A8Snorm"sv;
-    case VK_FORMAT_B8G8R8A8_USCALED:
+    case VkFormat::VK_FORMAT_B8G8R8A8_USCALED:
         return "B8G8R8A8Uscaled"sv;
-    case VK_FORMAT_B8G8R8A8_SSCALED:
+    case VkFormat::VK_FORMAT_B8G8R8A8_SSCALED:
         return "B8G8R8A8Sscaled"sv;
-    case VK_FORMAT_B8G8R8A8_UINT:
+    case VkFormat::VK_FORMAT_B8G8R8A8_UINT:
         return "B8G8R8A8Uint"sv;
-    case VK_FORMAT_B8G8R8A8_SINT:
+    case VkFormat::VK_FORMAT_B8G8R8A8_SINT:
         return "B8G8R8A8Sint"sv;
-    case VK_FORMAT_B8G8R8A8_SRGB:
+    case VkFormat::VK_FORMAT_B8G8R8A8_SRGB:
         return "B8G8R8A8Srgb"sv;
-    case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+    case VkFormat::VK_FORMAT_A8B8G8R8_UNORM_PACK32:
         return "A8B8G8R8UnormPack32"sv;
-    case VK_FORMAT_A8B8G8R8_SNORM_PACK32:
+    case VkFormat::VK_FORMAT_A8B8G8R8_SNORM_PACK32:
         return "A8B8G8R8SnormPack32"sv;
-    case VK_FORMAT_A8B8G8R8_USCALED_PACK32:
+    case VkFormat::VK_FORMAT_A8B8G8R8_USCALED_PACK32:
         return "A8B8G8R8UscaledPack32"sv;
-    case VK_FORMAT_A8B8G8R8_SSCALED_PACK32:
+    case VkFormat::VK_FORMAT_A8B8G8R8_SSCALED_PACK32:
         return "A8B8G8R8SscaledPack32"sv;
-    case VK_FORMAT_A8B8G8R8_UINT_PACK32:
+    case VkFormat::VK_FORMAT_A8B8G8R8_UINT_PACK32:
         return "A8B8G8R8UintPack32"sv;
-    case VK_FORMAT_A8B8G8R8_SINT_PACK32:
+    case VkFormat::VK_FORMAT_A8B8G8R8_SINT_PACK32:
         return "A8B8G8R8SintPack32"sv;
-    case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+    case VkFormat::VK_FORMAT_A8B8G8R8_SRGB_PACK32:
         return "A8B8G8R8SrgbPack32"sv;
-    case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+    case VkFormat::VK_FORMAT_A2R10G10B10_UNORM_PACK32:
         return "A2R10G10B10UnormPack32"sv;
-    case VK_FORMAT_A2R10G10B10_SNORM_PACK32:
+    case VkFormat::VK_FORMAT_A2R10G10B10_SNORM_PACK32:
         return "A2R10G10B10SnormPack32"sv;
-    case VK_FORMAT_A2R10G10B10_USCALED_PACK32:
+    case VkFormat::VK_FORMAT_A2R10G10B10_USCALED_PACK32:
         return "A2R10G10B10UscaledPack32"sv;
-    case VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
+    case VkFormat::VK_FORMAT_A2R10G10B10_SSCALED_PACK32:
         return "A2R10G10B10SscaledPack32"sv;
-    case VK_FORMAT_A2R10G10B10_UINT_PACK32:
+    case VkFormat::VK_FORMAT_A2R10G10B10_UINT_PACK32:
         return "A2R10G10B10UintPack32"sv;
-    case VK_FORMAT_A2R10G10B10_SINT_PACK32:
+    case VkFormat::VK_FORMAT_A2R10G10B10_SINT_PACK32:
         return "A2R10G10B10SintPack32"sv;
-    case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+    case VkFormat::VK_FORMAT_A2B10G10R10_UNORM_PACK32:
         return "A2B10G10R10UnormPack32"sv;
-    case VK_FORMAT_A2B10G10R10_SNORM_PACK32:
+    case VkFormat::VK_FORMAT_A2B10G10R10_SNORM_PACK32:
         return "A2B10G10R10SnormPack32"sv;
-    case VK_FORMAT_A2B10G10R10_USCALED_PACK32:
+    case VkFormat::VK_FORMAT_A2B10G10R10_USCALED_PACK32:
         return "A2B10G10R10UscaledPack32"sv;
-    case VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
+    case VkFormat::VK_FORMAT_A2B10G10R10_SSCALED_PACK32:
         return "A2B10G10R10SscaledPack32"sv;
-    case VK_FORMAT_A2B10G10R10_UINT_PACK32:
+    case VkFormat::VK_FORMAT_A2B10G10R10_UINT_PACK32:
         return "A2B10G10R10UintPack32"sv;
-    case VK_FORMAT_A2B10G10R10_SINT_PACK32:
+    case VkFormat::VK_FORMAT_A2B10G10R10_SINT_PACK32:
         return "A2B10G10R10SintPack32"sv;
-    case VK_FORMAT_R16_UNORM:
+    case VkFormat::VK_FORMAT_R16_UNORM:
         return "R16Unorm"sv;
-    case VK_FORMAT_R16_SNORM:
+    case VkFormat::VK_FORMAT_R16_SNORM:
         return "R16Snorm"sv;
-    case VK_FORMAT_R16_USCALED:
+    case VkFormat::VK_FORMAT_R16_USCALED:
         return "R16Uscaled"sv;
-    case VK_FORMAT_R16_SSCALED:
+    case VkFormat::VK_FORMAT_R16_SSCALED:
         return "R16Sscaled"sv;
-    case VK_FORMAT_R16_UINT:
+    case VkFormat::VK_FORMAT_R16_UINT:
         return "R16Uint"sv;
-    case VK_FORMAT_R16_SINT:
+    case VkFormat::VK_FORMAT_R16_SINT:
         return "R16Sint"sv;
-    case VK_FORMAT_R16_SFLOAT:
+    case VkFormat::VK_FORMAT_R16_SFLOAT:
         return "R16Sfloat"sv;
-    case VK_FORMAT_R16G16_UNORM:
+    case VkFormat::VK_FORMAT_R16G16_UNORM:
         return "R16G16Unorm"sv;
-    case VK_FORMAT_R16G16_SNORM:
+    case VkFormat::VK_FORMAT_R16G16_SNORM:
         return "R16G16Snorm"sv;
-    case VK_FORMAT_R16G16_USCALED:
+    case VkFormat::VK_FORMAT_R16G16_USCALED:
         return "R16G16Uscaled"sv;
-    case VK_FORMAT_R16G16_SSCALED:
+    case VkFormat::VK_FORMAT_R16G16_SSCALED:
         return "R16G16Sscaled"sv;
-    case VK_FORMAT_R16G16_UINT:
+    case VkFormat::VK_FORMAT_R16G16_UINT:
         return "R16G16Uint"sv;
-    case VK_FORMAT_R16G16_SINT:
+    case VkFormat::VK_FORMAT_R16G16_SINT:
         return "R16G16Sint"sv;
-    case VK_FORMAT_R16G16_SFLOAT:
+    case VkFormat::VK_FORMAT_R16G16_SFLOAT:
         return "R16G16Sfloat"sv;
-    case VK_FORMAT_R16G16B16_UNORM:
+    case VkFormat::VK_FORMAT_R16G16B16_UNORM:
         return "R16G16B16Unorm"sv;
-    case VK_FORMAT_R16G16B16_SNORM:
+    case VkFormat::VK_FORMAT_R16G16B16_SNORM:
         return "R16G16B16Snorm"sv;
-    case VK_FORMAT_R16G16B16_USCALED:
+    case VkFormat::VK_FORMAT_R16G16B16_USCALED:
         return "R16G16B16Uscaled"sv;
-    case VK_FORMAT_R16G16B16_SSCALED:
+    case VkFormat::VK_FORMAT_R16G16B16_SSCALED:
         return "R16G16B16Sscaled"sv;
-    case VK_FORMAT_R16G16B16_UINT:
+    case VkFormat::VK_FORMAT_R16G16B16_UINT:
         return "R16G16B16Uint"sv;
-    case VK_FORMAT_R16G16B16_SINT:
+    case VkFormat::VK_FORMAT_R16G16B16_SINT:
         return "R16G16B16Sint"sv;
-    case VK_FORMAT_R16G16B16_SFLOAT:
+    case VkFormat::VK_FORMAT_R16G16B16_SFLOAT:
         return "R16G16B16Sfloat"sv;
-    case VK_FORMAT_R16G16B16A16_UNORM:
+    case VkFormat::VK_FORMAT_R16G16B16A16_UNORM:
         return "R16G16B16A16Unorm"sv;
-    case VK_FORMAT_R16G16B16A16_SNORM:
+    case VkFormat::VK_FORMAT_R16G16B16A16_SNORM:
         return "R16G16B16A16Snorm"sv;
-    case VK_FORMAT_R16G16B16A16_USCALED:
+    case VkFormat::VK_FORMAT_R16G16B16A16_USCALED:
         return "R16G16B16A16Uscaled"sv;
-    case VK_FORMAT_R16G16B16A16_SSCALED:
+    case VkFormat::VK_FORMAT_R16G16B16A16_SSCALED:
         return "R16G16B16A16Sscaled"sv;
-    case VK_FORMAT_R16G16B16A16_UINT:
+    case VkFormat::VK_FORMAT_R16G16B16A16_UINT:
         return "R16G16B16A16Uint"sv;
-    case VK_FORMAT_R16G16B16A16_SINT:
+    case VkFormat::VK_FORMAT_R16G16B16A16_SINT:
         return "R16G16B16A16Sint"sv;
-    case VK_FORMAT_R16G16B16A16_SFLOAT:
+    case VkFormat::VK_FORMAT_R16G16B16A16_SFLOAT:
         return "R16G16B16A16Sfloat"sv;
-    case VK_FORMAT_R32_UINT:
+    case VkFormat::VK_FORMAT_R32_UINT:
         return "R32Uint"sv;
-    case VK_FORMAT_R32_SINT:
+    case VkFormat::VK_FORMAT_R32_SINT:
         return "R32Sint"sv;
-    case VK_FORMAT_R32_SFLOAT:
+    case VkFormat::VK_FORMAT_R32_SFLOAT:
         return "R32Sfloat"sv;
-    case VK_FORMAT_R32G32_UINT:
+    case VkFormat::VK_FORMAT_R32G32_UINT:
         return "R32G32Uint"sv;
-    case VK_FORMAT_R32G32_SINT:
+    case VkFormat::VK_FORMAT_R32G32_SINT:
         return "R32G32Sint"sv;
-    case VK_FORMAT_R32G32_SFLOAT:
+    case VkFormat::VK_FORMAT_R32G32_SFLOAT:
         return "R32G32Sfloat"sv;
-    case VK_FORMAT_R32G32B32_UINT:
+    case VkFormat::VK_FORMAT_R32G32B32_UINT:
         return "R32G32B32Uint"sv;
-    case VK_FORMAT_R32G32B32_SINT:
+    case VkFormat::VK_FORMAT_R32G32B32_SINT:
         return "R32G32B32Sint"sv;
-    case VK_FORMAT_R32G32B32_SFLOAT:
+    case VkFormat::VK_FORMAT_R32G32B32_SFLOAT:
         return "R32G32B32Sfloat"sv;
-    case VK_FORMAT_R32G32B32A32_UINT:
+    case VkFormat::VK_FORMAT_R32G32B32A32_UINT:
         return "R32G32B32A32Uint"sv;
-    case VK_FORMAT_R32G32B32A32_SINT:
+    case VkFormat::VK_FORMAT_R32G32B32A32_SINT:
         return "R32G32B32A32Sint"sv;
-    case VK_FORMAT_R32G32B32A32_SFLOAT:
+    case VkFormat::VK_FORMAT_R32G32B32A32_SFLOAT:
         return "R32G32B32A32Sfloat"sv;
-    case VK_FORMAT_R64_UINT:
+    case VkFormat::VK_FORMAT_R64_UINT:
         return "R64Uint"sv;
-    case VK_FORMAT_R64_SINT:
+    case VkFormat::VK_FORMAT_R64_SINT:
         return "R64Sint"sv;
-    case VK_FORMAT_R64_SFLOAT:
+    case VkFormat::VK_FORMAT_R64_SFLOAT:
         return "R64Sfloat"sv;
-    case VK_FORMAT_R64G64_UINT:
+    case VkFormat::VK_FORMAT_R64G64_UINT:
         return "R64G64Uint"sv;
-    case VK_FORMAT_R64G64_SINT:
+    case VkFormat::VK_FORMAT_R64G64_SINT:
         return "R64G64Sint"sv;
-    case VK_FORMAT_R64G64_SFLOAT:
+    case VkFormat::VK_FORMAT_R64G64_SFLOAT:
         return "R64G64Sfloat"sv;
-    case VK_FORMAT_R64G64B64_UINT:
+    case VkFormat::VK_FORMAT_R64G64B64_UINT:
         return "R64G64B64Uint"sv;
-    case VK_FORMAT_R64G64B64_SINT:
+    case VkFormat::VK_FORMAT_R64G64B64_SINT:
         return "R64G64B64Sint"sv;
-    case VK_FORMAT_R64G64B64_SFLOAT:
+    case VkFormat::VK_FORMAT_R64G64B64_SFLOAT:
         return "R64G64B64Sfloat"sv;
-    case VK_FORMAT_R64G64B64A64_UINT:
+    case VkFormat::VK_FORMAT_R64G64B64A64_UINT:
         return "R64G64B64A64Uint"sv;
-    case VK_FORMAT_R64G64B64A64_SINT:
+    case VkFormat::VK_FORMAT_R64G64B64A64_SINT:
         return "R64G64B64A64Sint"sv;
-    case VK_FORMAT_R64G64B64A64_SFLOAT:
+    case VkFormat::VK_FORMAT_R64G64B64A64_SFLOAT:
         return "R64G64B64A64Sfloat"sv;
-    case VK_FORMAT_B10G11R11_UFLOAT_PACK32:
+    case VkFormat::VK_FORMAT_B10G11R11_UFLOAT_PACK32:
         return "B10G11R11UfloatPack32"sv;
-    case VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
+    case VkFormat::VK_FORMAT_E5B9G9R9_UFLOAT_PACK32:
         return "E5B9G9R9UfloatPack32"sv;
-    case VK_FORMAT_D16_UNORM:
+    case VkFormat::VK_FORMAT_D16_UNORM:
         return "D16Unorm"sv;
-    case VK_FORMAT_X8_D24_UNORM_PACK32:
+    case VkFormat::VK_FORMAT_X8_D24_UNORM_PACK32:
         return "X8D24UnormPack32"sv;
-    case VK_FORMAT_D32_SFLOAT:
+    case VkFormat::VK_FORMAT_D32_SFLOAT:
         return "D32Sfloat"sv;
-    case VK_FORMAT_S8_UINT:
+    case VkFormat::VK_FORMAT_S8_UINT:
         return "S8Uint"sv;
-    case VK_FORMAT_D16_UNORM_S8_UINT:
+    case VkFormat::VK_FORMAT_D16_UNORM_S8_UINT:
         return "D16UnormS8Uint"sv;
-    case VK_FORMAT_D24_UNORM_S8_UINT:
+    case VkFormat::VK_FORMAT_D24_UNORM_S8_UINT:
         return "D24UnormS8Uint"sv;
-    case VK_FORMAT_D32_SFLOAT_S8_UINT:
+    case VkFormat::VK_FORMAT_D32_SFLOAT_S8_UINT:
         return "D32SfloatS8Uint"sv;
-    case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC1_RGB_UNORM_BLOCK:
         return "Bc1RgbUnormBlock"sv;
-    case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_BC1_RGB_SRGB_BLOCK:
         return "Bc1RgbSrgbBlock"sv;
-    case VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC1_RGBA_UNORM_BLOCK:
         return "Bc1RgbaUnormBlock"sv;
-    case VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_BC1_RGBA_SRGB_BLOCK:
         return "Bc1RgbaSrgbBlock"sv;
-    case VK_FORMAT_BC2_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC2_UNORM_BLOCK:
         return "Bc2UnormBlock"sv;
-    case VK_FORMAT_BC2_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_BC2_SRGB_BLOCK:
         return "Bc2SrgbBlock"sv;
-    case VK_FORMAT_BC3_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC3_UNORM_BLOCK:
         return "Bc3UnormBlock"sv;
-    case VK_FORMAT_BC3_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_BC3_SRGB_BLOCK:
         return "Bc3SrgbBlock"sv;
-    case VK_FORMAT_BC4_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC4_UNORM_BLOCK:
         return "Bc4UnormBlock"sv;
-    case VK_FORMAT_BC4_SNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC4_SNORM_BLOCK:
         return "Bc4SnormBlock"sv;
-    case VK_FORMAT_BC5_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC5_UNORM_BLOCK:
         return "Bc5UnormBlock"sv;
-    case VK_FORMAT_BC5_SNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC5_SNORM_BLOCK:
         return "Bc5SnormBlock"sv;
-    case VK_FORMAT_BC6H_UFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_BC6H_UFLOAT_BLOCK:
         return "Bc6HUfloatBlock"sv;
-    case VK_FORMAT_BC6H_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_BC6H_SFLOAT_BLOCK:
         return "Bc6HSfloatBlock"sv;
-    case VK_FORMAT_BC7_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_BC7_UNORM_BLOCK:
         return "Bc7UnormBlock"sv;
-    case VK_FORMAT_BC7_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_BC7_SRGB_BLOCK:
         return "Bc7SrgbBlock"sv;
-    case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
         return "Etc2R8G8B8UnormBlock"sv;
-    case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
         return "Etc2R8G8B8SrgbBlock"sv;
-    case VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
         return "Etc2R8G8B8A1UnormBlock"sv;
-    case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
         return "Etc2R8G8B8A1SrgbBlock"sv;
-    case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
         return "Etc2R8G8B8A8UnormBlock"sv;
-    case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
         return "Etc2R8G8B8A8SrgbBlock"sv;
-    case VK_FORMAT_EAC_R11_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_EAC_R11_UNORM_BLOCK:
         return "EacR11UnormBlock"sv;
-    case VK_FORMAT_EAC_R11_SNORM_BLOCK:
+    case VkFormat::VK_FORMAT_EAC_R11_SNORM_BLOCK:
         return "EacR11SnormBlock"sv;
-    case VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
         return "EacR11G11UnormBlock"sv;
-    case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+    case VkFormat::VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
         return "EacR11G11SnormBlock"sv;
-    case VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_4x4_UNORM_BLOCK:
         return "Astc4x4UnormBlock"sv;
-    case VK_FORMAT_ASTC_4x4_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_4x4_SRGB_BLOCK:
         return "Astc4x4SrgbBlock"sv;
-    case VK_FORMAT_ASTC_5x4_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_5x4_UNORM_BLOCK:
         return "Astc5x4UnormBlock"sv;
-    case VK_FORMAT_ASTC_5x4_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_5x4_SRGB_BLOCK:
         return "Astc5x4SrgbBlock"sv;
-    case VK_FORMAT_ASTC_5x5_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_5x5_UNORM_BLOCK:
         return "Astc5x5UnormBlock"sv;
-    case VK_FORMAT_ASTC_5x5_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_5x5_SRGB_BLOCK:
         return "Astc5x5SrgbBlock"sv;
-    case VK_FORMAT_ASTC_6x5_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_6x5_UNORM_BLOCK:
         return "Astc6x5UnormBlock"sv;
-    case VK_FORMAT_ASTC_6x5_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_6x5_SRGB_BLOCK:
         return "Astc6x5SrgbBlock"sv;
-    case VK_FORMAT_ASTC_6x6_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_6x6_UNORM_BLOCK:
         return "Astc6x6UnormBlock"sv;
-    case VK_FORMAT_ASTC_6x6_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_6x6_SRGB_BLOCK:
         return "Astc6x6SrgbBlock"sv;
-    case VK_FORMAT_ASTC_8x5_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x5_UNORM_BLOCK:
         return "Astc8x5UnormBlock"sv;
-    case VK_FORMAT_ASTC_8x5_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x5_SRGB_BLOCK:
         return "Astc8x5SrgbBlock"sv;
-    case VK_FORMAT_ASTC_8x6_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x6_UNORM_BLOCK:
         return "Astc8x6UnormBlock"sv;
-    case VK_FORMAT_ASTC_8x6_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x6_SRGB_BLOCK:
         return "Astc8x6SrgbBlock"sv;
-    case VK_FORMAT_ASTC_8x8_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x8_UNORM_BLOCK:
         return "Astc8x8UnormBlock"sv;
-    case VK_FORMAT_ASTC_8x8_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x8_SRGB_BLOCK:
         return "Astc8x8SrgbBlock"sv;
-    case VK_FORMAT_ASTC_10x5_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x5_UNORM_BLOCK:
         return "Astc10x5UnormBlock"sv;
-    case VK_FORMAT_ASTC_10x5_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x5_SRGB_BLOCK:
         return "Astc10x5SrgbBlock"sv;
-    case VK_FORMAT_ASTC_10x6_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x6_UNORM_BLOCK:
         return "Astc10x6UnormBlock"sv;
-    case VK_FORMAT_ASTC_10x6_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x6_SRGB_BLOCK:
         return "Astc10x6SrgbBlock"sv;
-    case VK_FORMAT_ASTC_10x8_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x8_UNORM_BLOCK:
         return "Astc10x8UnormBlock"sv;
-    case VK_FORMAT_ASTC_10x8_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x8_SRGB_BLOCK:
         return "Astc10x8SrgbBlock"sv;
-    case VK_FORMAT_ASTC_10x10_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x10_UNORM_BLOCK:
         return "Astc10x10UnormBlock"sv;
-    case VK_FORMAT_ASTC_10x10_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x10_SRGB_BLOCK:
         return "Astc10x10SrgbBlock"sv;
-    case VK_FORMAT_ASTC_12x10_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_12x10_UNORM_BLOCK:
         return "Astc12x10UnormBlock"sv;
-    case VK_FORMAT_ASTC_12x10_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_12x10_SRGB_BLOCK:
         return "Astc12x10SrgbBlock"sv;
-    case VK_FORMAT_ASTC_12x12_UNORM_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_12x12_UNORM_BLOCK:
         return "Astc12x12UnormBlock"sv;
-    case VK_FORMAT_ASTC_12x12_SRGB_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_12x12_SRGB_BLOCK:
         return "Astc12x12SrgbBlock"sv;
-    case VK_FORMAT_G8B8G8R8_422_UNORM:
+    case VkFormat::VK_FORMAT_G8B8G8R8_422_UNORM:
         return "G8B8G8R8422Unorm"sv;
-    case VK_FORMAT_B8G8R8G8_422_UNORM:
+    case VkFormat::VK_FORMAT_B8G8R8G8_422_UNORM:
         return "B8G8R8G8422Unorm"sv;
-    case VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
+    case VkFormat::VK_FORMAT_G8_B8_R8_3PLANE_420_UNORM:
         return "G8B8R83Plane420Unorm"sv;
-    case VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
+    case VkFormat::VK_FORMAT_G8_B8R8_2PLANE_420_UNORM:
         return "G8B8R82Plane420Unorm"sv;
-    case VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
+    case VkFormat::VK_FORMAT_G8_B8_R8_3PLANE_422_UNORM:
         return "G8B8R83Plane422Unorm"sv;
-    case VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
+    case VkFormat::VK_FORMAT_G8_B8R8_2PLANE_422_UNORM:
         return "G8B8R82Plane422Unorm"sv;
-    case VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
+    case VkFormat::VK_FORMAT_G8_B8_R8_3PLANE_444_UNORM:
         return "G8B8R83Plane444Unorm"sv;
-    case VK_FORMAT_R10X6_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_R10X6_UNORM_PACK16:
         return "R10X6UnormPack16"sv;
-    case VK_FORMAT_R10X6G10X6_UNORM_2PACK16:
+    case VkFormat::VK_FORMAT_R10X6G10X6_UNORM_2PACK16:
         return "R10X6G10X6Unorm2Pack16"sv;
-    case VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16:
+    case VkFormat::VK_FORMAT_R10X6G10X6B10X6A10X6_UNORM_4PACK16:
         return "R10X6G10X6B10X6A10X6Unorm4Pack16"sv;
-    case VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16:
+    case VkFormat::VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16:
         return "G10X6B10X6G10X6R10X6422Unorm4Pack16"sv;
-    case VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16:
+    case VkFormat::VK_FORMAT_B10X6G10X6R10X6G10X6_422_UNORM_4PACK16:
         return "B10X6G10X6R10X6G10X6422Unorm4Pack16"sv;
-    case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16:
         return "G10X6B10X6R10X63Plane420Unorm3Pack16"sv;
-    case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16:
         return "G10X6B10X6R10X62Plane420Unorm3Pack16"sv;
-    case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16:
         return "G10X6B10X6R10X63Plane422Unorm3Pack16"sv;
-    case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16:
         return "G10X6B10X6R10X62Plane422Unorm3Pack16"sv;
-    case VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16:
         return "G10X6B10X6R10X63Plane444Unorm3Pack16"sv;
-    case VK_FORMAT_R12X4_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_R12X4_UNORM_PACK16:
         return "R12X4UnormPack16"sv;
-    case VK_FORMAT_R12X4G12X4_UNORM_2PACK16:
+    case VkFormat::VK_FORMAT_R12X4G12X4_UNORM_2PACK16:
         return "R12X4G12X4Unorm2Pack16"sv;
-    case VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16:
+    case VkFormat::VK_FORMAT_R12X4G12X4B12X4A12X4_UNORM_4PACK16:
         return "R12X4G12X4B12X4A12X4Unorm4Pack16"sv;
-    case VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16:
+    case VkFormat::VK_FORMAT_G12X4B12X4G12X4R12X4_422_UNORM_4PACK16:
         return "G12X4B12X4G12X4R12X4422Unorm4Pack16"sv;
-    case VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16:
+    case VkFormat::VK_FORMAT_B12X4G12X4R12X4G12X4_422_UNORM_4PACK16:
         return "B12X4G12X4R12X4G12X4422Unorm4Pack16"sv;
-    case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16:
         return "G12X4B12X4R12X43Plane420Unorm3Pack16"sv;
-    case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16:
         return "G12X4B12X4R12X42Plane420Unorm3Pack16"sv;
-    case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16:
         return "G12X4B12X4R12X43Plane422Unorm3Pack16"sv;
-    case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16:
         return "G12X4B12X4R12X42Plane422Unorm3Pack16"sv;
-    case VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16:
         return "G12X4B12X4R12X43Plane444Unorm3Pack16"sv;
-    case VK_FORMAT_G16B16G16R16_422_UNORM:
+    case VkFormat::VK_FORMAT_G16B16G16R16_422_UNORM:
         return "G16B16G16R16422Unorm"sv;
-    case VK_FORMAT_B16G16R16G16_422_UNORM:
+    case VkFormat::VK_FORMAT_B16G16R16G16_422_UNORM:
         return "B16G16R16G16422Unorm"sv;
-    case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
+    case VkFormat::VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM:
         return "G16B16R163Plane420Unorm"sv;
-    case VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
+    case VkFormat::VK_FORMAT_G16_B16R16_2PLANE_420_UNORM:
         return "G16B16R162Plane420Unorm"sv;
-    case VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
+    case VkFormat::VK_FORMAT_G16_B16_R16_3PLANE_422_UNORM:
         return "G16B16R163Plane422Unorm"sv;
-    case VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
+    case VkFormat::VK_FORMAT_G16_B16R16_2PLANE_422_UNORM:
         return "G16B16R162Plane422Unorm"sv;
-    case VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
+    case VkFormat::VK_FORMAT_G16_B16_R16_3PLANE_444_UNORM:
         return "G16B16R163Plane444Unorm"sv;
-    case VK_FORMAT_G8_B8R8_2PLANE_444_UNORM:
+    case VkFormat::VK_FORMAT_G8_B8R8_2PLANE_444_UNORM:
         return "G8B8R82Plane444Unorm"sv;
-    case VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16:
         return "G10X6B10X6R10X62Plane444Unorm3Pack16"sv;
-    case VK_FORMAT_G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16:
+    case VkFormat::VK_FORMAT_G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16:
         return "G12X4B12X4R12X42Plane444Unorm3Pack16"sv;
-    case VK_FORMAT_G16_B16R16_2PLANE_444_UNORM:
+    case VkFormat::VK_FORMAT_G16_B16R16_2PLANE_444_UNORM:
         return "G16B16R162Plane444Unorm"sv;
-    case VK_FORMAT_A4R4G4B4_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_A4R4G4B4_UNORM_PACK16:
         return "A4R4G4B4UnormPack16"sv;
-    case VK_FORMAT_A4B4G4R4_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_A4B4G4R4_UNORM_PACK16:
         return "A4B4G4R4UnormPack16"sv;
-    case VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_4x4_SFLOAT_BLOCK:
         return "Astc4x4SfloatBlock"sv;
-    case VK_FORMAT_ASTC_5x4_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_5x4_SFLOAT_BLOCK:
         return "Astc5x4SfloatBlock"sv;
-    case VK_FORMAT_ASTC_5x5_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_5x5_SFLOAT_BLOCK:
         return "Astc5x5SfloatBlock"sv;
-    case VK_FORMAT_ASTC_6x5_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_6x5_SFLOAT_BLOCK:
         return "Astc6x5SfloatBlock"sv;
-    case VK_FORMAT_ASTC_6x6_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_6x6_SFLOAT_BLOCK:
         return "Astc6x6SfloatBlock"sv;
-    case VK_FORMAT_ASTC_8x5_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x5_SFLOAT_BLOCK:
         return "Astc8x5SfloatBlock"sv;
-    case VK_FORMAT_ASTC_8x6_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x6_SFLOAT_BLOCK:
         return "Astc8x6SfloatBlock"sv;
-    case VK_FORMAT_ASTC_8x8_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_8x8_SFLOAT_BLOCK:
         return "Astc8x8SfloatBlock"sv;
-    case VK_FORMAT_ASTC_10x5_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x5_SFLOAT_BLOCK:
         return "Astc10x5SfloatBlock"sv;
-    case VK_FORMAT_ASTC_10x6_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x6_SFLOAT_BLOCK:
         return "Astc10x6SfloatBlock"sv;
-    case VK_FORMAT_ASTC_10x8_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x8_SFLOAT_BLOCK:
         return "Astc10x8SfloatBlock"sv;
-    case VK_FORMAT_ASTC_10x10_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_10x10_SFLOAT_BLOCK:
         return "Astc10x10SfloatBlock"sv;
-    case VK_FORMAT_ASTC_12x10_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_12x10_SFLOAT_BLOCK:
         return "Astc12x10SfloatBlock"sv;
-    case VK_FORMAT_ASTC_12x12_SFLOAT_BLOCK:
+    case VkFormat::VK_FORMAT_ASTC_12x12_SFLOAT_BLOCK:
         return "Astc12x12SfloatBlock"sv;
-    case VK_FORMAT_A1B5G5R5_UNORM_PACK16:
+    case VkFormat::VK_FORMAT_A1B5G5R5_UNORM_PACK16:
         return "A1B5G5R5UnormPack16"sv;
-    case VK_FORMAT_A8_UNORM:
+    case VkFormat::VK_FORMAT_A8_UNORM:
         return "A8Unorm"sv;
-    case VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG:
         return "Pvrtc12BppUnormBlockIMG"sv;
-    case VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG:
         return "Pvrtc14BppUnormBlockIMG"sv;
-    case VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG:
         return "Pvrtc22BppUnormBlockIMG"sv;
-    case VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG:
         return "Pvrtc24BppUnormBlockIMG"sv;
-    case VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG:
         return "Pvrtc12BppSrgbBlockIMG"sv;
-    case VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG:
         return "Pvrtc14BppSrgbBlockIMG"sv;
-    case VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG:
         return "Pvrtc22BppSrgbBlockIMG"sv;
-    case VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG:
+    case VkFormat::VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG:
         return "Pvrtc24BppSrgbBlockIMG"sv;
-    case VK_FORMAT_R8_BOOL_ARM:
+    case VkFormat::VK_FORMAT_R8_BOOL_ARM:
         return "R8BoolARM"sv;
-    case VK_FORMAT_R16G16_SFIXED5_NV:
+    case VkFormat::VK_FORMAT_R16G16_SFIXED5_NV:
         return "R16G16Sfixed5NV"sv;
-    case VK_FORMAT_R10X6_UINT_PACK16_ARM:
+    case VkFormat::VK_FORMAT_R10X6_UINT_PACK16_ARM:
         return "R10X6UintPack16ARM"sv;
-    case VK_FORMAT_R10X6G10X6_UINT_2PACK16_ARM:
+    case VkFormat::VK_FORMAT_R10X6G10X6_UINT_2PACK16_ARM:
         return "R10X6G10X6Uint2Pack16ARM"sv;
-    case VK_FORMAT_R10X6G10X6B10X6A10X6_UINT_4PACK16_ARM:
+    case VkFormat::VK_FORMAT_R10X6G10X6B10X6A10X6_UINT_4PACK16_ARM:
         return "R10X6G10X6B10X6A10X6Uint4Pack16ARM"sv;
-    case VK_FORMAT_R12X4_UINT_PACK16_ARM:
+    case VkFormat::VK_FORMAT_R12X4_UINT_PACK16_ARM:
         return "R12X4UintPack16ARM"sv;
-    case VK_FORMAT_R12X4G12X4_UINT_2PACK16_ARM:
+    case VkFormat::VK_FORMAT_R12X4G12X4_UINT_2PACK16_ARM:
         return "R12X4G12X4Uint2Pack16ARM"sv;
-    case VK_FORMAT_R12X4G12X4B12X4A12X4_UINT_4PACK16_ARM:
+    case VkFormat::VK_FORMAT_R12X4G12X4B12X4A12X4_UINT_4PACK16_ARM:
         return "R12X4G12X4B12X4A12X4Uint4Pack16ARM"sv;
-    case VK_FORMAT_R14X2_UINT_PACK16_ARM:
+    case VkFormat::VK_FORMAT_R14X2_UINT_PACK16_ARM:
         return "R14X2UintPack16ARM"sv;
-    case VK_FORMAT_R14X2G14X2_UINT_2PACK16_ARM:
+    case VkFormat::VK_FORMAT_R14X2G14X2_UINT_2PACK16_ARM:
         return "R14X2G14X2Uint2Pack16ARM"sv;
-    case VK_FORMAT_R14X2G14X2B14X2A14X2_UINT_4PACK16_ARM:
+    case VkFormat::VK_FORMAT_R14X2G14X2B14X2A14X2_UINT_4PACK16_ARM:
         return "R14X2G14X2B14X2A14X2Uint4Pack16ARM"sv;
-    case VK_FORMAT_R14X2_UNORM_PACK16_ARM:
+    case VkFormat::VK_FORMAT_R14X2_UNORM_PACK16_ARM:
         return "R14X2UnormPack16ARM"sv;
-    case VK_FORMAT_R14X2G14X2_UNORM_2PACK16_ARM:
+    case VkFormat::VK_FORMAT_R14X2G14X2_UNORM_2PACK16_ARM:
         return "R14X2G14X2Unorm2Pack16ARM"sv;
-    case VK_FORMAT_R14X2G14X2B14X2A14X2_UNORM_4PACK16_ARM:
+    case VkFormat::VK_FORMAT_R14X2G14X2B14X2A14X2_UNORM_4PACK16_ARM:
         return "R14X2G14X2B14X2A14X2Unorm4Pack16ARM"sv;
-    case VK_FORMAT_G14X2_B14X2R14X2_2PLANE_420_UNORM_3PACK16_ARM:
+    case VkFormat::VK_FORMAT_G14X2_B14X2R14X2_2PLANE_420_UNORM_3PACK16_ARM:
         return "G14X2B14X2R14X22Plane420Unorm3Pack16ARM"sv;
-    case VK_FORMAT_G14X2_B14X2R14X2_2PLANE_422_UNORM_3PACK16_ARM:
+    case VkFormat::VK_FORMAT_G14X2_B14X2R14X2_2PLANE_422_UNORM_3PACK16_ARM:
         return "G14X2B14X2R14X22Plane422Unorm3Pack16ARM"sv;
     default:
         return "unknown format"sv;
@@ -673,35 +675,35 @@ constexpr std::string_view enumToStr(VkColorSpaceKHR colorSpace)
 {
     switch (colorSpace)
     {
-    case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
         return "SrgbNonlinear"sv;
-    case VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT:
         return "DisplayP3NonlinearEXT"sv;
-    case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
         return "ExtendedSrgbLinearEXT"sv;
-    case VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT:
         return "DisplayP3LinearEXT"sv;
-    case VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT:
         return "DciP3NonlinearEXT"sv;
-    case VK_COLOR_SPACE_BT709_LINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_BT709_LINEAR_EXT:
         return "Bt709LinearEXT"sv;
-    case VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
         return "Bt709NonlinearEXT"sv;
-    case VK_COLOR_SPACE_BT2020_LINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_BT2020_LINEAR_EXT:
         return "Bt2020LinearEXT"sv;
-    case VK_COLOR_SPACE_HDR10_ST2084_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_HDR10_ST2084_EXT:
         return "Hdr10St2084EXT"sv;
-    case VK_COLOR_SPACE_HDR10_HLG_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_HDR10_HLG_EXT:
         return "Hdr10HlgEXT"sv;
-    case VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_ADOBERGB_LINEAR_EXT:
         return "AdobergbLinearEXT"sv;
-    case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
         return "AdobergbNonlinearEXT"sv;
-    case VK_COLOR_SPACE_PASS_THROUGH_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_PASS_THROUGH_EXT:
         return "PassThroughEXT"sv;
-    case VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
         return "ExtendedSrgbNonlinearEXT"sv;
-    case VK_COLOR_SPACE_DISPLAY_NATIVE_AMD:
+    case VkColorSpaceKHR::VK_COLOR_SPACE_DISPLAY_NATIVE_AMD:
         return "DisplayNativeAMD"sv;
     default:
         return "unknown color space"sv;
@@ -711,19 +713,19 @@ constexpr std::string_view enumToStr(VkPresentModeKHR presentMode)
 {
     switch (presentMode)
     {
-    case VK_PRESENT_MODE_IMMEDIATE_KHR:
+    case VkPresentModeKHR::VK_PRESENT_MODE_IMMEDIATE_KHR:
         return "Immediate"sv;
-    case VK_PRESENT_MODE_MAILBOX_KHR:
+    case VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR:
         return "Mailbox"sv;
-    case VK_PRESENT_MODE_FIFO_KHR:
+    case VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR:
         return "Fifo"sv;
-    case VK_PRESENT_MODE_FIFO_RELAXED_KHR:
+    case VkPresentModeKHR::VK_PRESENT_MODE_FIFO_RELAXED_KHR:
         return "FifoRelaxed"sv;
-    case VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:
+    case VkPresentModeKHR::VK_PRESENT_MODE_SHARED_DEMAND_REFRESH_KHR:
         return "SharedDemandRefresh"sv;
-    case VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR:
+    case VkPresentModeKHR::VK_PRESENT_MODE_SHARED_CONTINUOUS_REFRESH_KHR:
         return "SharedContinuousRefresh"sv;
-    case VK_PRESENT_MODE_FIFO_LATEST_READY_KHR:
+    case VkPresentModeKHR::VK_PRESENT_MODE_FIFO_LATEST_READY_KHR:
         return "FifoLatestReady"sv;
     default:
         return "unknown present mode"sv;
@@ -733,15 +735,15 @@ constexpr std::string_view enumToStr(VkPhysicalDeviceType physicalDeviceType)
 {
     switch (physicalDeviceType)
     {
-    case VK_PHYSICAL_DEVICE_TYPE_OTHER:
+    case VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_OTHER:
         return "Other"sv;
-    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+    case VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
         return "IntegratedGpu"sv;
-    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+    case VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
         return "DiscreteGpu"sv;
-    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+    case VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
         return "VirtualGpu"sv;
-    case VK_PHYSICAL_DEVICE_TYPE_CPU:
+    case VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_CPU:
         return "Cpu"sv;
     default:
         return "unknown physical device type"sv;
@@ -750,7 +752,7 @@ constexpr std::string_view enumToStr(VkPhysicalDeviceType physicalDeviceType)
 
 [[nodiscard]] bool checkError(VkResult result, std::string_view successMessage, std::string_view errorMessage)
 {
-    if (result != VK_SUCCESS)
+    if (result != VkResult::VK_SUCCESS)
     {
         logger.logError("{}: {}", errorMessage, enumToStr(result));
         return true;
@@ -790,7 +792,7 @@ export class QuadData
 public:
     QuadData() = default;
     // Create Data with position in world coordinates and color
-    QuadData(glm::vec2 position, glm::uvec2 colors, std::uint32_t glyph, glm::vec2 scale = {1.0, 1.0}) :
+    QuadData(Vec2 position, Vec2i colors, std::uint32_t glyph, Vec2 scale = {1.0, 1.0}) :
         position(position.x * RenderConstants::tileScaleX, position.y * RenderConstants::tileScaleY),
         scale(scale.x * RenderConstants::tileScaleX, scale.y * RenderConstants::tileScaleY), colors(colors), glyph(glyph)
     {}
@@ -804,18 +806,18 @@ public:
     // Set quad rotation in precalculated cos and sin
     void setRotation(float cos, float sin) { rotation = {cos, sin}; }
     // Set packed glyph color
-    void setColor(PackedColor packedColor) { colors[0] = packedColor; }
+    void setColor(PackedColor packedColor) { colors.x = packedColor; }
     // Set packed background color
-    void setBackgroundColor(PackedColor packedColor) { colors[1] = packedColor; }
+    void setBackgroundColor(PackedColor packedColor) { colors.y = packedColor; }
     // Set glyph index
     void setGlyph(std::uint32_t newGlyph) { glyph = newGlyph; }
 
 private:
-    glm::vec2 position{};           // Position in screenspace coordinates
-    glm::vec2 scale{};              // Scale in screenspace coordinates
-    glm::vec2 rotation{1.0f, 0.0f}; // Cos and Sin of rotation angle
-    glm::uvec2 colors{};            // Packed glyph and background colors
-    std::uint32_t glyph{};          // Index of drawn symbol
+    Vec2 position{};           // Position in screenspace coordinates
+    Vec2 scale{};              // Scale in screenspace coordinates
+    Vec2 rotation{1.0f, 0.0f}; // Cos and Sin of rotation angle
+    Vec2i colors{};            // Packed glyph and background colors
+    std::uint32_t glyph{};     // Index of drawn symbol
 };
 
 /*
@@ -891,7 +893,7 @@ private:
 export inline QuadPool quadPool;
 
 /*
- * Class for handling vulkan library functions
+ * Class for handling Vulkan library functions
  */
 class VulkanLibrary
 {
@@ -1479,7 +1481,7 @@ struct PhysicalDeviceInfo
         bool hasPresentationQueueFamily{};
         for (std::uint32_t j{}; j < queueFamilyPropertiesCount; j++)
         {
-            if (queueFamilyProperties[j].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+            if (queueFamilyProperties[j].queueFlags & VkQueueFlagBits::VK_QUEUE_GRAPHICS_BIT)
             {
                 hasGraphicsQueueFamily = true;
                 graphicsIndex = j;
@@ -1569,12 +1571,12 @@ struct PhysicalDeviceInfo
         }
 
         VkPhysicalDeviceVulkan12Features features12;
-        features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        features12.sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
         features12.pNext = nullptr;
         VkPhysicalDeviceVulkan11Features features11;
-        features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        features11.sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
         features11.pNext = &features12;
-        VkPhysicalDeviceFeatures2 features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features11, .features = {}};
+        VkPhysicalDeviceFeatures2 features{.sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features11, .features = {}};
         lib.getPhysicalDeviceFeatures2(device, &features);
         if (!features.features.shaderInt64)
         {
@@ -1598,7 +1600,7 @@ struct PhysicalDeviceInfo
         }
 
         score = 0;
-        if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+        if (deviceProperties.deviceType == VkPhysicalDeviceType::VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
             score++;
         logger.logInfo("\tPhysical device is a {}", enumToStr(deviceProperties.deviceType));
         return true;
@@ -1643,12 +1645,12 @@ public:
     StagingBuffer() = default;
     [[nodiscard]] bool init(VkDevice device, PhysicalDeviceInfo const& physicalDeviceInfo, std::size_t size)
     {
-        VkBufferCreateInfo bufferCreateInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        VkBufferCreateInfo bufferCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                                             .pNext = nullptr,
                                             .flags = {},
                                             .size = size,
-                                            .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                            .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                                            .usage = VkBufferUsageFlagBits::VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                            .sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
                                             .queueFamilyIndexCount = 1,
                                             .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex};
         if (!lib.createBuffer(device, &bufferCreateInfo, nullptr, &buffer))
@@ -1657,13 +1659,14 @@ public:
         VkMemoryRequirements memoryRequirements{};
         lib.getBufferMemoryRequirements(device, buffer, &memoryRequirements);
 
-        VkMemoryPropertyFlags memoryProperties{VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+        VkMemoryPropertyFlags memoryProperties{VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                               VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
 
         auto selectedMemoryType = physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, memoryProperties);
         if (selectedMemoryType == -1)
             return false;
 
-        VkMemoryAllocateInfo memoryAllocateInfo{.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        VkMemoryAllocateInfo memoryAllocateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                                                 .pNext = nullptr,
                                                 .allocationSize = memoryRequirements.size,
                                                 .memoryTypeIndex = (std::uint32_t)selectedMemoryType};
@@ -1711,17 +1714,17 @@ public:
     {
         VkCommandBuffer commandBuffer{};
 
-        VkCommandBufferAllocateInfo allocateInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        VkCommandBufferAllocateInfo allocateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                                                  .pNext = nullptr,
                                                  .commandPool = commandPool,
-                                                 .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                 .level = VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                                                  .commandBufferCount = 1};
         if (!lib.allocateCommandBuffers(device, &allocateInfo, &commandBuffer))
             return false;
 
-        VkCommandBufferBeginInfo beginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        VkCommandBufferBeginInfo beginInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
                                            .pNext = nullptr,
-                                           .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+                                           .flags = VkCommandBufferUsageFlagBits::VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
                                            .pInheritanceInfo = nullptr};
         if (!lib.beginCommandBuffer(commandBuffer, &beginInfo))
         {
@@ -1737,7 +1740,7 @@ public:
             return false;
         }
 
-        VkSubmitInfo submitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        VkSubmitInfo submitInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
                                 .pNext = nullptr,
                                 .waitSemaphoreCount = 0,
                                 .pWaitSemaphores = nullptr,
@@ -1772,34 +1775,38 @@ public:
     TextureResources() = default;
     [[nodiscard]] bool init(VkDevice device, VkCommandPool commandPool, VkQueue graphicsQueue, PhysicalDeviceInfo const& physicalDeviceInfo)
     {
-        auto tileImage = ImageLoader("textures/tiles.png"sv);
-        VkDeviceSize imageSize{(std::size_t)tileImage.width * tileImage.height * tileImage.channels};
+        Array<std::byte, 1048576> pngBuffer;
+        PngLoader::Data pngData;
+        pngData.data = pngBuffer;
+        PngLoader::load("textures/tiles.png", pngData);
 
-        VkImageCreateInfo imageCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        VkDeviceSize imageSize{(std::size_t)pngData.width * pngData.height * pngData.channelCount};
+
+        VkImageCreateInfo imageCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
                                           .pNext = nullptr,
                                           .flags = {},
-                                          .imageType = VK_IMAGE_TYPE_2D,
-                                          .format = VK_FORMAT_R8_UNORM,
-                                          .extent = VkExtent3D{(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1u},
+                                          .imageType = VkImageType::VK_IMAGE_TYPE_2D,
+                                          .format = VkFormat::VK_FORMAT_R8_UNORM,
+                                          .extent = VkExtent3D{(std::uint32_t)pngData.width, (std::uint32_t)pngData.height, 1u},
                                           .mipLevels = 1,
                                           .arrayLayers = 1,
-                                          .samples = VK_SAMPLE_COUNT_1_BIT,
-                                          .tiling = VK_IMAGE_TILING_OPTIMAL,
-                                          .usage = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
-                                          .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                                          .samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT,
+                                          .tiling = VkImageTiling::VK_IMAGE_TILING_OPTIMAL,
+                                          .usage = VkImageUsageFlagBits::VK_IMAGE_USAGE_TRANSFER_DST_BIT | VkImageUsageFlagBits::VK_IMAGE_USAGE_SAMPLED_BIT,
+                                          .sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
                                           .queueFamilyIndexCount = 1,
                                           .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex,
-                                          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED};
+                                          .initialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED};
         if (!lib.createImage(device, &imageCreateInfo, nullptr, &image))
             return false;
 
         VkMemoryRequirements memoryRequirements{};
         lib.getImageMemoryRequirements(device, image, &memoryRequirements);
-        VkMemoryAllocateInfo imageMemoryAllocateInfo{
-            .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-            .pNext = nullptr,
-            .allocationSize = memoryRequirements.size,
-            .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(memoryRequirements, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
+        VkMemoryAllocateInfo imageMemoryAllocateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+                                                     .pNext = nullptr,
+                                                     .allocationSize = memoryRequirements.size,
+                                                     .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(
+                                                         memoryRequirements, VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
         if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, nullptr, &imageMemory))
             return false;
 
@@ -1808,19 +1815,19 @@ public:
 
         auto transitionToWriteDestination = [this](VkCommandBuffer commandBuffer)
         {
-            VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-            VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            VkImageSubresourceRange range(VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+            VkImageMemoryBarrier memoryBarrier{.sType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                                                .pNext = nullptr,
-                                               .srcAccessMask = VK_ACCESS_NONE,
-                                               .dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                                               .oldLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                               .newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                               .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                               .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                               .srcAccessMask = VkAccessFlagBits::VK_ACCESS_NONE,
+                                               .dstAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
+                                               .oldLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED,
+                                               .newLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                               .srcQueueFamilyIndex = vkQueueFamilyIgnored,
+                                               .dstQueueFamilyIndex = vkQueueFamilyIgnored,
                                                .image = image,
                                                .subresourceRange = range};
-            lib.commandPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, {}, 0, nullptr, 0, nullptr, 1,
-                                       &memoryBarrier);
+            lib.commandPipelineBarrier(commandBuffer, VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                       VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT, {}, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
         };
         if (!SingleUseCommandBuffer::execute(device, commandPool, graphicsQueue, transitionToWriteDestination))
             return false;
@@ -1828,17 +1835,18 @@ public:
         StagingBuffer stagingBufferResources;
         if (!stagingBufferResources.init(device, physicalDeviceInfo, imageSize))
             return false;
-        std::memcpy(stagingBufferResources.getData(), tileImage.data, imageSize);
-        auto copyToImage = [this, &tileImage, &stagingBufferResources](VkCommandBuffer commandBuffer)
+        std::memcpy(stagingBufferResources.getData(), pngData.data.data(), imageSize);
+        auto copyToImage = [this, &pngData, &stagingBufferResources](VkCommandBuffer commandBuffer)
         {
-            VkImageSubresourceLayers imageSubresourceLayers(VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
+            VkImageSubresourceLayers imageSubresourceLayers(VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1);
             VkBufferImageCopy imageCopy{.bufferOffset = 0,
                                         .bufferRowLength = 0,
                                         .bufferImageHeight = 0,
                                         .imageSubresource = imageSubresourceLayers,
                                         .imageOffset = {},
-                                        .imageExtent = {(std::uint32_t)tileImage.width, (std::uint32_t)tileImage.height, 1}};
-            lib.commandCopyBufferToImage(commandBuffer, stagingBufferResources.getBuffer(), image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &imageCopy);
+                                        .imageExtent = {(std::uint32_t)pngData.width, (std::uint32_t)pngData.height, 1}};
+            lib.commandCopyBufferToImage(commandBuffer, stagingBufferResources.getBuffer(), image, VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
+                                         &imageCopy);
         };
         if (!SingleUseCommandBuffer::execute(device, commandPool, graphicsQueue, copyToImage))
         {
@@ -1849,53 +1857,53 @@ public:
 
         auto transitionToShaderRead = [this](VkCommandBuffer commandBuffer)
         {
-            VkImageSubresourceRange range(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-            VkImageMemoryBarrier memoryBarrier{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            VkImageSubresourceRange range(VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+            VkImageMemoryBarrier memoryBarrier{.sType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
                                                .pNext = nullptr,
-                                               .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
-                                               .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
-                                               .oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                                               .newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                               .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                                               .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                                               .srcAccessMask = VkAccessFlagBits::VK_ACCESS_TRANSFER_WRITE_BIT,
+                                               .dstAccessMask = VkAccessFlagBits::VK_ACCESS_SHADER_READ_BIT,
+                                               .oldLayout = VkImageLayout::VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                               .newLayout = VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                               .srcQueueFamilyIndex = vkQueueFamilyIgnored,
+                                               .dstQueueFamilyIndex = vkQueueFamilyIgnored,
                                                .image = image,
                                                .subresourceRange = range};
-            lib.commandPipelineBarrier(commandBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, 0, nullptr, 0, nullptr, 1,
-                                       &memoryBarrier);
+            lib.commandPipelineBarrier(commandBuffer, VkPipelineStageFlagBits::VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                       VkPipelineStageFlagBits::VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, {}, 0, nullptr, 0, nullptr, 1, &memoryBarrier);
         };
         if (!SingleUseCommandBuffer::execute(device, commandPool, graphicsQueue, transitionToShaderRead))
             return false;
 
-        VkImageSubresourceRange subresourceRange(VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
-        VkImageViewCreateInfo viewCreateInfo{.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        VkImageSubresourceRange subresourceRange(VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1);
+        VkImageViewCreateInfo viewCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                                              .pNext = nullptr,
                                              .flags = {},
                                              .image = image,
-                                             .viewType = VK_IMAGE_VIEW_TYPE_2D,
-                                             .format = VK_FORMAT_R8_UNORM,
+                                             .viewType = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
+                                             .format = VkFormat::VK_FORMAT_R8_UNORM,
                                              .components = {},
                                              .subresourceRange = subresourceRange};
         if (!lib.createImageView(device, &viewCreateInfo, nullptr, &imageView))
             return false;
 
-        VkSamplerCreateInfo samplerCreateInfo{.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        VkSamplerCreateInfo samplerCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
                                               .pNext = nullptr,
                                               .flags = {},
-                                              .magFilter = VK_FILTER_LINEAR,
-                                              .minFilter = VK_FILTER_LINEAR,
-                                              .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-                                              .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                              .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-                                              .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                              .magFilter = VkFilter::VK_FILTER_LINEAR,
+                                              .minFilter = VkFilter::VK_FILTER_LINEAR,
+                                              .mipmapMode = VkSamplerMipmapMode::VK_SAMPLER_MIPMAP_MODE_LINEAR,
+                                              .addressModeU = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                              .addressModeV = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
+                                              .addressModeW = VkSamplerAddressMode::VK_SAMPLER_ADDRESS_MODE_REPEAT,
                                               .mipLodBias = 0.0f,
-                                              .anisotropyEnable = VK_TRUE,
+                                              .anisotropyEnable = vkTrue,
                                               .maxAnisotropy = physicalDeviceInfo.maxSamplerAnisotropy,
-                                              .compareEnable = VK_FALSE,
-                                              .compareOp = VK_COMPARE_OP_ALWAYS,
+                                              .compareEnable = vkFalse,
+                                              .compareOp = VkCompareOp::VK_COMPARE_OP_ALWAYS,
                                               .minLod = 0.0f,
                                               .maxLod = 0.0f,
-                                              .borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
-                                              .unnormalizedCoordinates = VK_FALSE};
+                                              .borderColor = VkBorderColor::VK_BORDER_COLOR_INT_OPAQUE_BLACK,
+                                              .unnormalizedCoordinates = vkFalse};
         if (!lib.createSampler(device, &samplerCreateInfo, nullptr, &sampler))
             return false;
 
@@ -1945,7 +1953,7 @@ public:
         shaderFile.seekg(0);
         shaderFile.read(reinterpret_cast<char*>(fileBuffer.getData()), fileSize);
 
-        VkShaderModuleCreateInfo createInfo{.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        VkShaderModuleCreateInfo createInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
                                             .pNext = nullptr,
                                             .flags = {},
                                             .codeSize = (std::size_t)fileSize,
@@ -2120,17 +2128,17 @@ public:
         VkSurfaceFormatKHR selectedFormat{physicalDeviceInfo.surfaceFormats[0]};
         for (auto format : physicalDeviceInfo.surfaceFormats)
         {
-            if (format.format == VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+            if (format.format == VkFormat::VK_FORMAT_B8G8R8A8_SRGB && format.colorSpace == VkColorSpaceKHR::VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
                 selectedFormat = format;
         }
         imageFormat = selectedFormat.format;
         logger.logInfo("Chose format {} with color space {}", enumToStr(selectedFormat.format), enumToStr(selectedFormat.colorSpace));
 
         // Choose present mode
-        auto selectedPresentMode{VK_PRESENT_MODE_FIFO_KHR};
+        auto selectedPresentMode{VkPresentModeKHR::VK_PRESENT_MODE_FIFO_KHR};
         for (auto presentMode : physicalDeviceInfo.presentModes)
         {
-            if (presentMode == VK_PRESENT_MODE_MAILBOX_KHR)
+            if (presentMode == VkPresentModeKHR::VK_PRESENT_MODE_MAILBOX_KHR)
                 selectedPresentMode = presentMode;
         }
         logger.logInfo("Chose present mode {}", enumToStr(selectedPresentMode));
@@ -2148,16 +2156,16 @@ public:
         logger.logInfo("Swap extent is [{},{}]", imageExtent.width, imageExtent.height);
 
         // Create swapchain
-        VkSharingMode sharingMode{physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex ? VK_SHARING_MODE_CONCURRENT
-                                                                                                           : VK_SHARING_MODE_EXCLUSIVE};
+        VkSharingMode sharingMode{physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex ? VkSharingMode::VK_SHARING_MODE_CONCURRENT
+                                                                                                           : VkSharingMode::VK_SHARING_MODE_EXCLUSIVE};
         FixedVector<std::uint32_t, 2> queueFamilyIndices;
-        if (sharingMode == VK_SHARING_MODE_CONCURRENT)
+        if (sharingMode == VkSharingMode::VK_SHARING_MODE_CONCURRENT)
         {
             queueFamilyIndices.emplaceBack(physicalDeviceInfo.graphicsIndex);
             queueFamilyIndices.emplaceBack(physicalDeviceInfo.presentationIndex);
         }
 
-        VkSwapchainCreateInfoKHR swapchainCreateInfo{.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        VkSwapchainCreateInfoKHR swapchainCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
                                                      .pNext = nullptr,
                                                      .flags = {},
                                                      .surface = surface,
@@ -2166,14 +2174,14 @@ public:
                                                      .imageColorSpace = selectedFormat.colorSpace,
                                                      .imageExtent = imageExtent,
                                                      .imageArrayLayers = 1,
-                                                     .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+                                                     .imageUsage = VkImageUsageFlagBits::VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
                                                      .imageSharingMode = sharingMode,
                                                      .queueFamilyIndexCount = (std::uint32_t)queueFamilyIndices.getSize(),
                                                      .pQueueFamilyIndices = queueFamilyIndices.getData(),
                                                      .preTransform = surfaceCapabilities.currentTransform,
-                                                     .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+                                                     .compositeAlpha = VkCompositeAlphaFlagBitsKHR::VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
                                                      .presentMode = selectedPresentMode,
-                                                     .clipped = VK_TRUE,
+                                                     .clipped = vkTrue,
                                                      .oldSwapchain = {}};
         if (!lib.createSwapchain(device, &swapchainCreateInfo, nullptr, &swapchain))
             return false;
@@ -2187,15 +2195,16 @@ public:
         // Create swapchain image views
         for (std::uint32_t i{}; i < imageCount; i++)
         {
-            VkImageSubresourceRange subresourceRange{VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
+            VkImageSubresourceRange subresourceRange{VkImageAspectFlagBits::VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
             VkImageViewCreateInfo viewCreateInfo{
-                .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+                .sType = VkStructureType::VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
                 .pNext = nullptr,
                 .flags = {},
                 .image = images[i],
-                .viewType = VK_IMAGE_VIEW_TYPE_2D,
+                .viewType = VkImageViewType::VK_IMAGE_VIEW_TYPE_2D,
                 .format = imageFormat,
-                .components = {VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY},
+                .components = {VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY, VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY,
+                               VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY, VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY},
                 .subresourceRange = subresourceRange};
             if (!lib.createImageView(device, &viewCreateInfo, nullptr, &imageViews[i]))
                 return false;
@@ -2204,18 +2213,18 @@ public:
         // Define attachment
         VkAttachmentDescription colorAttachment{.flags = {},
                                                 .format = imageFormat,
-                                                .samples = VK_SAMPLE_COUNT_1_BIT,
-                                                .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-                                                .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-                                                .stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-                                                .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-                                                .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-                                                .finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
-        VkAttachmentReference colorAttachmentReference{0, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
+                                                .samples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT,
+                                                .loadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_CLEAR,
+                                                .storeOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_STORE,
+                                                .stencilLoadOp = VkAttachmentLoadOp::VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+                                                .stencilStoreOp = VkAttachmentStoreOp::VK_ATTACHMENT_STORE_OP_DONT_CARE,
+                                                .initialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED,
+                                                .finalLayout = VkImageLayout::VK_IMAGE_LAYOUT_PRESENT_SRC_KHR};
+        VkAttachmentReference colorAttachmentReference{0, VkImageLayout::VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL};
 
         // Create render pass
         VkSubpassDescription subpassDescription{.flags = {},
-                                                .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                                .pipelineBindPoint = VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS,
                                                 .inputAttachmentCount = 0,
                                                 .pInputAttachments = nullptr,
                                                 .colorAttachmentCount = 1,
@@ -2224,14 +2233,14 @@ public:
                                                 .pDepthStencilAttachment = nullptr,
                                                 .preserveAttachmentCount = 0,
                                                 .pPreserveAttachments = nullptr};
-        VkSubpassDependency subpassDependency{VK_SUBPASS_EXTERNAL,
+        VkSubpassDependency subpassDependency{vkSubpassExternal,
                                               0,
-                                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-                                              VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                              VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+                                              VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
                                               {},
-                                              VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+                                              VkAccessFlagBits::VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
                                               {}};
-        VkRenderPassCreateInfo renderPassCreateInfo{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        VkRenderPassCreateInfo renderPassCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
                                                     .pNext = nullptr,
                                                     .flags = {},
                                                     .attachmentCount = 1,
@@ -2246,7 +2255,7 @@ public:
         // Create swapchain framebuffers
         for (std::uint32_t i{}; i < imageCount; i++)
         {
-            VkFramebufferCreateInfo framebufferCreateInfo{.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            VkFramebufferCreateInfo framebufferCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
                                                           .pNext = nullptr,
                                                           .flags = {},
                                                           .renderPass = renderPass,
@@ -2306,7 +2315,7 @@ struct BufferResources
 };
 
 /*
- * Class for handling vulkan synchronization objects
+ * Class for handling Vulkan synchronization objects
  */
 class SynchronizationResources
 {
@@ -2315,8 +2324,9 @@ public:
     [[nodiscard]] bool init(VkDevice device, uint32_t imageCount)
     {
         // Create synchronization objects
-        VkSemaphoreCreateInfo semaphoreCreateInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = {}};
-        VkFenceCreateInfo fenceCreateInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
+        VkSemaphoreCreateInfo semaphoreCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO, .pNext = nullptr, .flags = {}};
+        VkFenceCreateInfo fenceCreateInfo{
+            .sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VkFenceCreateFlagBits::VK_FENCE_CREATE_SIGNALED_BIT};
         for (std::uint32_t i{}; i < maxFramesInFlight; i++)
         {
             if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAcquiredSemaphores[i]) ||
@@ -2361,7 +2371,7 @@ private:
 };
 
 /*
- * Class for handling vulkan logical device resources
+ * Class for handling Vulkan logical device resources
  */
 class LogicalDeviceResources
 {
@@ -2372,7 +2382,7 @@ public:
         // Define device queues
         float queuePriority{1.0f};
         FixedVector<VkDeviceQueueCreateInfo, 16> queueCreateInfos;
-        queueCreateInfos.emplaceBack(VkDeviceQueueCreateInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        queueCreateInfos.emplaceBack(VkDeviceQueueCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                                              .pNext = nullptr,
                                                              .flags = {},
                                                              .queueFamilyIndex = physicalDeviceInfo.graphicsIndex,
@@ -2380,7 +2390,7 @@ public:
                                                              .pQueuePriorities = &queuePriority});
         if (physicalDeviceInfo.graphicsIndex != physicalDeviceInfo.presentationIndex)
         {
-            queueCreateInfos.emplaceBack(VkDeviceQueueCreateInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+            queueCreateInfos.emplaceBack(VkDeviceQueueCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
                                                                  .pNext = nullptr,
                                                                  .flags = {},
                                                                  .queueFamilyIndex = physicalDeviceInfo.presentationIndex,
@@ -2390,16 +2400,17 @@ public:
 
         // Create logical device
         VkPhysicalDeviceVulkan12Features features12{};
-        features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-        features12.bufferDeviceAddress = VK_TRUE;
-        features12.scalarBlockLayout = VK_TRUE;
+        features12.sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+        features12.bufferDeviceAddress = vkTrue;
+        features12.scalarBlockLayout = vkTrue;
         VkPhysicalDeviceVulkan11Features features11{};
-        features11.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+        features11.sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
         features11.pNext = &features12;
-        VkPhysicalDeviceFeatures2 requiredPhysicalDeviceFeatures{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features11, .features = {}};
-        requiredPhysicalDeviceFeatures.features.shaderInt64 = VK_TRUE;
-        requiredPhysicalDeviceFeatures.features.samplerAnisotropy = VK_TRUE;
-        VkDeviceCreateInfo deviceCreateInfo{.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+        VkPhysicalDeviceFeatures2 requiredPhysicalDeviceFeatures{
+            .sType = VkStructureType::VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, .pNext = &features11, .features = {}};
+        requiredPhysicalDeviceFeatures.features.shaderInt64 = vkTrue;
+        requiredPhysicalDeviceFeatures.features.samplerAnisotropy = vkTrue;
+        VkDeviceCreateInfo deviceCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
                                             .pNext = &requiredPhysicalDeviceFeatures,
                                             .flags = {},
                                             .queueCreateInfoCount = (std::uint32_t)queueCreateInfos.getSize(),
@@ -2423,9 +2434,9 @@ public:
             return false;
 
         // Create command pool
-        VkCommandPoolCreateInfo poolCreateInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        VkCommandPoolCreateInfo poolCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
                                                .pNext = nullptr,
-                                               .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                                               .flags = VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                                                .queueFamilyIndex = physicalDeviceInfo.graphicsIndex};
         if (!lib.createCommandPool(device, &poolCreateInfo, nullptr, &commandPool))
             return false;
@@ -2433,14 +2444,18 @@ public:
         if (!textureResources.init(device, commandPool, graphicsQueue, physicalDeviceInfo))
             return false;
 
-        VkDescriptorSetLayoutBinding layoutBinding{0, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1, VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
-        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO, .pNext = nullptr, .flags = {}, .bindingCount = 1, .pBindings = &layoutBinding};
+        VkDescriptorSetLayoutBinding layoutBinding{0, VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1,
+                                                   VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT, nullptr};
+        VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+                                                                      .pNext = nullptr,
+                                                                      .flags = {},
+                                                                      .bindingCount = 1,
+                                                                      .pBindings = &layoutBinding};
         if (!lib.createDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout))
             return false;
 
-        VkDescriptorPoolSize descriptorPoolSize{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxFramesInFlight};
-        VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        VkDescriptorPoolSize descriptorPoolSize{VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxFramesInFlight};
+        VkDescriptorPoolCreateInfo descriptorPoolCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
                                                             .pNext = nullptr,
                                                             .flags = {},
                                                             .maxSets = maxFramesInFlight,
@@ -2450,7 +2465,7 @@ public:
             return false;
 
         Array<VkDescriptorSetLayout, maxFramesInFlight> setLayouts{descriptorSetLayout, descriptorSetLayout};
-        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
                                                               .pNext = nullptr,
                                                               .descriptorPool = descriptorPool,
                                                               .descriptorSetCount = maxFramesInFlight,
@@ -2460,14 +2475,15 @@ public:
 
         for (size_t i = 0; i < maxFramesInFlight; i++)
         {
-            VkDescriptorImageInfo imageInfo(textureResources.getSampler(), textureResources.getImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
-            VkWriteDescriptorSet writeDescriptorSet{.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            VkDescriptorImageInfo imageInfo(textureResources.getSampler(), textureResources.getImageView(),
+                                            VkImageLayout::VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+            VkWriteDescriptorSet writeDescriptorSet{.sType = VkStructureType::VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                                                     .pNext = nullptr,
                                                     .dstSet = descriptorSets[i],
                                                     .dstBinding = 0,
                                                     .dstArrayElement = 0,
                                                     .descriptorCount = 1,
-                                                    .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                                                    .descriptorType = VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                                                     .pImageInfo = &imageInfo,
                                                     .pBufferInfo = nullptr,
                                                     .pTexelBufferView = nullptr};
@@ -2486,31 +2502,31 @@ public:
         }
 
         // Define shader stages
-        Array stageCreateInfos{VkPipelineShaderStageCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        Array stageCreateInfos{VkPipelineShaderStageCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                                                                .pNext = nullptr,
                                                                .flags = {},
-                                                               .stage = VK_SHADER_STAGE_VERTEX_BIT,
+                                                               .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT,
                                                                .module = vertexShaderModule.getModule(),
                                                                .pName = "main",
                                                                .pSpecializationInfo = nullptr},
-                               VkPipelineShaderStageCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+                               VkPipelineShaderStageCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
                                                                .pNext = nullptr,
                                                                .flags = {},
-                                                               .stage = VK_SHADER_STAGE_FRAGMENT_BIT,
+                                                               .stage = VkShaderStageFlagBits::VK_SHADER_STAGE_FRAGMENT_BIT,
                                                                .module = fragmentShaderModule.getModule(),
                                                                .pName = "main",
                                                                .pSpecializationInfo = nullptr}};
 
         // Define dynamic states
-        Array dynamicStates{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
-        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        Array dynamicStates{VkDynamicState::VK_DYNAMIC_STATE_VIEWPORT, VkDynamicState::VK_DYNAMIC_STATE_SCISSOR};
+        VkPipelineDynamicStateCreateInfo dynamicStateCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
                                                                 .pNext = nullptr,
                                                                 .flags = {},
                                                                 .dynamicStateCount = dynamicStates.getSize(),
                                                                 .pDynamicStates = dynamicStates.getData()};
 
         // Define vertex input
-        VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        VkPipelineVertexInputStateCreateInfo vertexInputStateCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
                                                                         .pNext = nullptr,
                                                                         .flags = {},
                                                                         .vertexBindingDescriptionCount = 0,
@@ -2519,17 +2535,17 @@ public:
                                                                         .pVertexAttributeDescriptions = nullptr};
 
         // Define input assembly
-        VkPipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        VkPipelineInputAssemblyStateCreateInfo assemblyStateCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
                                                                        .pNext = nullptr,
                                                                        .flags = {},
-                                                                       .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
-                                                                       .primitiveRestartEnable = VK_FALSE};
+                                                                       .topology = VkPrimitiveTopology::VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP,
+                                                                       .primitiveRestartEnable = vkFalse};
 
         // Define viewport
         auto imageExtent = swapchainResources.getImageExtent();
         VkViewport viewport{0.0f, 0.0f, (float)imageExtent.width, (float)imageExtent.height, 0.0f, 1.0f};
         VkRect2D scissor{{0, 0}, imageExtent};
-        VkPipelineViewportStateCreateInfo viewportStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        VkPipelineViewportStateCreateInfo viewportStateCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
                                                                   .pNext = nullptr,
                                                                   .flags = {},
                                                                   .viewportCount = 1,
@@ -2538,67 +2554,69 @@ public:
                                                                   .pScissors = &scissor};
 
         // Define rasterization
-        VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo{.sType =
+                                                                                VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
                                                                             .pNext = nullptr,
                                                                             .flags = {},
-                                                                            .depthClampEnable = VK_FALSE,
-                                                                            .rasterizerDiscardEnable = VK_FALSE,
-                                                                            .polygonMode = VK_POLYGON_MODE_FILL,
-                                                                            .cullMode = VK_CULL_MODE_BACK_BIT,
-                                                                            .frontFace = VK_FRONT_FACE_CLOCKWISE,
-                                                                            .depthBiasEnable = VK_FALSE,
+                                                                            .depthClampEnable = vkFalse,
+                                                                            .rasterizerDiscardEnable = vkFalse,
+                                                                            .polygonMode = VkPolygonMode::VK_POLYGON_MODE_FILL,
+                                                                            .cullMode = VkCullModeFlagBits::VK_CULL_MODE_BACK_BIT,
+                                                                            .frontFace = VkFrontFace::VK_FRONT_FACE_CLOCKWISE,
+                                                                            .depthBiasEnable = vkFalse,
                                                                             .depthBiasConstantFactor = 0.0f,
                                                                             .depthBiasClamp = 0.0f,
                                                                             .depthBiasSlopeFactor = 0.0f,
                                                                             .lineWidth = 1.0f};
 
         // Define multisampling
-        VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        VkPipelineMultisampleStateCreateInfo multisampleStateCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
                                                                         .pNext = nullptr,
                                                                         .flags = {},
-                                                                        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
-                                                                        .sampleShadingEnable = VK_FALSE,
+                                                                        .rasterizationSamples = VkSampleCountFlagBits::VK_SAMPLE_COUNT_1_BIT,
+                                                                        .sampleShadingEnable = vkFalse,
                                                                         .minSampleShading = 0.0,
                                                                         .pSampleMask = nullptr,
-                                                                        .alphaToCoverageEnable = VK_FALSE,
-                                                                        .alphaToOneEnable = VK_FALSE};
+                                                                        .alphaToCoverageEnable = vkFalse,
+                                                                        .alphaToOneEnable = vkFalse};
 
         // Define depth and stencil
-        VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        VkPipelineDepthStencilStateCreateInfo depthStencilStateCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
                                                                           .pNext = nullptr,
                                                                           .flags = {},
-                                                                          .depthTestEnable = VK_FALSE,
-                                                                          .depthWriteEnable = VK_FALSE,
-                                                                          .depthCompareOp = VK_COMPARE_OP_NEVER,
-                                                                          .depthBoundsTestEnable = VK_FALSE,
-                                                                          .stencilTestEnable = VK_FALSE,
+                                                                          .depthTestEnable = vkFalse,
+                                                                          .depthWriteEnable = vkFalse,
+                                                                          .depthCompareOp = VkCompareOp::VK_COMPARE_OP_NEVER,
+                                                                          .depthBoundsTestEnable = vkFalse,
+                                                                          .stencilTestEnable = vkFalse,
                                                                           .front = {},
                                                                           .back = {},
                                                                           .minDepthBounds = 0.0f,
                                                                           .maxDepthBounds = 1.0f};
 
         // Define color blending
-        VkPipelineColorBlendAttachmentState colorBlendAttachmentState{.blendEnable = VK_TRUE,
-                                                                      .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-                                                                      .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-                                                                      .colorBlendOp = VK_BLEND_OP_ADD,
-                                                                      .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-                                                                      .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-                                                                      .alphaBlendOp = VK_BLEND_OP_ADD,
-                                                                      .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
-        VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        VkPipelineColorBlendAttachmentState colorBlendAttachmentState{
+            .blendEnable = vkTrue,
+            .srcColorBlendFactor = VkBlendFactor::VK_BLEND_FACTOR_SRC_ALPHA,
+            .dstColorBlendFactor = VkBlendFactor::VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .colorBlendOp = VkBlendOp::VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VkBlendFactor::VK_BLEND_FACTOR_ONE,
+            .dstAlphaBlendFactor = VkBlendFactor::VK_BLEND_FACTOR_ZERO,
+            .alphaBlendOp = VkBlendOp::VK_BLEND_OP_ADD,
+            .colorWriteMask = VkColorComponentFlagBits::VK_COLOR_COMPONENT_R_BIT | VkColorComponentFlagBits::VK_COLOR_COMPONENT_G_BIT |
+                VkColorComponentFlagBits::VK_COLOR_COMPONENT_B_BIT | VkColorComponentFlagBits::VK_COLOR_COMPONENT_A_BIT};
+        VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
                                                                       .pNext = nullptr,
                                                                       .flags = {},
-                                                                      .logicOpEnable = VK_FALSE,
-                                                                      .logicOp = VK_LOGIC_OP_NO_OP,
+                                                                      .logicOpEnable = vkFalse,
+                                                                      .logicOp = VkLogicOp::VK_LOGIC_OP_NO_OP,
                                                                       .attachmentCount = 1,
                                                                       .pAttachments = &colorBlendAttachmentState,
                                                                       .blendConstants = {1.0f, 1.0f, 1.0f, 1.0f}};
 
         // Create pipeline layout
-        VkPushConstantRange pushConstantRange(VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(QuadData));
-        VkPipelineLayoutCreateInfo layoutCreateInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        VkPushConstantRange pushConstantRange(VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(QuadData));
+        VkPipelineLayoutCreateInfo layoutCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
                                                     .pNext = nullptr,
                                                     .flags = {},
                                                     .setLayoutCount = 1,
@@ -2613,7 +2631,7 @@ public:
         }
 
         // Create graphics pipeline
-        VkGraphicsPipelineCreateInfo pipelineCreateInfo{.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        VkGraphicsPipelineCreateInfo pipelineCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
                                                         .pNext = nullptr,
                                                         .flags = {},
                                                         .stageCount = stageCreateInfos.getSize(),
@@ -2646,12 +2664,12 @@ public:
         {
             auto& bufferResources = quadDataBuffers[i];
 
-            VkBufferCreateInfo bufferCreateInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+            VkBufferCreateInfo bufferCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                                                 .pNext = nullptr,
                                                 .flags = {},
                                                 .size = sizeof(QuadData) * QuadPool::getCapacity(),
-                                                .usage = VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                                                .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+                                                .usage = VkBufferUsageFlagBits::VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+                                                .sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
                                                 .queueFamilyIndexCount = 1,
                                                 .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex};
             if (!lib.createBuffer(device, &bufferCreateInfo, nullptr, &bufferResources.buffer))
@@ -2660,16 +2678,19 @@ public:
             VkMemoryRequirements bufferMemoryRequirements{};
             lib.getBufferMemoryRequirements(device, bufferResources.buffer, &bufferMemoryRequirements);
 
-            VkMemoryPropertyFlags memoryProperties{VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT | VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                                   VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
+            VkMemoryPropertyFlags memoryProperties{VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT |
+                                                   VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                   VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_HOST_COHERENT_BIT};
 
             auto selectedMemoryType = physicalDeviceInfo.getMemoryTypeIndex(bufferMemoryRequirements, memoryProperties);
             if (selectedMemoryType == -1)
                 return false;
 
-            VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{
-                .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO, .pNext = nullptr, .flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT, .deviceMask = 0};
-            VkMemoryAllocateInfo memoryAllocateInfo{.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+            VkMemoryAllocateFlagsInfo memoryAllocateFlagsInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+                                                              .pNext = nullptr,
+                                                              .flags = VkMemoryAllocateFlagBits::VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT,
+                                                              .deviceMask = 0};
+            VkMemoryAllocateInfo memoryAllocateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
                                                     .pNext = &memoryAllocateFlagsInfo,
                                                     .allocationSize = bufferMemoryRequirements.size,
                                                     .memoryTypeIndex = (std::uint32_t)selectedMemoryType};
@@ -2680,7 +2701,7 @@ public:
                 return false;
 
             VkBufferDeviceAddressInfo deviceAddressInfo{
-                .sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .pNext = nullptr, .buffer = bufferResources.buffer};
+                .sType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO, .pNext = nullptr, .buffer = bufferResources.buffer};
             bufferResources.bufferAddress = lib.getBufferDeviceAddress(device, &deviceAddressInfo);
             if (!bufferResources.bufferAddress)
             {
@@ -2694,10 +2715,10 @@ public:
         logger.logInfo("Created quad data buffers");
 
         // Allocate command buffers
-        VkCommandBufferAllocateInfo bufferAllocateInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        VkCommandBufferAllocateInfo bufferAllocateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
                                                        .pNext = nullptr,
                                                        .commandPool = commandPool,
-                                                       .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+                                                       .level = VkCommandBufferLevel::VK_COMMAND_BUFFER_LEVEL_PRIMARY,
                                                        .commandBufferCount = maxFramesInFlight};
         if (!lib.allocateCommandBuffers(device, &bufferAllocateInfo, commandBuffers.getData()))
             return false;
@@ -2832,13 +2853,13 @@ public:
             logger.logInfo("\t{}", availableInstanceLayerProperties[i].layerName);
 
         // Define application info
-        VkApplicationInfo applicationInfo{.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+        VkApplicationInfo applicationInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_APPLICATION_INFO,
                                           .pNext = nullptr,
                                           .pApplicationName = appName.data(),
-                                          .applicationVersion = VK_MAKE_VERSION(majorVersion, minorVersion, patchVersion),
+                                          .applicationVersion = vkMakeVersion(majorVersion, minorVersion, patchVersion),
                                           .pEngineName = "Quad Engine",
-                                          .engineVersion = VK_MAKE_VERSION(0, 1, 0),
-                                          .apiVersion = VK_MAKE_API_VERSION(0, 1, 4, 0)};
+                                          .engineVersion = vkMakeVersion(0, 1, 0),
+                                          .apiVersion = vkMakeAPIVersion(0, 1, 4, 0)};
 
         // Define required instance layers
         FixedVector<char const*, 64> requiredLayers;
@@ -2873,7 +2894,7 @@ public:
         for (auto extension : renderWindow.getRequiredExtensions())
             requiredInstanceExtensions.emplaceBack(extension);
         if constexpr (isDebugBuild)
-            requiredInstanceExtensions.emplaceBack(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
+            requiredInstanceExtensions.emplaceBack(vkEXTDebugUtilsExtensionName);
 
         // Print required instance extensions
         logger.logInfo("{} Vulkan instance extensions required:", requiredInstanceExtensions.getSize());
@@ -2901,16 +2922,18 @@ public:
         }
 
         // Create Vulkan instance
-        VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo{
-            .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-            .pNext = nullptr,
-            .flags = {},
-            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-            .messageType =
-                VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-            .pfnUserCallback = debugCallback,
-            .pUserData = nullptr};
-        VkInstanceCreateInfo instanceCreateInfo{.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+        VkDebugUtilsMessengerCreateInfoEXT messengerCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+                                                               .pNext = nullptr,
+                                                               .flags = {},
+                                                               .messageSeverity =
+                                                                   VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                                                   VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+                                                               .messageType = VkDebugUtilsMessageTypeFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                                                                   VkDebugUtilsMessageTypeFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                                                                   VkDebugUtilsMessageTypeFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+                                                               .pfnUserCallback = debugCallback,
+                                                               .pUserData = nullptr};
+        VkInstanceCreateInfo instanceCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
                                                 .pNext = nullptr,
                                                 .flags = {},
                                                 .pApplicationInfo = &applicationInfo,
@@ -2959,7 +2982,7 @@ public:
 
         // Define required physical device extensions
         FixedVector<char const*, 64> requiredPhysicalDeviceExtensions;
-        requiredPhysicalDeviceExtensions.emplaceBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        requiredPhysicalDeviceExtensions.emplaceBack(vkKHRSwapchainExtensionName);
 
         // Print required physical device extensions
         logger.logInfo("{} physical device extensions required:", requiredPhysicalDeviceExtensions.getSize());
@@ -2983,7 +3006,7 @@ public:
             return false;
         }
 
-        // Choose the physical device with highest score
+        // Choose the physical device with the highest score
         currentPhysicalDeviceIndex = 0;
         for (std::uint32_t i = 1; i < physicalDevices.getSize(); i++)
         {
@@ -3021,7 +3044,7 @@ public:
     {
         currentPhysicalDeviceIndex = index;
         FixedVector<char const*, 64> requiredPhysicalDeviceExtensions;
-        requiredPhysicalDeviceExtensions.emplaceBack(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+        requiredPhysicalDeviceExtensions.emplaceBack(vkKHRSwapchainExtensionName);
         logicalDeviceResources.cleanup();
         auto _ = logicalDeviceResources.init(physicalDevices[currentPhysicalDeviceIndex], requiredPhysicalDeviceExtensions, surface);
     }
@@ -3034,7 +3057,7 @@ public:
 
         auto timeout = std::numeric_limits<std::uint64_t>::max();
         auto waitFence = synchronizationResources.getSubmitFence(currentFrameIndex);
-        if (!lib.waitForFences(logicalDeviceResources.getDevice(), 1, &waitFence, VK_TRUE, timeout))
+        if (!lib.waitForFences(logicalDeviceResources.getDevice(), 1, &waitFence, vkTrue, timeout))
             return false;
         if (!lib.resetFences(logicalDeviceResources.getDevice(), 1, &waitFence))
             return false;
@@ -3042,7 +3065,7 @@ public:
         std::uint32_t imageIndex{};
         auto result = lib.acquireNextImage(logicalDeviceResources.getDevice(), swapchainResources.getSwapchain(), timeout,
                                            synchronizationResources.getImageSemaphore(currentFrameIndex), {}, &imageIndex);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        if (result == VkResult::VK_ERROR_OUT_OF_DATE_KHR || result == VkResult::VK_SUBOPTIMAL_KHR)
             return recreateSwapchain();
 
         if (checkError(result, "", "Failed to acquire next image"))
@@ -3055,22 +3078,23 @@ public:
 
         auto instanceCount = copyQuadPools();
 
-        VkCommandBufferBeginInfo beginInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = {}, .pInheritanceInfo = nullptr};
+        VkCommandBufferBeginInfo beginInfo{
+            .sType = VkStructureType::VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO, .pNext = nullptr, .flags = {}, .pInheritanceInfo = nullptr};
         if (!lib.beginCommandBuffer(commandBuffer, &beginInfo))
             return false;
 
         VkRect2D renderArea({0, 0}, swapchainResources.getImageExtent());
         VkClearValue clearValue(VkClearColorValue{0.0f, 0.0f, 0.0f, 1.0f});
-        VkRenderPassBeginInfo renderPassBeginInfo{.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        VkRenderPassBeginInfo renderPassBeginInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
                                                   .pNext = nullptr,
                                                   .renderPass = swapchainResources.getRenderPass(),
                                                   .framebuffer = swapchainResources.getFramebuffer(imageIndex),
                                                   .renderArea = renderArea,
                                                   .clearValueCount = 1,
                                                   .pClearValues = &clearValue};
-        lib.commandBeginRenderPass(commandBuffer, &renderPassBeginInfo, VK_SUBPASS_CONTENTS_INLINE);
+        lib.commandBeginRenderPass(commandBuffer, &renderPassBeginInfo, VkSubpassContents::VK_SUBPASS_CONTENTS_INLINE);
 
-        lib.commandBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, logicalDeviceResources.getGraphicsPipeline());
+        lib.commandBindPipeline(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, logicalDeviceResources.getGraphicsPipeline());
 
         auto imageExtent = swapchainResources.getImageExtent();
         VkViewport viewport{.x = 0.0f, .y = 0.0f, .width = (float)imageExtent.width, .height = (float)imageExtent.height, .minDepth = 0.0f, .maxDepth = 1.0f};
@@ -3080,12 +3104,12 @@ public:
         lib.commandSetScissor(commandBuffer, 0, 1, &scissor);
 
         PushConstantsBlock pushConstants{logicalDeviceResources.getQuadDataBuffer(currentFrameIndex).bufferAddress};
-        lib.commandPushConstants(commandBuffer, logicalDeviceResources.getGraphicsPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0u, sizeof(pushConstants),
-                                 &pushConstants);
+        lib.commandPushConstants(commandBuffer, logicalDeviceResources.getGraphicsPipelineLayout(), VkShaderStageFlagBits::VK_SHADER_STAGE_VERTEX_BIT, 0u,
+                                 sizeof(pushConstants), &pushConstants);
 
         auto descriptorSet = logicalDeviceResources.getDescriptorSet(currentFrameIndex);
-        lib.commandBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, logicalDeviceResources.getGraphicsPipelineLayout(), 0, 1, &descriptorSet,
-                                      0, nullptr);
+        lib.commandBindDescriptorSets(commandBuffer, VkPipelineBindPoint::VK_PIPELINE_BIND_POINT_GRAPHICS, logicalDeviceResources.getGraphicsPipelineLayout(),
+                                      0, 1, &descriptorSet, 0, nullptr);
         lib.commandDraw(commandBuffer, 4, instanceCount, 0, 0);
 
         lib.commandEndRenderPass(commandBuffer);
@@ -3093,10 +3117,10 @@ public:
         if (!lib.endCommandBuffer(commandBuffer))
             return false;
 
-        VkPipelineStageFlags waitStage{VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+        VkPipelineStageFlags waitStage{VkPipelineStageFlagBits::VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
         auto imageSemaphore = synchronizationResources.getImageSemaphore(currentFrameIndex);
         auto submitSemaphore = synchronizationResources.getSubmitSemaphore(imageIndex);
-        VkSubmitInfo submitInfo{.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        VkSubmitInfo submitInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_SUBMIT_INFO,
                                 .pNext = nullptr,
                                 .waitSemaphoreCount = 1,
                                 .pWaitSemaphores = &imageSemaphore,
@@ -3109,7 +3133,7 @@ public:
             return false;
 
         auto swapchain = swapchainResources.getSwapchain();
-        VkPresentInfoKHR presentInfo{.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        VkPresentInfoKHR presentInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
                                      .pNext = nullptr,
                                      .waitSemaphoreCount = 1,
                                      .pWaitSemaphores = &submitSemaphore,
@@ -3118,7 +3142,7 @@ public:
                                      .pImageIndices = &imageIndex,
                                      .pResults = nullptr};
         result = lib.queuePresent(logicalDeviceResources.getPresentationQueue(), &presentInfo);
-        if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR)
+        if (result == VkResult::VK_ERROR_OUT_OF_DATE_KHR || result == VkResult::VK_SUBOPTIMAL_KHR)
             return recreateSwapchain();
 
         if (checkError(result, "", "Failed to present image"))
@@ -3172,12 +3196,12 @@ private:
     static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT,
                                                         VkDebugUtilsMessengerCallbackDataEXT const* pCallbackData, void*)
     {
-        if (messageSeverity <= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+        if (messageSeverity <= VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
             logger.logInfo("{}", pCallbackData->pMessage);
-        else if (messageSeverity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+        else if (messageSeverity == VkDebugUtilsMessageSeverityFlagBitsEXT::VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
             logger.logError("{}", pCallbackData->pMessage);
 
-        return VK_FALSE;
+        return vkFalse;
     }
 
     VkInstance instance{};

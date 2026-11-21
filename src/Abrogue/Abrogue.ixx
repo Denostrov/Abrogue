@@ -3651,7 +3651,7 @@ EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double posit
     PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color), state(initialState)
 {
     auto [x, y] = getPosition();
-    quad.init(QuadData{{Constants::mapOffset + x, y}, {color.getPacked(), color.getTransparentPacked()}, data.symbol});
+    quad.init(QuadData{{Constants::mapOffset + x, y}, {color.getPacked(), color.getTransparentPacked()}, (std::uint32_t)data.symbol});
 
     if (isDrawDebug)
         updateDrawDebug();

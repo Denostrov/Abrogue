@@ -25,7 +25,7 @@ public:
     }
 
     template <class... Args>
-    constexpr Array(Args&&... args) : arr{T{std::forward<Args>(args)}...}
+    constexpr Array(Args&&... args) : arr{static_cast<T>(std::forward<Args>(args))...}
     {
         static_assert(sizeof...(args) >= size, "Array variadic initializer has too few elements");
         static_assert(sizeof...(args) <= size, "Array variadic initializer has too many elements");
@@ -56,6 +56,17 @@ public:
         }
 
         return std::forward<Self>(self).arr[castIndex];
+    }
+
+    [[nodiscard]] constexpr auto operator==(Array const& other) const
+    {
+        for (std::int64_t i{}; i < size; i++)
+        {
+            if (arr[i] != other.arr[i])
+                return false;
+        }
+
+        return true;
     }
 
     template <class Self>
