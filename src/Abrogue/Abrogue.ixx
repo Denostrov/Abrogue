@@ -279,7 +279,6 @@ public:
         nextY = y;
     }
 
-protected:
     void setMass(double newMass) { mass = newMass; }
     void setFrictionCoefficient(double newFriction) { frictionCoefficient = newFriction; }
     void setMaxVelocity(double newMaxSpeed);
@@ -306,12 +305,9 @@ private:
 
     double movementDirectionX{}, movementDirectionY{}; // Unscaled directions of applied movement forces
 };
-/*
- * Item - class for handling items
- */
-class Item : public PhysicsComponent
+
+struct ItemData
 {
-public:
     enum class Type
     {
         eGold,
@@ -329,26 +325,38 @@ public:
         COUNT
     };
 
+    [[nodiscard]] auto getGlyph() const { return typeGlyphs[type]; }
+    [[nodiscard]] FixedString<32> getName() const;
+
+    static constexpr Array<std::uint32_t, Type::COUNT> typeGlyphs{42, 59, 157, 24, 91, 33, 26, 231, 47, 126, 9, 13};
+
+    Type type{Type::COUNT};
+    std::int64_t level{};
+};
+/*
+ * Item - class for handling items
+ */
+class Item
+{
+public:
     Item() = default;
-    Item(Type newType, double x, double y);
+
+    void init(ItemData const& newData, double x, double y);
 
     void update();
     void updateDraw(double deltaTime);
 
-    [[nodiscard]] Type getType() const { return type; }
-    [[nodiscard]] std::int64_t getLevel() const { return level; }
-    [[nodiscard]] FixedString<32> getName() const;
-    [[nodiscard]] std::uint32_t getGlyph() const { return typeGlyphs[(std::size_t)type]; }
-
-    void setEnchantmentLevel(std::int64_t newLevel) { level = newLevel; }
     void setVisible(bool visible);
 
+    template<class Self>
+    [[nodiscard]] auto&& getData(this Self&& self) { return std::forward<Self>(self).data; }
+    [[nodiscard]] auto getPosition() const { return physics.getPosition(); }
+    void setPosition(double x, double y) { physics.setPosition(x, y); }
+
 private:
-    static constexpr std::array<std::uint32_t, (std::size_t)Type::COUNT> typeGlyphs{42, 59, 157, 24, 91, 33, 26, 231, 47, 126, 9, 13};
+    ItemData data;
 
-    Type type{Type::COUNT};
-    std::int64_t level{};
-
+    PhysicsComponent physics;
     QuadReference<QuadLayer::eItem> quad;
 };
 /*
@@ -590,18 +598,18 @@ public:
     struct Inventory
     {
         std::int64_t gold{};
-        FixedVector<Item, 20> items;
-        std::optional<Item> weapon;
+        FixedVector<ItemData, 20> items;
+        std::optional<ItemData> weapon;
         std::int64_t weaponSwapIndex{-1};
-        std::optional<Item> armor;
+        std::optional<ItemData> armor;
         std::int64_t armorSwapIndex{-1};
-        std::optional<Item> throwable;
+        std::optional<ItemData> throwable;
         std::int64_t throwableSwapIndex{-1};
-        std::optional<Item> usable;
+        std::optional<ItemData> usable;
         std::int64_t usableSwapIndex{-1};
-        std::optional<Item> ringFirst;
+        std::optional<ItemData> ringFirst;
         std::int64_t ringFirstSwapIndex{-1};
-        std::optional<Item> ringSecond;
+        std::optional<ItemData> ringSecond;
         std::int64_t ringSecondSwapIndex{-1};
         bool hasAmulet{};
     };
@@ -1826,39 +1834,8 @@ void PhysicsComponent::calculateNextStep()
         }
     }
 }
-/*
- * Item implementation
- */
-Item::Item(Type newType, double x, double y) : PhysicsComponent(x, y, 0.48, 0.48, 0.48, 0.48)
-{
-    type = newType;
 
-    quad.init(QuadData{{static_cast<float>(Constants::mapOffset + x), static_cast<float>(y)},
-                       {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)},
-                       typeGlyphs[(std::size_t)newType]});
-}
-void Item::update() { PhysicsComponent::update(); }
-void Item::updateDraw(double deltaTime)
-{
-    auto [x, y] = getPosition();
-    auto [vx, vy] = getVelocity();
-    quad.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
-
-    auto brightness = map.getTileBrightness(x, y);
-    if (brightness < Constants::mapMinBrightness)
-    {
-        quad.setColor(0);
-        quad.setBackgroundColor(0);
-    }
-    else
-    {
-        Color itemColor(255, 255, 0, 255);
-        itemColor.multiplyRGB(brightness);
-        quad.setColor(itemColor.getPacked());
-        quad.setBackgroundColor(itemColor.getTransparentPacked());
-    }
-}
-FixedString<32> Item::getName() const
+FixedString<32> ItemData::getName() const
 {
     FixedString<32> result;
     if (type == Type::eFood)
@@ -1886,14 +1863,46 @@ FixedString<32> Item::getName() const
 
     return result;
 }
+/*
+ * Item implementation
+ */
+void Item::init(ItemData const& newData, double x, double y)
+{
+    data = newData;
+    physics = PhysicsComponent(x, y, 0.48, 0.48, 0.48, 0.48);
+    quad.init(QuadData{{static_cast<float>(Constants::mapOffset + x), static_cast<float>(y)},
+                       {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)},
+                       data.getGlyph()});
+}
+void Item::update() { physics.update(); }
+void Item::updateDraw(double deltaTime)
+{
+    auto [x, y] = physics.getPosition();
+    auto [vx, vy] = physics.getVelocity();
+    quad.setPosition(Constants::mapOffset + x + vx * deltaTime, y + vy * deltaTime);
+
+    auto brightness = map.getTileBrightness(x, y);
+    if (brightness < Constants::mapMinBrightness)
+    {
+        quad.setColor(0);
+        quad.setBackgroundColor(0);
+    }
+    else
+    {
+        Color itemColor(255, 255, 0, 255);
+        itemColor.multiplyRGB(brightness);
+        quad.setColor(itemColor.getPacked());
+        quad.setBackgroundColor(itemColor.getTransparentPacked());
+    }
+}
 void Item::setVisible(bool visible)
 {
     if (visible)
     {
-        auto [x, y] = getPosition();
+        auto [x, y] = physics.getPosition();
         quad.init(QuadData{{static_cast<float>(Constants::mapOffset + x), static_cast<float>(y)},
                            {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)},
-                           typeGlyphs[(std::size_t)type]});
+                           data.getGlyph()});
     }
     else
         quad = QuadReference<QuadLayer::eItem>{};
@@ -2133,11 +2142,11 @@ std::string_view Configuration::getInputControlName(InputControlType type) const
     case SDL_SCANCODE_ESCAPE:
         return "[ESC]"sv;
     case SDL_SCANCODE_BACKSPACE:
-        return "[BSPACE]"sv;
+        return "[BSPC]"sv;
     case SDL_SCANCODE_TAB:
         return "[TAB]"sv;
     case SDL_SCANCODE_SPACE:
-        return "[SPACE]"sv;
+        return "[SPCE]"sv;
     case SDL_SCANCODE_MINUS:
         return "[-]"sv;
     case SDL_SCANCODE_EQUALS:
@@ -2211,85 +2220,85 @@ std::string_view Configuration::getInputControlName(InputControlType type) const
     case SDL_SCANCODE_F24:
         return "[F24]"sv;
     case SDL_SCANCODE_PRINTSCREEN:
-        return "[PRINT]"sv;
+        return "[PRNS]"sv;
     case SDL_SCANCODE_SCROLLLOCK:
-        return "[SCROLL]"sv;
+        return "[SCRL]"sv;
     case SDL_SCANCODE_PAUSE:
-        return "[PAUSE]"sv;
+        return "[PAUS]"sv;
     case SDL_SCANCODE_INSERT:
-        return "[INSERT]"sv;
+        return "[INS]"sv;
     case SDL_SCANCODE_HOME:
         return "[HOME]"sv;
     case SDL_SCANCODE_PAGEUP:
-        return "[PGUP]"sv;
+        return "[PGU]"sv;
     case SDL_SCANCODE_DELETE:
-        return "[DELETE]"sv;
+        return "[DEL]"sv;
     case SDL_SCANCODE_END:
         return "[END]"sv;
     case SDL_SCANCODE_PAGEDOWN:
-        return "[PGDOWN]"sv;
+        return "[PGD]"sv;
     case SDL_SCANCODE_RIGHT:
-        return "[RIGHT]"sv;
+        return "[RIG]"sv;
     case SDL_SCANCODE_LEFT:
-        return "[LEFT]"sv;
+        return "[LEF]"sv;
     case SDL_SCANCODE_DOWN:
-        return "[DOWN]"sv;
+        return "[DOW]"sv;
     case SDL_SCANCODE_UP:
         return "[UP]"sv;
     case SDL_SCANCODE_NUMLOCKCLEAR:
-        return "[NLOCK]"sv;
+        return "[NLKC]"sv;
     case SDL_SCANCODE_KP_DIVIDE:
-        return "[DIVIDE]"sv;
+        return "[DIV]"sv;
     case SDL_SCANCODE_KP_MULTIPLY:
-        return "[MULT]"sv;
+        return "[MUL]"sv;
     case SDL_SCANCODE_KP_MINUS:
-        return "[MINUS]"sv;
+        return "[MIN]"sv;
     case SDL_SCANCODE_KP_PLUS:
-        return "[PLUS]"sv;
+        return "[PLU]"sv;
     case SDL_SCANCODE_KP_ENTER:
-        return "[ENTER]"sv;
+        return "[ENT]"sv;
     case SDL_SCANCODE_KP_1:
-        return "[Num1]"sv;
+        return "[NUM1]"sv;
     case SDL_SCANCODE_KP_2:
-        return "[Num2]"sv;
+        return "[NUM2]"sv;
     case SDL_SCANCODE_KP_3:
-        return "[Num3]"sv;
+        return "[NUM3]"sv;
     case SDL_SCANCODE_KP_4:
-        return "[Num4]"sv;
+        return "[NUM4]"sv;
     case SDL_SCANCODE_KP_5:
-        return "[Num5]"sv;
+        return "[NUM5]"sv;
     case SDL_SCANCODE_KP_6:
-        return "[Num6]"sv;
+        return "[NUM6]"sv;
     case SDL_SCANCODE_KP_7:
-        return "[Num7]"sv;
+        return "[NUM7]"sv;
     case SDL_SCANCODE_KP_8:
-        return "[Num8]"sv;
+        return "[NUM8]"sv;
     case SDL_SCANCODE_KP_9:
-        return "[Num9]"sv;
+        return "[NUM9]"sv;
     case SDL_SCANCODE_KP_0:
-        return "[Num0]"sv;
+        return "[NUM0]"sv;
     case SDL_SCANCODE_KP_PERIOD:
-        return "[PERIOD]"sv;
+        return "[PERD]"sv;
     case SDL_SCANCODE_KP_EQUALS:
-        return "[EQUALS]"sv;
+        return "[EQLS]"sv;
     case SDL_SCANCODE_NONUSBACKSLASH:
-        return "[BSLASH]"sv;
+        return "[BSL]"sv;
     case SDL_SCANCODE_APPLICATION:
         return "[APP]"sv;
     case SDL_SCANCODE_POWER:
-        return "[POWER]"sv;
+        return "[POW]"sv;
     case SDL_SCANCODE_LCTRL:
-        return "[LCTRL]"sv;
+        return "[LCTL]"sv;
     case SDL_SCANCODE_LSHIFT:
-        return "[LSHIFT]"sv;
+        return "[LSHF]"sv;
     case SDL_SCANCODE_LALT:
         return "[LALT]"sv;
     case SDL_SCANCODE_LGUI:
         return "[LGUI]"sv;
     case SDL_SCANCODE_RCTRL:
-        return "[RCTRL]"sv;
+        return "[RCTL]"sv;
     case SDL_SCANCODE_RSHIFT:
-        return "[RSHIFT]"sv;
+        return "[RSHF]"sv;
     case SDL_SCANCODE_RALT:
         return "[RALT]"sv;
     case SDL_SCANCODE_RGUI:
@@ -2567,7 +2576,7 @@ std::optional<Item> Map::pickupItem(std::int64_t x, std::int64_t y, bool onlyGol
         if ((std::int64_t)itemX != x || (std::int64_t)itemY != y)
             continue;
 
-        if (items[i].getType() != Item::Type::eGold && onlyGold)
+        if (items[i].getData().type != ItemData::Type::eGold && onlyGold)
             continue;
 
         items[i].setVisible(false);
@@ -2919,28 +2928,36 @@ void Map::generateLevel()
         std::int64_t spawnY = room.originY + mapRandom.generate() % room.height;
 
         std::int64_t itemTypeVal = mapRandom.generate() % 20;
-        Item::Type itemType = itemTypeVal == 0 ? Item::Type::eFood
-            : itemTypeVal == 1                 ? Item::Type::eWeapon
-            : itemTypeVal == 2                 ? Item::Type::eArmor
-            : itemTypeVal == 3                 ? Item::Type::ePotion
-            : itemTypeVal == 4                 ? Item::Type::eDart
-            : itemTypeVal == 5                 ? Item::Type::eCharm
-            : itemTypeVal == 6                 ? Item::Type::eStaff
-            : itemTypeVal == 7                 ? Item::Type::eWand
-            : itemTypeVal == 8                 ? Item::Type::eRing
-            : itemTypeVal == 9                 ? Item::Type::eScroll
-                                               : Item::Type::eGold;
-        items.emplaceBack(itemType, spawnX + 0.5, spawnY + 0.5);
-        if (itemType == Item::Type::eWeapon || itemType == Item::Type::eArmor)
+        ItemData::Type itemType = itemTypeVal == 0 ? ItemData::Type::eFood
+            : itemTypeVal == 1                 ? ItemData::Type::eWeapon
+            : itemTypeVal == 2                 ? ItemData::Type::eArmor
+            : itemTypeVal == 3                 ? ItemData::Type::ePotion
+            : itemTypeVal == 4                 ? ItemData::Type::eDart
+            : itemTypeVal == 5                 ? ItemData::Type::eCharm
+            : itemTypeVal == 6                 ? ItemData::Type::eStaff
+            : itemTypeVal == 7                 ? ItemData::Type::eWand
+            : itemTypeVal == 8                 ? ItemData::Type::eRing
+            : itemTypeVal == 9                 ? ItemData::Type::eScroll
+                                               : ItemData::Type::eGold;
+        Item newItem;
+        newItem.init(ItemData{itemType, 0}, spawnX + 0.5, spawnY + 0.5);
+        items.emplaceBack(std::move(newItem));
+        if (itemType == ItemData::Type::eWeapon || itemType == ItemData::Type::eArmor)
         {
-            items.getBack().setEnchantmentLevel(mapRandom.generate() % 10);
+            auto randomVal{mapRandom.generate() % 4};
+            std::int64_t enchantmentLevel{randomVal == 0 ? 2 : randomVal == 1 ? 0 : 1};
+            while (mapRandom.generate() % 4 == 0)
+                enchantmentLevel++;
+            items.getBack().getData().level = enchantmentLevel;
         }
     }
 
     auto const& room = getRandomRoom();
     std::int64_t spawnX = room.originX + mapRandom.generate() % room.width;
     std::int64_t spawnY = room.originY + mapRandom.generate() % room.height;
-    items.emplaceBack(Item::Type::eAmulet, spawnX + 0.5, spawnY + 0.5);
+    Item newItem;
+    newItem.init(ItemData{ItemData::Type::eAmulet, 10}, spawnX + 0.5, spawnY + 0.5);
+    items.emplaceBack(std::move(newItem));
 }
 void Map::updateVisibleTile(std::int64_t x, std::int64_t y, double distanceX, double distanceY, double visionRange)
 {
@@ -3465,14 +3482,10 @@ Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0
     setMaxVelocity(velocity);
     setHealth(100);
 
-    inventory.weapon = Item(Item::Type::eWeapon, 0.0, 0.0);
-    inventory.weapon->setVisible(false);
-    inventory.armor = Item(Item::Type::eArmor, 0.0, 0.0);
-    inventory.armor->setVisible(false);
-    inventory.throwable = Item(Item::Type::eDart, 0.0, 0.0);
-    inventory.throwable->setVisible(false);
-    inventory.usable = Item(Item::Type::eFood, 0.0, 0.0);
-    inventory.usable->setVisible(false);
+    inventory.weapon = ItemData{ItemData::Type::eWeapon, 0};
+    inventory.armor = ItemData{ItemData::Type::eArmor, 0};
+    inventory.throwable = ItemData(ItemData::Type::eDart, 0);
+    inventory.usable = ItemData(ItemData::Type::eFood, 0);
 
     weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0, true);
     gui.setInventory(inventory);
@@ -3488,7 +3501,9 @@ void Player::startThrow(std::uint32_t x, std::uint32_t y)
         return;
 
     auto [positionX, positionY] = getPosition();
-    map.addItem(positionX, positionY, std::move(inventory.throwable.value()));
+    Item newItem;
+    newItem.init(inventory.throwable.value(), positionX, positionY);
+    map.addItem(positionX, positionY, std::move(newItem));
     inventory.throwable = std::nullopt;
     gui.setInventory(inventory);
 }
@@ -3506,14 +3521,14 @@ void Player::update()
 
         if (auto itemOpt = map.pickupItem(lastTileX, lastTileY, inventory.items.isFull()))
         {
-            if (itemOpt->getType() == Item::Type::eGold)
+            if (itemOpt->getData().type == ItemData::Type::eGold)
                 inventory.gold++;
             else
             {
-                if (itemOpt->getType() == Item::Type::eAmulet)
+                if (itemOpt->getData().type == ItemData::Type::eAmulet)
                     inventory.hasAmulet = true;
 
-                inventory.items.emplaceBack(std::move(*itemOpt));
+                inventory.items.emplaceBack(itemOpt->getData());
             }
 
             gui.setInventory(inventory);
@@ -3538,7 +3553,7 @@ void Player::takeDamage(std::int64_t damage)
 
     if (inventory.armor)
     {
-        damage /= inventory.armor->getLevel() + 1;
+        damage /= inventory.armor->level + 1;
     }
 
     std::int64_t newHealth = health - damage;
@@ -3564,9 +3579,9 @@ void Player::equipItem(std::int64_t index, bool isThrow)
     }
     else
     {
-        if (item.getType() == Item::Type::eWeapon)
+        if (item.type == ItemData::Type::eWeapon)
         {
-            weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0 / (item.getLevel() + 1), true);
+            weapon.init(WeaponType::eDagger, Color(255, 255, 0, 255), 1, 1.0 / (item.level + 1), true);
             if (inventory.weapon)
                 std::swap(inventory.weapon.value(), item);
             else
@@ -3575,7 +3590,7 @@ void Player::equipItem(std::int64_t index, bool isThrow)
                 inventory.items.erase(index);
             }
         }
-        else if (item.getType() == Item::Type::eArmor)
+        else if (item.type == ItemData::Type::eArmor)
         {
             if (inventory.armor)
                 std::swap(inventory.armor.value(), item);
@@ -3585,7 +3600,7 @@ void Player::equipItem(std::int64_t index, bool isThrow)
                 inventory.items.erase(index);
             }
         }
-        else if (item.getType() == Item::Type::eFood || item.getType() == Item::Type::ePotion)
+        else if (item.type == ItemData::Type::eFood || item.type == ItemData::Type::ePotion)
         {
             if (inventory.usable)
                 std::swap(inventory.usable.value(), item);
@@ -3595,7 +3610,7 @@ void Player::equipItem(std::int64_t index, bool isThrow)
                 inventory.items.erase(index);
             }
         }
-        else if (item.getType() == Item::Type::eDart)
+        else if (item.type == ItemData::Type::eDart)
         {
             if (inventory.throwable)
                 std::swap(inventory.throwable.value(), item);
@@ -3615,12 +3630,12 @@ void Player::useItem()
         return;
 
     auto const& item = inventory.usable.value();
-    if (item.getType() == Item::Type::eFood)
+    if (item.type == ItemData::Type::eFood)
     {
         setNutrition(100);
         inventory.usable = std::nullopt;
     }
-    else if (item.getType() == Item::Type::ePotion)
+    else if (item.type == ItemData::Type::ePotion)
     {
         setHealth(100);
         inventory.usable = std::nullopt;
@@ -4107,12 +4122,12 @@ void PlayArea::init()
     buttons[eHealth].setBackgroundColor(Constants::healthBackgroundColor, Constants::healthHoverColor);
     buttons[eNutrition].init("     Nutrition      "sv, 0, 2);
     buttons[eNutrition].setBackgroundColor(Constants::nutritionBackgroundColor, Constants::nutritionHoverColor);
-    buttons[eWeapon].init("Weapon[1]:"sv, 0, 4);
-    buttons[eArmor].init(" Armor[2]:"sv, 0, 5);
-    buttons[eThrow].init(" Throw[3]:"sv, 0, 6);
-    buttons[eUse].init("   Use[4]:"sv, 0, 7);
-    buttons[eRingFirst].init("  Ring[5]:"sv, 0, 8);
-    buttons[eRingSecond].init("  Ring[6]:"sv, 0, 9);
+    buttons[eWeapon].init("Weapon:"sv, 0, 4);
+    buttons[eArmor].init(" Armor:"sv, 0, 5);
+    buttons[eThrow].init(" Throw:"sv, 0, 6);
+    buttons[eUse].init("   Use:"sv, 0, 7);
+    buttons[eRingFirst].init("  Ring:"sv, 0, 8);
+    buttons[eRingSecond].init("  Ring:"sv, 0, 9);
     buttons[eSearch].init(""sv, 11, 35);
 
     for (std::size_t i = 0; i < (std::size_t)eInventorySlotLast - (std::size_t)eInventorySlotFirst + 1; i++)
@@ -4136,39 +4151,39 @@ void PlayArea::updateInventory(Player::Inventory const& inventory)
 
     FixedString<32> itemString;
     if (inventory.weapon)
-        itemString.format("Weapon[1]:|{}|{}", (char)inventory.weapon->getGlyph(), inventory.weapon->getName());
+        itemString.format("Weapon:|{}|{}", (char)inventory.weapon->getGlyph(), inventory.weapon->getName());
     else
-        itemString.format("Weapon[1]:");
+        itemString.format("Weapon:");
     buttons[eWeapon].setText(itemString);
 
     if (inventory.armor)
-        itemString.format(" Armor[2]:|{}|{}", (char)inventory.armor->getGlyph(), inventory.armor->getName());
+        itemString.format(" Armor:|{}|{}", (char)inventory.armor->getGlyph(), inventory.armor->getName());
     else
-        itemString.format(" Armor[2]:");
+        itemString.format(" Armor:");
     buttons[eArmor].setText(itemString);
 
     if (inventory.throwable)
-        itemString.format(" Throw[3]:|{}|{}", (char)inventory.throwable->getGlyph(), inventory.throwable->getName());
+        itemString.format(" Throw:|{}|{}", (char)inventory.throwable->getGlyph(), inventory.throwable->getName());
     else
-        itemString.format(" Throw[3]:");
+        itemString.format(" Throw:");
     buttons[eThrow].setText(itemString);
 
     if (inventory.usable)
-        itemString.format("   Use[4]:|{}|{}", (char)inventory.usable->getGlyph(), inventory.usable->getName());
+        itemString.format("   Use:|{}|{}", (char)inventory.usable->getGlyph(), inventory.usable->getName());
     else
-        itemString.format("   Use[4]:");
+        itemString.format("   Use:");
     buttons[eUse].setText(itemString);
 
     if (inventory.ringFirst)
-        itemString.format("  Ring[5]:|{}|{}", (char)inventory.ringFirst->getGlyph(), inventory.ringFirst->getName());
+        itemString.format("  Ring:|{}|{}", (char)inventory.ringFirst->getGlyph(), inventory.ringFirst->getName());
     else
-        itemString.format("  Ring[5]:");
+        itemString.format("  Ring:");
     buttons[eRingFirst].setText(itemString);
 
     if (inventory.ringSecond)
-        itemString.format("  Ring[6]:|{}|{}", (char)inventory.ringSecond->getGlyph(), inventory.ringSecond->getName());
+        itemString.format("  Ring:|{}|{}", (char)inventory.ringSecond->getGlyph(), inventory.ringSecond->getName());
     else
-        itemString.format("  Ring[6]:");
+        itemString.format("  Ring:");
     buttons[eRingSecond].setText(itemString);
 
     for (std::size_t i = 0; i < inventory.items.getSize(); i++)
