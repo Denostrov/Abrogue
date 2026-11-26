@@ -59,18 +59,23 @@ export
     using ::VkSurfaceKHR;
     using ::VkInstance;
 
-    inline constexpr auto sdlInitVideo = SDL_INIT_VIDEO;
-    inline constexpr auto sdlMessageboxError = SDL_MESSAGEBOX_ERROR;
+    constexpr auto sdlInitVideo = SDL_INIT_VIDEO;
+    constexpr auto sdlMessageboxError = SDL_MESSAGEBOX_ERROR;
 
-    inline constexpr auto sdlWindowMaximized = SDL_WINDOW_MAXIMIZED;
-    inline constexpr auto sdlWindowFullscreen = SDL_WINDOW_FULLSCREEN;
-    inline constexpr auto sdlWindowVulkan = SDL_WINDOW_VULKAN;
-    inline constexpr auto sdlWindowResizable = SDL_WINDOW_RESIZABLE;
+    constexpr auto sdlWindowMaximized = SDL_WINDOW_MAXIMIZED;
+    constexpr auto sdlWindowFullscreen = SDL_WINDOW_FULLSCREEN;
+    constexpr auto sdlWindowVulkan = SDL_WINDOW_VULKAN;
+    constexpr auto sdlWindowResizable = SDL_WINDOW_RESIZABLE;
 
-    inline constexpr auto sdlPropAppMetadataNameString = SDL_PROP_APP_METADATA_NAME_STRING;
-    inline constexpr auto sdlPropAppMetadataVersionString = SDL_PROP_APP_METADATA_VERSION_STRING;
-    inline constexpr auto sdlPropAppMetadataIdentifierString = SDL_PROP_APP_METADATA_IDENTIFIER_STRING;
-    inline constexpr auto sdlPropAppMetadataCreatorString = SDL_PROP_APP_METADATA_CREATOR_STRING;
-    inline constexpr auto sdlPropAppMetadataCopyrightString = SDL_PROP_APP_METADATA_COPYRIGHT_STRING;
-    inline constexpr auto sdlPropAppMetadataTypeString = SDL_PROP_APP_METADATA_TYPE_STRING;
+    constexpr auto sdlPropAppMetadataNameString = SDL_PROP_APP_METADATA_NAME_STRING;
+    constexpr auto sdlPropAppMetadataVersionString = SDL_PROP_APP_METADATA_VERSION_STRING;
+    constexpr auto sdlPropAppMetadataIdentifierString = SDL_PROP_APP_METADATA_IDENTIFIER_STRING;
+    constexpr auto sdlPropAppMetadataCreatorString = SDL_PROP_APP_METADATA_CREATOR_STRING;
+    constexpr auto sdlPropAppMetadataCopyrightString = SDL_PROP_APP_METADATA_COPYRIGHT_STRING;
+    constexpr auto sdlPropAppMetadataTypeString = SDL_PROP_APP_METADATA_TYPE_STRING;
+
+    void displayErrorMessage(char const* message)
+    {
+        SDL_ShowSimpleMessageBox(sdlMessageboxError, "Application Error", message, nullptr);
+    }
 }

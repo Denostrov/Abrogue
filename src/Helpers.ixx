@@ -6,18 +6,39 @@ module;
 
 export module Helpers;
 
-export import SDL3;
 export import std;
-export import :Flags;
-export import :Concepts;
-export import :Logger;
-export import :Array;
-export import :Color;
-export import :FixedString;
-export import :FixedVector;
-export import :Random;
-export import :Tags;
-export import :Literals;
+
+using namespace std::literals;
+
+//Convert defines into constexpr flags
+#ifdef NDEBUG
+export constexpr bool isDebugBuild{false};
+#else
+export constexpr bool isDebugBuild{true};
+#endif
+
+#ifdef EXTRA_ASSERTS
+export constexpr bool useExtraAsserts{true};
+#else
+export constexpr bool useExtraAsserts{false};
+#endif
+
+// Helper literals
+export constexpr std::int64_t operator""_i64(unsigned long long int val) { return val; }
+export constexpr std::uint64_t operator""_u64(unsigned long long int val) { return val; }
+
+// Helper concepts
+export template <class T, class U>
+concept IsSameType = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
+export template <class T>
+concept IsLikeStringView = requires { T(std::string_view{}); };
+export template <class T>
+concept IsLikePair = requires {
+    typename T::first_type;
+    typename T::second_type;
+};
+export template <class T>
+concept IsBoolArray = std::same_as<typename T::value_type, bool>;
 
 // Helper template aliases
 export template <class T>
@@ -40,32 +61,526 @@ public:
 export template <class Enum, template <Enum> class T>
 using EnumTupleType = EnumTupleTrait<Enum, T>::type;
 
-export template <class... Args>
-class GlobalHandler
+export struct FillTag
+{};
+
+// Class for logging errors and messages to files and console
+export class Logger
 {
 public:
-    GlobalHandler(Args&... args) : globals(args...) {}
+    Logger() = default;
 
-    void cleanup() { cleanupIndex<std::tuple_size_v<decltype(globals)> - 1>(); }
+    [[nodiscard]] bool init(void (*callback)(char const*))
+    {
+        if (!callback)
+            return false;
+        errorCallback = callback;
+
+        infoLog.open(infoLogFileName.data(), std::ios::binary | std::ios::out | std::ios::trunc);
+        errorLog.open(errorLogFileName.data(), std::ios::binary | std::ios::out | std::ios::trunc);
+        if (!infoLog || !errorLog)
+        {
+            logError("Couldn't create log file, check if game folder needs admin permissions"sv);
+            return false;
+        }
+
+        return true;
+    }
+
+    template <class... Args>
+    void logError(std::format_string<Args...> fmt, Args&&... args)
+    {
+        std::array<char, 2048> errorMessageArr{};
+        auto stackTrace = std::stacktrace::current();
+
+        std::format_to_n(errorMessageArr.data(), errorMessageArr.size() - 1, fmt, std::forward<Args>(args)...);
+        std::string_view errorMessage = errorMessageArr.data();
+
+        std::println(errorLog, "Error: {}\nStacktrace:\n{}", errorMessage, stackTrace);
+        std::println(std::cerr, "Error: {}\nStacktrace:\n{}", errorMessage, stackTrace);
+
+        std::array<char, 2048 + 128> popupMessage{};
+        std::format_to_n(popupMessage.data(), popupMessage.size() - 1, "{}\nCheck the error log for details. Esc to exit", errorMessage);
+        errorCallback(popupMessage.data());
+    }
+
+    template <class... Args>
+    void logInfo(std::format_string<Args...> fmt, Args&&... args)
+    {
+        std::println(infoLog, fmt, std::forward<Args>(args)...);
+        std::println(std::cout, fmt, std::forward<Args>(args)...);
+    }
+
+    void extraAssert(bool condition, std::string_view message)
+    {
+        if constexpr (useExtraAsserts)
+        {
+            if (condition)
+                return;
+
+            logError("{}", message);
+            std::abort();
+        }
+    }
 
 private:
-    template <std::size_t Index>
-    void cleanupIndex()
-    {
-        destructGlobal(std::get<Index>(globals));
-        if constexpr (Index > 0)
-            cleanupIndex<Index - 1>();
-    }
+    std::ofstream infoLog;
+    std::ofstream errorLog;
+    void (*errorCallback)(char const*){};
 
-    template <class T>
-    static void destructGlobal(T& obj)
-    {
-        obj.~T();
-        new (&obj) T();
-    }
-
-    std::tuple<Args&...> globals;
+    static constexpr auto infoLogFileName{"infoLog.txt"sv};
+    static constexpr auto errorLogFileName{"errorLog.txt"sv};
 };
+export Logger logger;
+
+// Classes for storing and manipulating RGBA colors
+export using PackedColor = std::uint32_t;
+export struct Color
+{
+    constexpr Color() = default;
+
+    constexpr Color(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha) : r(red), g(green), b(blue), a(alpha) {}
+
+    constexpr Color(PackedColor packedColor) : r((packedColor >> 24) & 0xFF), g((packedColor >> 16) & 0xFF), b((packedColor >> 8) & 0xFF), a(packedColor & 0xFF)
+    {}
+
+    static constexpr PackedColor pack(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha)
+    {
+        return static_cast<std::uint32_t>(red) << 24 | static_cast<std::uint32_t>(green) << 16 | static_cast<std::uint32_t>(blue) << 8 |
+            static_cast<std::uint32_t>(alpha);
+    }
+
+    constexpr void multiplyRGB(double coefficient)
+    {
+        r = static_cast<std::uint8_t>(std::clamp(r * coefficient, 0.0, 255.0));
+        g = static_cast<std::uint8_t>(std::clamp(g * coefficient, 0.0, 255.0));
+        b = static_cast<std::uint8_t>(std::clamp(b * coefficient, 0.0, 255.0));
+    }
+
+    constexpr void multiplyRGBA(double coefficient)
+    {
+        multiplyRGB(coefficient);
+        a = static_cast<std::uint8_t>(std::clamp(a * coefficient, 0.0, 255.0));
+    }
+
+    [[nodiscard]] constexpr PackedColor getPacked() const { return pack(r, g, b, a); }
+    [[nodiscard]] constexpr PackedColor getTransparentPacked() const { return pack(r, g, b, 0); }
+
+    std::uint8_t r{}, g{}, b{}, a{};
+};
+
+export template <class T, auto N>
+class Array
+{
+    static constexpr std::uint64_t size = static_cast<std::uint64_t>(N);
+
+public:
+    constexpr Array() = default;
+    template <class FillVal>
+    constexpr Array(FillVal&& value, FillTag)
+    {
+        fill(std::forward<FillVal>(value));
+    }
+
+    template <std::size_t OtherSize>
+    constexpr Array(T const (&other)[OtherSize])
+    {
+        static_assert(OtherSize <= (std::size_t)N);
+        for (std::size_t i{}; i < OtherSize; i++)
+            arr[i] = other[i];
+    }
+
+    template <class... Args>
+    constexpr Array(Args&&... args) : arr{static_cast<T>(std::forward<Args>(args))...}
+    {
+        static_assert(sizeof...(args) >= size, "Array variadic initializer has too few elements");
+        static_assert(sizeof...(args) <= size, "Array variadic initializer has too many elements");
+    }
+
+    template <class Self>
+    [[nodiscard]] constexpr auto begin(this Self&& self)
+    {
+        return std::forward<Self>(self).arr;
+    }
+
+    template <class Self>
+    [[nodiscard]] constexpr auto end(this Self&& self)
+    {
+        return std::forward<Self>(self).arr + size;
+    }
+
+    [[nodiscard]] constexpr auto getData() { return arr; }
+    [[nodiscard]] constexpr auto getSize() { return size; }
+
+    template <class Self, class Index>
+    [[nodiscard]] constexpr auto&& operator[](this Self&& self, Index index)
+    {
+        auto castIndex = static_cast<std::size_t>(index);
+        if !consteval
+        {
+            logger.extraAssert(castIndex < size, "Array index out of bounds"sv);
+        }
+
+        return std::forward<Self>(self).arr[castIndex];
+    }
+
+    [[nodiscard]] constexpr auto operator==(Array const& other) const
+    {
+        for (std::int64_t i{}; i < size; i++)
+        {
+            if (arr[i] != other.arr[i])
+                return false;
+        }
+
+        return true;
+    }
+
+    template <class Self>
+    constexpr void fill(this Self&& self, T const& value)
+    {
+        for (std::uint64_t i{}; i < size; i++)
+            std::forward<Self>(self).arr[i] = value;
+    }
+
+private:
+    T arr[size]{};
+};
+
+template <class... Args>
+Array(Args&&... args) -> Array<std::remove_cvref_t<decltype(args...[0])>, sizeof...(args)>;
+
+// Class for storing a dynamically sized array with fixed capacity on the stack
+export template <class T, auto N>
+class FixedVector
+{
+public:
+    template <class Self>
+    constexpr auto begin(this Self&& self)
+    {
+        return std::forward<Self>(self).data;
+    }
+    template <class Self>
+    constexpr auto end(this Self&& self)
+    {
+        return std::forward<Self>(self).data + std::forward<Self>(self).currentSize;
+    }
+
+    constexpr auto isEmpty() const { return currentSize == 0; }
+    constexpr auto isFull() const { return currentSize == capacity; }
+    constexpr auto getSize() const { return currentSize; }
+    template <class Self>
+    constexpr auto getData(this Self&& self)
+    {
+        return std::forward<Self>(self).data;
+    }
+    template <class Self>
+    constexpr auto&& getFront(this Self&& self)
+    {
+        if !consteval
+        {
+            logger.extraAssert(!isEmpty(), "FixedVector getFront(): container was empty"sv);
+        }
+
+        return std::forward<Self>(self).data[0];
+    }
+    template <class Self>
+    constexpr auto&& getBack(this Self&& self)
+    {
+        if !consteval
+        {
+            logger.extraAssert(!std::forward<Self>(self).isEmpty(), "FixedVector getBack(): container was empty"sv);
+        }
+
+        return std::forward<Self>(self).data[std::forward<Self>(self).currentSize - 1];
+    }
+    constexpr auto getSpan() const { return std::span<T const>(data, currentSize); }
+
+    constexpr void erase(std::int64_t index)
+    {
+        if !consteval
+        {
+            logger.extraAssert(index >= 0 && index < currentSize, "FixedVector erase(): index was out of bounds"sv);
+        }
+
+        data[index] = T();
+        for (auto i = index; i < currentSize - 1; i++)
+            data[i] = std::move(data[i + 1]);
+        currentSize--;
+    }
+    constexpr void popBack() { erase(currentSize - 1); }
+    constexpr void clear()
+    {
+        for (std::int64_t i = 0; i < currentSize; i++)
+            data[i] = T();
+        currentSize = 0;
+    }
+    constexpr void resize(std::int64_t newSize)
+    {
+        for (auto i = newSize; i < currentSize; i++)
+            data[i] = T();
+
+        currentSize = newSize;
+    }
+    template <class... Args>
+    constexpr void emplaceBack(Args&&... args)
+    {
+        if !consteval
+        {
+            logger.extraAssert(!isFull(), "FixedVector emplaceBack(): container was full"sv);
+        }
+        data[currentSize] = T(std::forward<Args>(args)...);
+
+        currentSize++;
+    }
+    constexpr std::int64_t find(T const& key) const
+    {
+        std::int64_t result{-1};
+        for (std::int64_t i = 0; i < currentSize; i++)
+        {
+            if (data[i] != key)
+                continue;
+
+            result = i;
+            break;
+        }
+        return result;
+    }
+
+    template <class Self>
+    constexpr auto&& operator[](this Self&& self, std::int64_t index)
+    {
+        if !consteval
+        {
+            logger.extraAssert(index >= 0 && index < std::forward<Self>(self).currentSize, "FixedVector operator[]: index was out of bounds"sv);
+        }
+
+        return std::forward<Self>(self).data[index];
+    }
+
+    static constexpr auto capacity{static_cast<std::int64_t>(N)};
+
+private:
+    T data[capacity]{};
+    std::int64_t currentSize{};
+};
+
+/*
+ * Class for storing fixed size strings without a null terminator
+ * Can be constructed from char array, std::string_view and another FixedString
+ * Can be converted to std::string_view
+ * Has support for std::format
+ */
+export template <auto N>
+class FixedString
+{
+public:
+    constexpr FixedString() = default;
+
+    template <auto StrSize>
+    explicit constexpr FixedString(FixedString<StrSize> const& str) : FixedString(std::string_view{str})
+    {}
+    template <auto StrSize>
+    constexpr auto& operator=(FixedString<StrSize> const& str)
+    {
+        return *this = std::string_view{str};
+    }
+
+    template <auto StrSize>
+    explicit constexpr FixedString(char const (&str)[StrSize])
+    {
+        *this = str;
+    }
+    template <auto StrSize>
+    constexpr auto& operator=(char const (&str)[StrSize])
+    {
+        static_assert(StrSize - 1 <= capacity, "FixedString operator=(): buffer must have enough capacity");
+
+        currentSize = StrSize - 1;
+        for (std::int64_t i = 0; i < currentSize; i++)
+        {
+            if (str[i] == 0)
+            {
+                currentSize = i;
+                break;
+            }
+            data[i] = str[i];
+        }
+
+        return *this;
+    }
+
+    explicit constexpr FixedString(std::string_view str) { *this = str; }
+    constexpr auto& operator=(std::string_view str)
+    {
+        if !consteval
+        {
+            logger.extraAssert(str.size() <= capacity, "FixedString operator=(): buffer must have enough capacity"sv);
+        }
+
+        currentSize = str.size();
+        for (std::int64_t i = 0; i < currentSize; i++)
+            data[i] = str[i];
+
+        return *this;
+    }
+
+    constexpr operator std::string_view() const { return std::string_view(data, currentSize); }
+
+    template <class T, class... Args>
+    constexpr void append(T val, Args... args)
+        requires(std::same_as<T, std::string_view> || std::same_as<T, char>) && ((std::same_as<Args, std::string_view> || std::same_as<Args, char>) && ...)
+    {
+        if constexpr (std::same_as<T, std::string_view>)
+        {
+            if !consteval
+            {
+                logger.extraAssert(currentSize + val.size() <= N, "FixedString append(): buffer must have enough capacity"sv);
+            }
+
+            for (std::int64_t i = currentSize, j = 0; j < val.size(); i++, j++)
+                data[i] = val[j];
+            currentSize += val.size();
+        }
+        else
+        {
+            if !consteval
+            {
+                logger.extraAssert(currentSize + 1 <= N, "FixedString append(): buffer must have enough capacity"sv);
+            }
+
+            data[currentSize] = val;
+            currentSize++;
+        }
+
+        if constexpr (sizeof...(Args) > 0)
+        {
+            append(args...);
+        }
+    }
+    template <class T, class... Args>
+    constexpr auto& fill(T val, Args... args)
+    {
+        currentSize = 0;
+        append(val, args...);
+        return *this;
+    }
+
+    constexpr void clear() { currentSize = 0; }
+
+    // Format arguments using std::format and store them
+    // Assert if size of formatted string exceeds capacity
+    template <class... Args>
+    auto& format(std::format_string<Args...> fmt, Args&&... args)
+    {
+        auto result = std::format_to_n(data, N, fmt, std::forward<Args>(args)...);
+        logger.extraAssert(result.size <= N, "FixedString format: formatted string exceeded size"sv);
+
+        currentSize = result.size;
+
+        return *this;
+    }
+
+    [[nodiscard]] constexpr auto getData() const { return data; }
+    [[nodiscard]] constexpr auto getSize() const { return currentSize; }
+    [[nodiscard]] constexpr auto getIsFull() const { return currentSize == capacity; }
+
+    template <class Self>
+    [[nodiscard]] constexpr auto&& operator[](this Self&& self, std::size_t index)
+    {
+        if !consteval
+        {
+            logger.extraAssert(index < std::forward<Self>(self).currentSize, "FixedString operator[]: index was out of bounds"sv);
+        }
+        return std::forward<Self>(self).data[index];
+    }
+
+    static constexpr auto capacity{static_cast<std::int64_t>(N)};
+
+private:
+    char data[capacity]{};
+    std::int64_t currentSize{};
+};
+
+// Deduction guides for char array and FixedString constructors
+template <auto StrSize>
+FixedString(char const (&str)[StrSize]) -> FixedString<StrSize - 1>;
+template <auto StrSize>
+FixedString(FixedString<StrSize> const& str) -> FixedString<StrSize>;
+
+// Specialization for std::format support
+// FixedString is equivalent to std::string_view
+export template <auto N>
+struct std::formatter<FixedString<N>, char>
+{
+    template <class ParseContext>
+    static constexpr ParseContext::iterator parse(ParseContext& context)
+    {
+        return std::formatter<std::string_view>().parse(context);
+    }
+
+    template <class FormatContext>
+    static FormatContext::iterator format(FixedString<N> const& str, FormatContext& context)
+    {
+        return std::formatter<std::string_view>().format(str, context);
+    }
+};
+
+// xoshiro256** random number generator
+export class Random
+{
+    class SplitMix64
+    {
+    public:
+        SplitMix64(std::uint64_t seed) : state(seed) {}
+
+        std::uint64_t generate()
+        {
+            std::uint64_t result = (state += 0x9E3779B97f4A7C15);
+            result = (result ^ (result >> 30)) * 0xBF58476D1CE4E5B9;
+            result = (result ^ (result >> 27)) * 0x94D049BB133111EB;
+            return result ^ (result >> 31);
+        }
+
+    private:
+        std::uint64_t state{};
+    };
+
+public:
+    Random() = default;
+    void seed(std::uint64_t newSeed)
+    {
+        SplitMix64 startMixer(newSeed);
+        state[0] = startMixer.generate();
+        state[1] = startMixer.generate();
+        state[2] = startMixer.generate();
+        state[3] = startMixer.generate();
+    }
+
+    std::uint64_t generate()
+    {
+        std::uint64_t result = rotl(state[1] * 5, 7) * 9;
+
+        std::uint64_t t = state[1] << 17;
+
+        state[2] ^= state[0];
+        state[3] ^= state[1];
+        state[1] ^= state[2];
+        state[0] ^= state[3];
+
+        state[2] ^= t;
+
+        state[3] = rotl(state[3], 45);
+
+        return result;
+    }
+
+private:
+    static std::uint64_t rotl(std::uint64_t x, std::int32_t k) { return (x << k) | (x >> (64 - k)); }
+
+    std::uint64_t state[4]{};
+};
+export Random mapRandom;
+export Random visualRandom;
 
 export class LibraryLoader
 {
@@ -128,7 +643,7 @@ public:
 
         if constexpr (IsLikeStringView<Value>)
         {
-            if (valueStr.getSize() > value.getCapacity())
+            if (valueStr.getSize() > value.capacity)
                 return false;
 
             value = valueStr;
@@ -375,7 +890,7 @@ struct Huffman
         bufferSize -= s;
         return b & 0x1FF;
     }
-    template<auto sizeCount>
+    template <auto sizeCount>
     constexpr Huffman(Array<std::uint8_t, sizeCount> const& sizeList)
     {
         Array<std::int64_t, 17> nextSizes;
@@ -578,7 +1093,8 @@ public:
                 decompressedIndex++;
                 for (std::int64_t j = 1; j < data.width; j++)
                 {
-                    data.data[decompressedIndex - (i + 1)] = static_cast<std::byte>((std::uint8_t)data.data[decompressedIndex - (i + 1) - 1] + (std::uint8_t)data.data[decompressedIndex]);
+                    data.data[decompressedIndex - (i + 1)] =
+                        static_cast<std::byte>((std::uint8_t)data.data[decompressedIndex - (i + 1) - 1] + (std::uint8_t)data.data[decompressedIndex]);
                     decompressedIndex++;
                 }
             }
@@ -599,14 +1115,16 @@ public:
                 for (std::int64_t j = 1; j < data.width; j++)
                 {
                     top = i == 0 ? (std::uint8_t)0 : (std::uint8_t)data.data[decompressedIndex - (i + 1) - data.width];
-                    data.data[decompressedIndex - (i + 1)] = static_cast<std::byte>((std::uint8_t)data.data[decompressedIndex] + (top + (std::uint8_t)data.data[decompressedIndex - (i + 1) - 1]) / 2);
+                    data.data[decompressedIndex - (i + 1)] = static_cast<std::byte>((std::uint8_t)data.data[decompressedIndex] +
+                                                                                    (top + (std::uint8_t)data.data[decompressedIndex - (i + 1) - 1]) / 2);
                     decompressedIndex++;
                 }
             }
             else if (lineFilter == 4)
             {
                 auto top{i == 0 ? (std::uint8_t)0 : (std::uint8_t)data.data[decompressedIndex - (i + 1) - data.width]};
-                data.data[decompressedIndex - (i + 1)] = static_cast<std::byte>((std::uint8_t)data.data[decompressedIndex] + (std::uint8_t)data.data[decompressedIndex - (i + 1) - data.width]);
+                data.data[decompressedIndex - (i + 1)] =
+                    static_cast<std::byte>((std::uint8_t)data.data[decompressedIndex] + (std::uint8_t)data.data[decompressedIndex - (i + 1) - data.width]);
                 decompressedIndex++;
                 for (std::int64_t j = 1; j < data.width; j++)
                 {
@@ -737,4 +1255,83 @@ export struct Vec2i
 {
     std::uint32_t x{};
     std::uint32_t y{};
+};
+
+export template <auto bufferSize, auto allocationCount>
+class BumpAllocator
+{
+public:
+    void* allocate(std::int64_t newSize)
+    {
+        logger.extraAssert(newSize > 0, "BumpAllocator allocate(): allocation size must be > 0"sv);
+        logger.extraAssert(currentSize + newSize <= bufferSize, "BumpAllocator allocate(): not enough space for allocation"sv);
+
+        void* result = &buffer[currentSize];
+        currentSize += newSize;
+
+        while (currentSize <= bufferSize && currentSize % alignof(std::max_align_t) != 0)
+            currentSize++;
+
+        blocks.emplaceBack(result, newSize);
+
+        return result;
+    }
+
+    void* reallocate(void* old, std::int64_t newSize)
+    {
+        std::int64_t oldSize{};
+        for (std::int64_t i = blocks.getSize() - 1; i >= 0; i--)
+        {
+            if (blocks[i].ptr != old)
+                continue;
+
+            oldSize = blocks[i].allocationSize;
+        }
+        logger.extraAssert(oldSize > 0, "BumpAllocator reallocate(): old pointer must be a valid allocation"sv);
+
+        auto result = allocate(newSize);
+        std::memcpy(result, old, std::min(oldSize, newSize));
+
+        blocks.emplaceBack(result, newSize);
+
+        return result;
+    }
+
+    void free(void* ptr)
+    {
+        std::int64_t index{-1};
+        for (std::int64_t i = blocks.getSize() - 1; i >= 0; i--)
+        {
+            if (ptr != blocks[i].ptr)
+                continue;
+
+            index = i;
+            break;
+        }
+        logger.extraAssert(index >= 0, "BumpAllocator free(): pointer must be a valid allocation"sv);
+
+        if (index == blocks.getSize() - 1)
+        {
+            if (index == 0)
+                currentSize = 0;
+            else
+            {
+                currentSize = static_cast<std::byte*>(blocks[index - 1].ptr) - buffer + blocks[index - 1].allocationSize;
+                while (currentSize <= bufferSize && currentSize % alignof(std::max_align_t) != 0)
+                    currentSize++;
+            }
+        }
+        blocks.erase(index);
+    }
+
+private:
+    alignas(std::max_align_t) std::byte buffer[bufferSize]{};
+    std::int64_t currentSize{};
+
+    struct Block
+    {
+        void* ptr{};
+        std::int64_t allocationSize{};
+    };
+    FixedVector<Block, allocationCount> blocks;
 };

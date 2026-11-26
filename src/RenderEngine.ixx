@@ -1,12 +1,22 @@
 module;
 
 #include "SDL3/SDL_vulkan.h"
-#include "vulkan/vk_platform.h"
 
 export module RenderEngine;
 
 import Vulkan;
+import SDL3;
 import Helpers;
+
+#if defined(_WIN32)
+#define VKAPI_ATTR
+#define VKAPI_CALL __stdcall
+#define VKAPI_PTR VKAPI_CALL
+#else
+#define VKAPI_ATTR
+#define VKAPI_CALL
+#define VKAPI_PTR
+#endif
 
 using namespace std::literals;
 
@@ -750,28 +760,13 @@ constexpr std::string_view enumToStr(VkPhysicalDeviceType physicalDeviceType)
     }
 }
 
-[[nodiscard]] bool checkError(VkResult result, std::string_view successMessage, std::string_view errorMessage)
+BumpAllocator<2097152, 4096> renderAllocator;
+VKAPI_ATTR void* VKAPI_CALL renderAllocate(void*, size_t size, size_t, VkSystemAllocationScope) { return renderAllocator.allocate(size); }
+VKAPI_ATTR void* VKAPI_CALL renderReallocate(void*, void* pOriginal, size_t size, size_t, VkSystemAllocationScope)
 {
-    if (result != VkResult::VK_SUCCESS)
-    {
-        logger.logError("{}: {}", errorMessage, enumToStr(result));
-        return true;
-    }
-
-    if (!successMessage.empty())
-        logger.logInfo("{}", successMessage);
-
-    return false;
+    return renderAllocator.reallocate(pOriginal, size);
 }
-template <class Value, class ResultValue>
-[[nodiscard]] bool checkError(Value& value, ResultValue resultValue, std::string_view successMessage, std::string_view errorMessage)
-{
-    if (checkError(resultValue.result, successMessage, errorMessage))
-        return true;
-
-    value = std::move(resultValue.value);
-    return false;
-}
+VKAPI_ATTR void VKAPI_CALL renderFree(void*, void* pMemory) { renderAllocator.free(pMemory); }
 
 inline constexpr std::uint32_t maxFramesInFlight{2};
 
@@ -905,6 +900,10 @@ public:
         if (!libraryLoader.init("libvulkan.so"))
             return false;
 
+        allocationCallbacks.pfnAllocation = renderAllocate;
+        allocationCallbacks.pfnReallocation = renderReallocate;
+        allocationCallbacks.pfnFree = renderFree;
+
         vkGetInstanceProcAddr = libraryLoader.getFunction<PFN_vkGetInstanceProcAddr>("vkGetInstanceProcAddr");
 
         vkCreateInstance = (PFN_vkCreateInstance)vkGetInstanceProcAddr(nullptr, "vkCreateInstance");
@@ -1018,108 +1017,96 @@ public:
 
     void cleanup() { libraryLoader.cleanup(); }
 
+    auto const& getAllocationCallbacks() const { return allocationCallbacks; }
+
     [[nodiscard]] bool enumerateInstanceExtensionProperties(char const* pLayerName, std::uint32_t* pPropertyCount, VkExtensionProperties* pProperties) const
     {
-        return !checkError(vkEnumerateInstanceExtensionProperties(pLayerName, pPropertyCount, pProperties), ""sv,
+        return !checkError(vkEnumerateInstanceExtensionProperties(pLayerName, pPropertyCount, pProperties),
                            "Failed to enumerate available instance extensions"sv);
     }
     [[nodiscard]] bool enumerateInstanceLayerProperties(std::uint32_t* pPropertyCount, VkLayerProperties* pProperties) const
     {
-        return !checkError(vkEnumerateInstanceLayerProperties(pPropertyCount, pProperties), ""sv, "Failed to enumerate available instance layer properties"sv);
+        return !checkError(vkEnumerateInstanceLayerProperties(pPropertyCount, pProperties), "Failed to enumerate available instance layer properties"sv);
     }
-    [[nodiscard]] bool createInstance(VkInstanceCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator, VkInstance* pInstance) const
+    [[nodiscard]] bool createInstance(VkInstanceCreateInfo const* pCreateInfo, VkInstance* pInstance) const
     {
-        return !checkError(vkCreateInstance(pCreateInfo, pAllocator, pInstance), "Created Vulkan instance"sv, "Failed to create Vulkan instance"sv);
+        return !checkError(vkCreateInstance(pCreateInfo, &allocationCallbacks, pInstance), "Failed to create Vulkan instance"sv);
     }
-    [[nodiscard]] bool createDevice(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                    VkDevice* pDevice) const
+    [[nodiscard]] bool createDevice(VkPhysicalDevice physicalDevice, VkDeviceCreateInfo const* pCreateInfo, VkDevice* pDevice) const
     {
-        return !checkError(vkCreateDevice(physicalDevice, pCreateInfo, pAllocator, pDevice), "Created device"sv, "Failed to create device"sv);
+        return !checkError(vkCreateDevice(physicalDevice, pCreateInfo, &allocationCallbacks, pDevice), "Failed to create device"sv);
     }
-    [[nodiscard]] bool createSwapchain(VkDevice device, VkSwapchainCreateInfoKHR const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                       VkSwapchainKHR* pSwapchain) const
+    [[nodiscard]] bool createSwapchain(VkDevice device, VkSwapchainCreateInfoKHR const* pCreateInfo, VkSwapchainKHR* pSwapchain) const
     {
-        return !checkError(vkCreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain), "Created swapchain"sv, "Failed to create swapchain"sv);
+        return !checkError(vkCreateSwapchainKHR(device, pCreateInfo, &allocationCallbacks, pSwapchain), "Failed to create swapchain"sv);
     }
-    [[nodiscard]] bool createImageView(VkDevice device, VkImageViewCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                       VkImageView* pView) const
+    [[nodiscard]] bool createImageView(VkDevice device, VkImageViewCreateInfo const* pCreateInfo, VkImageView* pView) const
     {
-        return !checkError(vkCreateImageView(device, pCreateInfo, pAllocator, pView), ""sv, "Failed to create image view"sv);
+        return !checkError(vkCreateImageView(device, pCreateInfo, &allocationCallbacks, pView), "Failed to create image view"sv);
     }
-    [[nodiscard]] bool createRenderPass(VkDevice device, VkRenderPassCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                        VkRenderPass* pRenderPass) const
+    [[nodiscard]] bool createRenderPass(VkDevice device, VkRenderPassCreateInfo const* pCreateInfo, VkRenderPass* pRenderPass) const
     {
-        return !checkError(vkCreateRenderPass(device, pCreateInfo, pAllocator, pRenderPass), "Created render pass"sv, "Failed to create render pass"sv);
+        return !checkError(vkCreateRenderPass(device, pCreateInfo, &allocationCallbacks, pRenderPass), "Failed to create render pass"sv);
     }
-    [[nodiscard]] bool createFramebuffer(VkDevice device, const VkFramebufferCreateInfo* pCreateInfo, const VkAllocationCallbacks* pAllocator,
-                                         VkFramebuffer* pFramebuffer) const
+    [[nodiscard]] bool createFramebuffer(VkDevice device, const VkFramebufferCreateInfo* pCreateInfo, VkFramebuffer* pFramebuffer) const
     {
-        return !checkError(vkCreateFramebuffer(device, pCreateInfo, pAllocator, pFramebuffer), ""sv, "Failed to create framebuffer"sv);
+        return !checkError(vkCreateFramebuffer(device, pCreateInfo, &allocationCallbacks, pFramebuffer), "Failed to create framebuffer"sv);
     }
-    [[nodiscard]] bool createShaderModule(VkDevice device, VkShaderModuleCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                          VkShaderModule* pShaderModule) const
+    [[nodiscard]] bool createShaderModule(VkDevice device, VkShaderModuleCreateInfo const* pCreateInfo, VkShaderModule* pShaderModule) const
     {
-        return !checkError(vkCreateShaderModule(device, pCreateInfo, pAllocator, pShaderModule), ""sv, "Failed to create shader module"sv);
+        return !checkError(vkCreateShaderModule(device, pCreateInfo, &allocationCallbacks, pShaderModule), "Failed to create shader module"sv);
     }
-    [[nodiscard]] bool createBuffer(VkDevice device, VkBufferCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator, VkBuffer* pBuffer) const
+    [[nodiscard]] bool createBuffer(VkDevice device, VkBufferCreateInfo const* pCreateInfo, VkBuffer* pBuffer) const
     {
-        return !checkError(vkCreateBuffer(device, pCreateInfo, pAllocator, pBuffer), ""sv, "Failed to create buffer"sv);
+        return !checkError(vkCreateBuffer(device, pCreateInfo, &allocationCallbacks, pBuffer), "Failed to create buffer"sv);
     }
-    [[nodiscard]] bool createSemaphore(VkDevice device, VkSemaphoreCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                       VkSemaphore* pSemaphore) const
+    [[nodiscard]] bool createSemaphore(VkDevice device, VkSemaphoreCreateInfo const* pCreateInfo, VkSemaphore* pSemaphore) const
     {
-        return !checkError(vkCreateSemaphore(device, pCreateInfo, pAllocator, pSemaphore), ""sv, "Failed to create semaphore"sv);
+        return !checkError(vkCreateSemaphore(device, pCreateInfo, &allocationCallbacks, pSemaphore), "Failed to create semaphore"sv);
     }
-    [[nodiscard]] bool createFence(VkDevice device, VkFenceCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator, VkFence* pFence) const
+    [[nodiscard]] bool createFence(VkDevice device, VkFenceCreateInfo const* pCreateInfo, VkFence* pFence) const
     {
-        return !checkError(vkCreateFence(device, pCreateInfo, pAllocator, pFence), ""sv, "Failed to create fence"sv);
+        return !checkError(vkCreateFence(device, pCreateInfo, &allocationCallbacks, pFence), "Failed to create fence"sv);
     }
-    [[nodiscard]] bool createCommandPool(VkDevice device, VkCommandPoolCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                         VkCommandPool* pCommandPool) const
+    [[nodiscard]] bool createCommandPool(VkDevice device, VkCommandPoolCreateInfo const* pCreateInfo, VkCommandPool* pCommandPool) const
     {
-        return !checkError(vkCreateCommandPool(device, pCreateInfo, pAllocator, pCommandPool), ""sv, "Failed to create command pool"sv);
+        return !checkError(vkCreateCommandPool(device, pCreateInfo, &allocationCallbacks, pCommandPool), "Failed to create command pool"sv);
     }
-    [[nodiscard]] bool createImage(VkDevice device, VkImageCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator, VkImage* pImage) const
+    [[nodiscard]] bool createImage(VkDevice device, VkImageCreateInfo const* pCreateInfo, VkImage* pImage) const
     {
-        return !checkError(vkCreateImage(device, pCreateInfo, pAllocator, pImage), ""sv, "Failed to create image"sv);
+        return !checkError(vkCreateImage(device, pCreateInfo, &allocationCallbacks, pImage), "Failed to create image"sv);
     }
-    [[nodiscard]] bool createSampler(VkDevice device, VkSamplerCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                     VkSampler* pSampler) const
+    [[nodiscard]] bool createSampler(VkDevice device, VkSamplerCreateInfo const* pCreateInfo, VkSampler* pSampler) const
     {
-        return !checkError(vkCreateSampler(device, pCreateInfo, pAllocator, pSampler), ""sv, "Failed to create sampler"sv);
+        return !checkError(vkCreateSampler(device, pCreateInfo, &allocationCallbacks, pSampler), "Failed to create sampler"sv);
     }
-    [[nodiscard]] bool createDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                                 VkDescriptorSetLayout* pSetLayout) const
+    [[nodiscard]] bool createDescriptorSetLayout(VkDevice device, VkDescriptorSetLayoutCreateInfo const* pCreateInfo, VkDescriptorSetLayout* pSetLayout) const
     {
-        return !checkError(vkCreateDescriptorSetLayout(device, pCreateInfo, pAllocator, pSetLayout), ""sv, "Failed to create descriptor set layout"sv);
+        return !checkError(vkCreateDescriptorSetLayout(device, pCreateInfo, &allocationCallbacks, pSetLayout), "Failed to create descriptor set layout"sv);
     }
-    [[nodiscard]] bool createDescriptorPool(VkDevice device, VkDescriptorPoolCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                            VkDescriptorPool* pDescriptorPool) const
+    [[nodiscard]] bool createDescriptorPool(VkDevice device, VkDescriptorPoolCreateInfo const* pCreateInfo, VkDescriptorPool* pDescriptorPool) const
     {
-        return !checkError(vkCreateDescriptorPool(device, pCreateInfo, pAllocator, pDescriptorPool), ""sv, "Failed to create descriptor pool"sv);
+        return !checkError(vkCreateDescriptorPool(device, pCreateInfo, &allocationCallbacks, pDescriptorPool), "Failed to create descriptor pool"sv);
     }
-    [[nodiscard]] bool createPipelineLayout(VkDevice device, VkPipelineLayoutCreateInfo const* pCreateInfo, VkAllocationCallbacks const* pAllocator,
-                                            VkPipelineLayout* pPipelineLayout) const
+    [[nodiscard]] bool createPipelineLayout(VkDevice device, VkPipelineLayoutCreateInfo const* pCreateInfo, VkPipelineLayout* pPipelineLayout) const
     {
-        return !checkError(vkCreatePipelineLayout(device, pCreateInfo, pAllocator, pPipelineLayout), ""sv, "Failed to create pipeline layout"sv);
+        return !checkError(vkCreatePipelineLayout(device, pCreateInfo, &allocationCallbacks, pPipelineLayout), "Failed to create pipeline layout"sv);
     }
     [[nodiscard]] bool createGraphicsPipelines(VkDevice device, VkPipelineCache pipelineCache, uint32_t createInfoCount,
-                                               VkGraphicsPipelineCreateInfo const* pCreateInfos, VkAllocationCallbacks const* pAllocator,
-                                               VkPipeline* pPipelines) const
+                                               VkGraphicsPipelineCreateInfo const* pCreateInfos, VkPipeline* pPipelines) const
     {
-        return !checkError(vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, pAllocator, pPipelines), ""sv,
+        return !checkError(vkCreateGraphicsPipelines(device, pipelineCache, createInfoCount, pCreateInfos, &allocationCallbacks, pPipelines),
                            "Failed to create graphics pipelines"sv);
     }
 
     [[nodiscard]] bool createDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerCreateInfoEXT const* pCreateInfo,
-                                                 VkAllocationCallbacks const* pAllocator, VkDebugUtilsMessengerEXT* pMessenger) const
+                                                 VkDebugUtilsMessengerEXT* pMessenger) const
     {
-        return !checkError(vkCreateDebugUtilsMessengerEXT(instance, pCreateInfo, pAllocator, pMessenger), "Created debug messenger"sv,
-                           "Failed to create debug messenger"sv);
+        return !checkError(vkCreateDebugUtilsMessengerEXT(instance, pCreateInfo, &allocationCallbacks, pMessenger), "Failed to create debug messenger"sv);
     }
     [[nodiscard]] bool enumeratePhysicalDevices(VkInstance instance, std::uint32_t* pPhysicalDeviceCount, VkPhysicalDevice* pPhysicalDevices) const
     {
-        return !checkError(vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices), ""sv, "Failed to enumerate physical devices"sv);
+        return !checkError(vkEnumeratePhysicalDevices(instance, pPhysicalDeviceCount, pPhysicalDevices), "Failed to enumerate physical devices"sv);
     }
     void getPhysicalDeviceProperties(VkPhysicalDevice physicalDevice, VkPhysicalDeviceProperties* pProperties) const
     {
@@ -1133,31 +1120,31 @@ public:
     [[nodiscard]] bool getPhysicalDeviceSurfaceSupport(VkPhysicalDevice physicalDevice, std::uint32_t queueFamilyIndex, VkSurfaceKHR surface,
                                                        VkBool32* pSupported) const
     {
-        return !checkError(vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, pSupported), ""sv,
+        return !checkError(vkGetPhysicalDeviceSurfaceSupportKHR(physicalDevice, queueFamilyIndex, surface, pSupported),
                            "Failed to get physical device surface support"sv);
     }
     [[nodiscard]] bool enumerateDeviceExtensionProperties(VkPhysicalDevice physicalDevice, char const* pLayerName, std::uint32_t* pPropertyCount,
                                                           VkExtensionProperties* pProperties) const
     {
-        return !checkError(vkEnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties), ""sv,
+        return !checkError(vkEnumerateDeviceExtensionProperties(physicalDevice, pLayerName, pPropertyCount, pProperties),
                            "Failed to enumerate physical device extension properties"sv);
     }
     [[nodiscard]] bool getPhysicalDeviceSurfaceFormats(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, std::uint32_t* pSurfaceFormatCount,
                                                        VkSurfaceFormatKHR* pSurfaceFormats) const
     {
-        return !checkError(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, pSurfaceFormatCount, pSurfaceFormats), ""sv,
+        return !checkError(vkGetPhysicalDeviceSurfaceFormatsKHR(physicalDevice, surface, pSurfaceFormatCount, pSurfaceFormats),
                            "Failed to get physical device surface formats"sv);
     }
     [[nodiscard]] bool getPhysicalDeviceSurfacePresentModes(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface, std::uint32_t* pPresentModeCount,
                                                             VkPresentModeKHR* pPresentModes) const
     {
-        return !checkError(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, pPresentModeCount, pPresentModes), ""sv,
+        return !checkError(vkGetPhysicalDeviceSurfacePresentModesKHR(physicalDevice, surface, pPresentModeCount, pPresentModes),
                            "Failed to get physical device surface present modes"sv);
     }
     [[nodiscard]] bool getPhysicalDeviceSurfaceCapabilities(VkPhysicalDevice physicalDevice, VkSurfaceKHR surface,
                                                             VkSurfaceCapabilitiesKHR* pSurfaceCapabilities) const
     {
-        return !checkError(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, pSurfaceCapabilities), ""sv,
+        return !checkError(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, pSurfaceCapabilities),
                            "Failed to get physical device surface capabilities"sv);
     }
     void getPhysicalDeviceMemoryProperties(VkPhysicalDevice physicalDevice, VkPhysicalDeviceMemoryProperties* pMemoryProperties) const
@@ -1171,64 +1158,63 @@ public:
 
     [[nodiscard]] bool getSwapchainImages(VkDevice device, VkSwapchainKHR swapchain, std::uint32_t* pSwapchainImageCount, VkImage* pSwapchainImages) const
     {
-        return !checkError(vkGetSwapchainImagesKHR(device, swapchain, pSwapchainImageCount, pSwapchainImages), ""sv, "Failed to get swapchain images"sv);
+        return !checkError(vkGetSwapchainImagesKHR(device, swapchain, pSwapchainImageCount, pSwapchainImages), "Failed to get swapchain images"sv);
     }
     [[nodiscard]] bool bindBufferMemory(VkDevice device, VkBuffer buffer, VkDeviceMemory memory, VkDeviceSize memoryOffset) const
     {
-        return !checkError(vkBindBufferMemory(device, buffer, memory, memoryOffset), ""sv, "Failed to bind buffer memory"sv);
+        return !checkError(vkBindBufferMemory(device, buffer, memory, memoryOffset), "Failed to bind buffer memory"sv);
     }
     [[nodiscard]] bool bindImageMemory(VkDevice device, VkImage image, VkDeviceMemory memory, VkDeviceSize memoryOffset) const
     {
-        return !checkError(vkBindImageMemory(device, image, memory, memoryOffset), ""sv, "Failed to bind image memory"sv);
+        return !checkError(vkBindImageMemory(device, image, memory, memoryOffset), "Failed to bind image memory"sv);
     }
     [[nodiscard]] bool allocateCommandBuffers(VkDevice device, VkCommandBufferAllocateInfo const* pAllocateInfo, VkCommandBuffer* pCommandBuffers) const
     {
-        return !checkError(vkAllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers), ""sv, "Failed to allocate command buffers"sv);
+        return !checkError(vkAllocateCommandBuffers(device, pAllocateInfo, pCommandBuffers), "Failed to allocate command buffers"sv);
     }
     [[nodiscard]] bool beginCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferBeginInfo const* pBeginInfo) const
     {
-        return !checkError(vkBeginCommandBuffer(commandBuffer, pBeginInfo), ""sv, "Failed to begin command buffer"sv);
+        return !checkError(vkBeginCommandBuffer(commandBuffer, pBeginInfo), "Failed to begin command buffer"sv);
     }
     [[nodiscard]] bool endCommandBuffer(VkCommandBuffer commandBuffer) const
     {
-        return !checkError(vkEndCommandBuffer(commandBuffer), ""sv, "Failed to end command buffer"sv);
+        return !checkError(vkEndCommandBuffer(commandBuffer), "Failed to end command buffer"sv);
     }
     [[nodiscard]] bool resetCommandBuffer(VkCommandBuffer commandBuffer, VkCommandBufferResetFlags flags) const
     {
-        return !checkError(vkResetCommandBuffer(commandBuffer, flags), ""sv, "Failed to reset command buffer"sv);
+        return !checkError(vkResetCommandBuffer(commandBuffer, flags), "Failed to reset command buffer"sv);
     }
     [[nodiscard]] bool queueSubmit(VkQueue queue, std::uint32_t submitCount, VkSubmitInfo const* pSubmits, VkFence fence) const
     {
-        return !checkError(vkQueueSubmit(queue, submitCount, pSubmits, fence), ""sv, "Failed to submit queue"sv);
+        return !checkError(vkQueueSubmit(queue, submitCount, pSubmits, fence), "Failed to submit queue"sv);
     }
     [[nodiscard]] VkResult queuePresent(VkQueue queue, VkPresentInfoKHR const* pPresentInfo) const { return vkQueuePresentKHR(queue, pPresentInfo); }
-    [[nodiscard]] bool queueWaitIdle(VkQueue queue) const { return !checkError(vkQueueWaitIdle(queue), ""sv, "Failed to wait for idle queue"sv); }
+    [[nodiscard]] bool queueWaitIdle(VkQueue queue) const { return !checkError(vkQueueWaitIdle(queue), "Failed to wait for idle queue"sv); }
     [[nodiscard]] bool allocateDescriptorSets(VkDevice device, VkDescriptorSetAllocateInfo const* pAllocateInfo, VkDescriptorSet* pDescriptorSets) const
     {
-        return !checkError(vkAllocateDescriptorSets(device, pAllocateInfo, pDescriptorSets), ""sv, "Failed to allocate descriptor sets"sv);
+        return !checkError(vkAllocateDescriptorSets(device, pAllocateInfo, pDescriptorSets), "Failed to allocate descriptor sets"sv);
     }
     [[nodiscard]] bool waitForFences(VkDevice device, uint32_t fenceCount, VkFence const* pFences, VkBool32 waitAll, uint64_t timeout) const
     {
-        return !checkError(vkWaitForFences(device, fenceCount, pFences, waitAll, timeout), ""sv, "Failed to wait for fences"sv);
+        return !checkError(vkWaitForFences(device, fenceCount, pFences, waitAll, timeout), "Failed to wait for fences"sv);
     }
     [[nodiscard]] bool resetFences(VkDevice device, uint32_t fenceCount, VkFence const* pFences) const
     {
-        return !checkError(vkResetFences(device, fenceCount, pFences), ""sv, "Failed to reset fences"sv);
+        return !checkError(vkResetFences(device, fenceCount, pFences), "Failed to reset fences"sv);
     }
     [[nodiscard]] VkResult acquireNextImage(VkDevice device, VkSwapchainKHR swapchain, uint64_t timeout, VkSemaphore semaphore, VkFence fence,
                                             uint32_t* pImageIndex) const
     {
         return vkAcquireNextImageKHR(device, swapchain, timeout, semaphore, fence, pImageIndex);
     }
-    [[nodiscard]] bool deviceWaitIdle(VkDevice device) const { return !checkError(vkDeviceWaitIdle(device), ""sv, "Failed to wait for device idle"sv); }
-    [[nodiscard]] bool allocateMemory(VkDevice device, VkMemoryAllocateInfo const* pAllocateInfo, VkAllocationCallbacks const* pAllocator,
-                                      VkDeviceMemory* pMemory) const
+    [[nodiscard]] bool deviceWaitIdle(VkDevice device) const { return !checkError(vkDeviceWaitIdle(device), "Failed to wait for device idle"sv); }
+    [[nodiscard]] bool allocateMemory(VkDevice device, VkMemoryAllocateInfo const* pAllocateInfo, VkDeviceMemory* pMemory) const
     {
-        return !checkError(vkAllocateMemory(device, pAllocateInfo, pAllocator, pMemory), ""sv, "Failed to allocate memory"sv);
+        return !checkError(vkAllocateMemory(device, pAllocateInfo, &allocationCallbacks, pMemory), "Failed to allocate memory"sv);
     }
     [[nodiscard]] bool mapMemory(VkDevice device, VkDeviceMemory memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) const
     {
-        return !checkError(vkMapMemory(device, memory, offset, size, flags, ppData), ""sv, "Failed to map memory"sv);
+        return !checkError(vkMapMemory(device, memory, offset, size, flags, ppData), "Failed to map memory"sv);
     }
     void getDeviceQueue(VkDevice device, uint32_t queueFamilyIndex, uint32_t queueIndex, VkQueue* pQueue) const
     {
@@ -1299,62 +1285,58 @@ public:
     {
         vkFreeCommandBuffers(device, commandPool, commandBufferCount, pCommandBuffers);
     }
-    void destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT messenger, VkAllocationCallbacks const* pAllocator) const
+    void destroyDebugUtilsMessenger(VkInstance instance, VkDebugUtilsMessengerEXT messenger) const
     {
-        vkDestroyDebugUtilsMessengerEXT(instance, messenger, pAllocator);
+        vkDestroyDebugUtilsMessengerEXT(instance, messenger, &allocationCallbacks);
     }
-    void destroyInstance(VkInstance instance, VkAllocationCallbacks const* pAllocator) const { vkDestroyInstance(instance, pAllocator); }
-    void freeMemory(VkDevice device, VkDeviceMemory memory, VkAllocationCallbacks const* pAllocator) const { vkFreeMemory(device, memory, pAllocator); }
-    void destroyBuffer(VkDevice device, VkBuffer buffer, VkAllocationCallbacks const* pAllocator) const { vkDestroyBuffer(device, buffer, pAllocator); }
-    void destroyPipeline(VkDevice device, VkPipeline pipeline, VkAllocationCallbacks const* pAllocator) const
+    void destroyInstance(VkInstance instance) const { vkDestroyInstance(instance, &allocationCallbacks); }
+    void freeMemory(VkDevice device, VkDeviceMemory memory) const { vkFreeMemory(device, memory, &allocationCallbacks); }
+    void destroyBuffer(VkDevice device, VkBuffer buffer) const { vkDestroyBuffer(device, buffer, &allocationCallbacks); }
+    void destroyPipeline(VkDevice device, VkPipeline pipeline) const { vkDestroyPipeline(device, pipeline, &allocationCallbacks); }
+    void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout) const
     {
-        vkDestroyPipeline(device, pipeline, pAllocator);
+        vkDestroyPipelineLayout(device, pipelineLayout, &allocationCallbacks);
     }
-    void destroyPipelineLayout(VkDevice device, VkPipelineLayout pipelineLayout, VkAllocationCallbacks const* pAllocator) const
+    void destroyDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool) const
     {
-        vkDestroyPipelineLayout(device, pipelineLayout, pAllocator);
+        vkDestroyDescriptorPool(device, descriptorPool, &allocationCallbacks);
     }
-    void destroyDescriptorPool(VkDevice device, VkDescriptorPool descriptorPool, VkAllocationCallbacks const* pAllocator) const
+    void destroyDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout) const
     {
-        vkDestroyDescriptorPool(device, descriptorPool, pAllocator);
+        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, &allocationCallbacks);
     }
-    void destroyDescriptorSetLayout(VkDevice device, VkDescriptorSetLayout descriptorSetLayout, VkAllocationCallbacks const* pAllocator) const
-    {
-        vkDestroyDescriptorSetLayout(device, descriptorSetLayout, pAllocator);
-    }
-    void destroySampler(VkDevice device, VkSampler sampler, VkAllocationCallbacks const* pAllocator) const { vkDestroySampler(device, sampler, pAllocator); }
-    void destroyImageView(VkDevice device, VkImageView imageView, VkAllocationCallbacks const* pAllocator) const
-    {
-        vkDestroyImageView(device, imageView, pAllocator);
-    }
-    void destroyImage(VkDevice device, VkImage image, VkAllocationCallbacks const* pAllocator) const { vkDestroyImage(device, image, pAllocator); }
-    void destroyCommandPool(VkDevice device, VkCommandPool commandPool, VkAllocationCallbacks const* pAllocator) const
-    {
-        vkDestroyCommandPool(device, commandPool, pAllocator);
-    }
-    void destroyDevice(VkDevice device, VkAllocationCallbacks const* pAllocator) const { vkDestroyDevice(device, pAllocator); }
-    void destroyRenderPass(VkDevice device, VkRenderPass renderPass, VkAllocationCallbacks const* pAllocator) const
-    {
-        vkDestroyRenderPass(device, renderPass, pAllocator);
-    }
-    void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer, VkAllocationCallbacks const* pAllocator) const
-    {
-        vkDestroyFramebuffer(device, framebuffer, pAllocator);
-    }
-    void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain, VkAllocationCallbacks const* pAllocator) const
-    {
-        vkDestroySwapchainKHR(device, swapchain, pAllocator);
-    }
-    void destroyShaderModule(VkDevice device, VkShaderModule shaderModule, VkAllocationCallbacks const* pAllocator) const
-    {
-        vkDestroyShaderModule(device, shaderModule, pAllocator);
-    }
+    void destroySampler(VkDevice device, VkSampler sampler) const { vkDestroySampler(device, sampler, &allocationCallbacks); }
+    void destroyImageView(VkDevice device, VkImageView imageView) const { vkDestroyImageView(device, imageView, &allocationCallbacks); }
+    void destroyImage(VkDevice device, VkImage image) const { vkDestroyImage(device, image, &allocationCallbacks); }
+    void destroyCommandPool(VkDevice device, VkCommandPool commandPool) const { vkDestroyCommandPool(device, commandPool, &allocationCallbacks); }
+    void destroyDevice(VkDevice device) const { vkDestroyDevice(device, &allocationCallbacks); }
+    void destroyRenderPass(VkDevice device, VkRenderPass renderPass) const { vkDestroyRenderPass(device, renderPass, &allocationCallbacks); }
+    void destroyFramebuffer(VkDevice device, VkFramebuffer framebuffer) const { vkDestroyFramebuffer(device, framebuffer, &allocationCallbacks); }
+    void destroySwapchain(VkDevice device, VkSwapchainKHR swapchain) const { vkDestroySwapchainKHR(device, swapchain, &allocationCallbacks); }
+    void destroyShaderModule(VkDevice device, VkShaderModule shaderModule) const { vkDestroyShaderModule(device, shaderModule, &allocationCallbacks); }
     void unmapMemory(VkDevice device, VkDeviceMemory memory) const { vkUnmapMemory(device, memory); }
-    void destroySemaphore(VkDevice device, VkSemaphore semaphore, VkAllocationCallbacks const* pAllocator) const
+    void destroySemaphore(VkDevice device, VkSemaphore semaphore) const { vkDestroySemaphore(device, semaphore, &allocationCallbacks); }
+    void destroyFence(VkDevice device, VkFence fence) const { vkDestroyFence(device, fence, &allocationCallbacks); }
+
+    [[nodiscard]] static bool checkError(VkResult result, std::string_view errorMessage)
     {
-        vkDestroySemaphore(device, semaphore, pAllocator);
+        if (result != VkResult::VK_SUCCESS)
+        {
+            logger.logError("{}: {}", errorMessage, enumToStr(result));
+            return true;
+        }
+
+        return false;
     }
-    void destroyFence(VkDevice device, VkFence fence, VkAllocationCallbacks const* pAllocator) const { vkDestroyFence(device, fence, pAllocator); }
+    template <class Value, class ResultValue>
+    [[nodiscard]] static bool checkError(Value& value, ResultValue resultValue, std::string_view errorMessage)
+    {
+        if (checkError(resultValue.result, errorMessage))
+            return true;
+
+        value = std::move(resultValue.value);
+        return false;
+    }
 
 private:
     PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr{};
@@ -1449,8 +1431,9 @@ private:
     PFN_vkCmdEndRenderPass vkCmdEndRenderPass{};
 
     LibraryLoader libraryLoader;
+    VkAllocationCallbacks allocationCallbacks{};
 };
-inline VulkanLibrary lib;
+VulkanLibrary lib;
 
 /*
  * Struct for storing physical device properties
@@ -1653,7 +1636,7 @@ public:
                                             .sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
                                             .queueFamilyIndexCount = 1,
                                             .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex};
-        if (!lib.createBuffer(device, &bufferCreateInfo, nullptr, &buffer))
+        if (!lib.createBuffer(device, &bufferCreateInfo, &buffer))
             return false;
 
         VkMemoryRequirements memoryRequirements{};
@@ -1670,7 +1653,7 @@ public:
                                                 .pNext = nullptr,
                                                 .allocationSize = memoryRequirements.size,
                                                 .memoryTypeIndex = (std::uint32_t)selectedMemoryType};
-        if (!lib.allocateMemory(device, &memoryAllocateInfo, nullptr, &memory))
+        if (!lib.allocateMemory(device, &memoryAllocateInfo, &memory))
             return false;
 
         if (!lib.bindBufferMemory(device, buffer, memory, 0))
@@ -1687,10 +1670,10 @@ public:
             lib.unmapMemory(device, memory);
 
         if (memory)
-            lib.freeMemory(device, memory, nullptr);
+            lib.freeMemory(device, memory);
 
         if (buffer)
-            lib.destroyBuffer(device, buffer, nullptr);
+            lib.destroyBuffer(device, buffer);
     }
 
     [[nodiscard]] auto getBuffer() const { return buffer; }
@@ -1797,7 +1780,7 @@ public:
                                           .queueFamilyIndexCount = 1,
                                           .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex,
                                           .initialLayout = VkImageLayout::VK_IMAGE_LAYOUT_UNDEFINED};
-        if (!lib.createImage(device, &imageCreateInfo, nullptr, &image))
+        if (!lib.createImage(device, &imageCreateInfo, &image))
             return false;
 
         VkMemoryRequirements memoryRequirements{};
@@ -1807,7 +1790,7 @@ public:
                                                      .allocationSize = memoryRequirements.size,
                                                      .memoryTypeIndex = (std::uint32_t)physicalDeviceInfo.getMemoryTypeIndex(
                                                          memoryRequirements, VkMemoryPropertyFlagBits::VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)};
-        if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, nullptr, &imageMemory))
+        if (!lib.allocateMemory(device, &imageMemoryAllocateInfo, &imageMemory))
             return false;
 
         if (!lib.bindImageMemory(device, image, imageMemory, 0))
@@ -1883,7 +1866,7 @@ public:
                                              .format = VkFormat::VK_FORMAT_R8_UNORM,
                                              .components = {},
                                              .subresourceRange = subresourceRange};
-        if (!lib.createImageView(device, &viewCreateInfo, nullptr, &imageView))
+        if (!lib.createImageView(device, &viewCreateInfo, &imageView))
             return false;
 
         VkSamplerCreateInfo samplerCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
@@ -1904,7 +1887,7 @@ public:
                                               .maxLod = 0.0f,
                                               .borderColor = VkBorderColor::VK_BORDER_COLOR_INT_OPAQUE_BLACK,
                                               .unnormalizedCoordinates = vkFalse};
-        if (!lib.createSampler(device, &samplerCreateInfo, nullptr, &sampler))
+        if (!lib.createSampler(device, &samplerCreateInfo, &sampler))
             return false;
 
         return true;
@@ -1912,13 +1895,13 @@ public:
     void cleanup(VkDevice device)
     {
         if (sampler)
-            lib.destroySampler(device, sampler, nullptr);
+            lib.destroySampler(device, sampler);
         if (imageView)
-            lib.destroyImageView(device, imageView, nullptr);
+            lib.destroyImageView(device, imageView);
         if (imageMemory)
-            lib.freeMemory(device, imageMemory, nullptr);
+            lib.freeMemory(device, imageMemory);
         if (image)
-            lib.destroyImage(device, image, nullptr);
+            lib.destroyImage(device, image);
     }
 
     [[nodiscard]] auto getImageView() const { return imageView; }
@@ -1958,7 +1941,7 @@ public:
                                             .flags = {},
                                             .codeSize = (std::size_t)fileSize,
                                             .pCode = fileBuffer.getData()};
-        if (!lib.createShaderModule(device, &createInfo, nullptr, &module))
+        if (!lib.createShaderModule(device, &createInfo, &module))
             return false;
 
         return true;
@@ -1966,7 +1949,7 @@ public:
     void cleanup(VkDevice device)
     {
         if (module)
-            lib.destroyShaderModule(device, module, nullptr);
+            lib.destroyShaderModule(device, module);
     }
 
     [[nodiscard]] auto getModule() const { return module; }
@@ -2061,14 +2044,11 @@ public:
     }
 
     // Create Vulkan surface from window
-    [[nodiscard]] bool createSurface(VkInstance instance, VkAllocationCallbacks const* allocator, VkSurfaceKHR* surface) const
+    [[nodiscard]] bool createSurface(VkInstance instance, VkSurfaceKHR* surface) const
     {
-        return !checkSDLError(SDL_Vulkan_CreateSurface(window, instance, allocator, surface));
+        return !checkSDLError(SDL_Vulkan_CreateSurface(window, instance, &lib.getAllocationCallbacks(), surface));
     }
-    void destroySurface(VkInstance instance, VkSurfaceKHR surface, VkAllocationCallbacks const* allocator) const
-    {
-        SDL_Vulkan_DestroySurface(instance, surface, allocator);
-    }
+    void destroySurface(VkInstance instance, VkSurfaceKHR surface) const { SDL_Vulkan_DestroySurface(instance, surface, &lib.getAllocationCallbacks()); }
 
     // Get the window size in pixels
     [[nodiscard]] std::pair<std::int64_t, std::int64_t> getWindowSize() const
@@ -2183,7 +2163,7 @@ public:
                                                      .presentMode = selectedPresentMode,
                                                      .clipped = vkTrue,
                                                      .oldSwapchain = {}};
-        if (!lib.createSwapchain(device, &swapchainCreateInfo, nullptr, &swapchain))
+        if (!lib.createSwapchain(device, &swapchainCreateInfo, &swapchain))
             return false;
 
         // Get swapchain images
@@ -2206,7 +2186,7 @@ public:
                 .components = {VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY, VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY,
                                VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY, VkComponentSwizzle::VK_COMPONENT_SWIZZLE_IDENTITY},
                 .subresourceRange = subresourceRange};
-            if (!lib.createImageView(device, &viewCreateInfo, nullptr, &imageViews[i]))
+            if (!lib.createImageView(device, &viewCreateInfo, &imageViews[i]))
                 return false;
         }
 
@@ -2249,7 +2229,7 @@ public:
                                                     .pSubpasses = &subpassDescription,
                                                     .dependencyCount = 1,
                                                     .pDependencies = &subpassDependency};
-        if (!lib.createRenderPass(device, &renderPassCreateInfo, nullptr, &renderPass))
+        if (!lib.createRenderPass(device, &renderPassCreateInfo, &renderPass))
             return false;
 
         // Create swapchain framebuffers
@@ -2264,7 +2244,7 @@ public:
                                                           .width = imageExtent.width,
                                                           .height = imageExtent.height,
                                                           .layers = 1};
-            if (!lib.createFramebuffer(device, &framebufferCreateInfo, nullptr, &framebuffers[i]))
+            if (!lib.createFramebuffer(device, &framebufferCreateInfo, &framebuffers[i]))
                 return false;
         }
         logger.logInfo("Created swapchain framebuffers");
@@ -2274,18 +2254,18 @@ public:
     void cleanup(VkDevice device)
     {
         if (renderPass)
-            lib.destroyRenderPass(device, renderPass, nullptr);
+            lib.destroyRenderPass(device, renderPass);
 
         for (std::uint32_t i{}; i < imageCount; i++)
         {
             if (framebuffers[i])
-                lib.destroyFramebuffer(device, framebuffers[i], nullptr);
+                lib.destroyFramebuffer(device, framebuffers[i]);
             if (imageViews[i])
-                lib.destroyImageView(device, imageViews[i], nullptr);
+                lib.destroyImageView(device, imageViews[i]);
         }
 
         if (swapchain)
-            lib.destroySwapchain(device, swapchain, nullptr);
+            lib.destroySwapchain(device, swapchain);
     }
 
     [[nodiscard]] auto getSwapchain() const { return swapchain; }
@@ -2329,15 +2309,15 @@ public:
             .sType = VkStructureType::VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .pNext = nullptr, .flags = VkFenceCreateFlagBits::VK_FENCE_CREATE_SIGNALED_BIT};
         for (std::uint32_t i{}; i < maxFramesInFlight; i++)
         {
-            if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &imageAcquiredSemaphores[i]) ||
-                !lib.createFence(device, &fenceCreateInfo, nullptr, &submitFinishedFences[i]))
+            if (!lib.createSemaphore(device, &semaphoreCreateInfo, &imageAcquiredSemaphores[i]) ||
+                !lib.createFence(device, &fenceCreateInfo, &submitFinishedFences[i]))
                 return false;
         }
 
         submitFinishedSemaphores.resize(imageCount);
         for (std::uint32_t i{}; i < imageCount; i++)
         {
-            if (!lib.createSemaphore(device, &semaphoreCreateInfo, nullptr, &submitFinishedSemaphores[i]))
+            if (!lib.createSemaphore(device, &semaphoreCreateInfo, &submitFinishedSemaphores[i]))
                 return false;
         }
 
@@ -2348,15 +2328,15 @@ public:
         for (std::uint32_t i{}; i < maxFramesInFlight; i++)
         {
             if (imageAcquiredSemaphores[i])
-                lib.destroySemaphore(device, imageAcquiredSemaphores[i], nullptr);
+                lib.destroySemaphore(device, imageAcquiredSemaphores[i]);
             if (submitFinishedSemaphores[i])
-                lib.destroyFence(device, submitFinishedFences[i], nullptr);
+                lib.destroyFence(device, submitFinishedFences[i]);
         }
 
         for (std::uint32_t i{}; i < submitFinishedSemaphores.getSize(); i++)
         {
             if (submitFinishedSemaphores[i])
-                lib.destroySemaphore(device, submitFinishedSemaphores[i], nullptr);
+                lib.destroySemaphore(device, submitFinishedSemaphores[i]);
         }
     }
 
@@ -2420,7 +2400,7 @@ public:
                                             .enabledExtensionCount = (std::uint32_t)requiredPhysicalDeviceExtensions.size(),
                                             .ppEnabledExtensionNames = requiredPhysicalDeviceExtensions.data(),
                                             .pEnabledFeatures = nullptr};
-        if (!lib.createDevice(physicalDeviceInfo.device, &deviceCreateInfo, nullptr, &device))
+        if (!lib.createDevice(physicalDeviceInfo.device, &deviceCreateInfo, &device))
             return false;
 
         if (!lib.init(device))
@@ -2438,7 +2418,7 @@ public:
                                                .pNext = nullptr,
                                                .flags = VkCommandPoolCreateFlagBits::VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
                                                .queueFamilyIndex = physicalDeviceInfo.graphicsIndex};
-        if (!lib.createCommandPool(device, &poolCreateInfo, nullptr, &commandPool))
+        if (!lib.createCommandPool(device, &poolCreateInfo, &commandPool))
             return false;
 
         if (!textureResources.init(device, commandPool, graphicsQueue, physicalDeviceInfo))
@@ -2451,7 +2431,7 @@ public:
                                                                       .flags = {},
                                                                       .bindingCount = 1,
                                                                       .pBindings = &layoutBinding};
-        if (!lib.createDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, nullptr, &descriptorSetLayout))
+        if (!lib.createDescriptorSetLayout(device, &descriptorSetLayoutCreateInfo, &descriptorSetLayout))
             return false;
 
         VkDescriptorPoolSize descriptorPoolSize{VkDescriptorType::VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, maxFramesInFlight};
@@ -2461,7 +2441,7 @@ public:
                                                             .maxSets = maxFramesInFlight,
                                                             .poolSizeCount = 1,
                                                             .pPoolSizes = &descriptorPoolSize};
-        if (!lib.createDescriptorPool(device, &descriptorPoolCreateInfo, nullptr, &descriptorPool))
+        if (!lib.createDescriptorPool(device, &descriptorPoolCreateInfo, &descriptorPool))
             return false;
 
         Array<VkDescriptorSetLayout, maxFramesInFlight> setLayouts{descriptorSetLayout, descriptorSetLayout};
@@ -2623,7 +2603,7 @@ public:
                                                     .pSetLayouts = &descriptorSetLayout,
                                                     .pushConstantRangeCount = 1,
                                                     .pPushConstantRanges = &pushConstantRange};
-        if (!lib.createPipelineLayout(device, &layoutCreateInfo, nullptr, &graphicsPipelineLayout))
+        if (!lib.createPipelineLayout(device, &layoutCreateInfo, &graphicsPipelineLayout))
         {
             vertexShaderModule.cleanup(device);
             fragmentShaderModule.cleanup(device);
@@ -2650,7 +2630,7 @@ public:
                                                         .subpass = 0,
                                                         .basePipelineHandle = nullptr,
                                                         .basePipelineIndex = 0};
-        if (!lib.createGraphicsPipelines(device, {}, 1, &pipelineCreateInfo, nullptr, &graphicsPipeline))
+        if (!lib.createGraphicsPipelines(device, {}, 1, &pipelineCreateInfo, &graphicsPipeline))
         {
             vertexShaderModule.cleanup(device);
             fragmentShaderModule.cleanup(device);
@@ -2672,7 +2652,7 @@ public:
                                                 .sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
                                                 .queueFamilyIndexCount = 1,
                                                 .pQueueFamilyIndices = &physicalDeviceInfo.graphicsIndex};
-            if (!lib.createBuffer(device, &bufferCreateInfo, nullptr, &bufferResources.buffer))
+            if (!lib.createBuffer(device, &bufferCreateInfo, &bufferResources.buffer))
                 return false;
 
             VkMemoryRequirements bufferMemoryRequirements{};
@@ -2694,7 +2674,7 @@ public:
                                                     .pNext = &memoryAllocateFlagsInfo,
                                                     .allocationSize = bufferMemoryRequirements.size,
                                                     .memoryTypeIndex = (std::uint32_t)selectedMemoryType};
-            if (!lib.allocateMemory(device, &memoryAllocateInfo, nullptr, &bufferResources.bufferMemory))
+            if (!lib.allocateMemory(device, &memoryAllocateInfo, &bufferResources.bufferMemory))
                 return false;
 
             if (!lib.bindBufferMemory(device, bufferResources.buffer, bufferResources.bufferMemory, 0))
@@ -2744,29 +2724,29 @@ public:
         for (auto buffer : quadDataBuffers)
         {
             if (buffer.bufferMemory)
-                lib.freeMemory(device, buffer.bufferMemory, nullptr);
+                lib.freeMemory(device, buffer.bufferMemory);
             if (buffer.buffer)
-                lib.destroyBuffer(device, buffer.buffer, nullptr);
+                lib.destroyBuffer(device, buffer.buffer);
         }
 
         if (graphicsPipeline)
-            lib.destroyPipeline(device, graphicsPipeline, nullptr);
+            lib.destroyPipeline(device, graphicsPipeline);
         if (graphicsPipelineLayout)
-            lib.destroyPipelineLayout(device, graphicsPipelineLayout, nullptr);
+            lib.destroyPipelineLayout(device, graphicsPipelineLayout);
 
         if (descriptorPool)
-            lib.destroyDescriptorPool(device, descriptorPool, nullptr);
+            lib.destroyDescriptorPool(device, descriptorPool);
         if (descriptorSetLayout)
-            lib.destroyDescriptorSetLayout(device, descriptorSetLayout, nullptr);
+            lib.destroyDescriptorSetLayout(device, descriptorSetLayout);
 
         textureResources.cleanup(device);
 
         if (commandPool)
-            lib.destroyCommandPool(device, commandPool, nullptr);
+            lib.destroyCommandPool(device, commandPool);
 
         swapchainResources.cleanup(device);
 
-        lib.destroyDevice(device, nullptr);
+        lib.destroyDevice(device);
     }
 
     [[nodiscard]] bool recreateSwapchain(PhysicalDeviceInfo const& physicalDeviceInfo, VkSurfaceKHR surface)
@@ -2943,7 +2923,7 @@ public:
                                                 .ppEnabledExtensionNames = requiredInstanceExtensions.getData()};
         if constexpr (isDebugBuild)
             instanceCreateInfo.pNext = &messengerCreateInfo;
-        if (!lib.createInstance(&instanceCreateInfo, nullptr, &instance))
+        if (!lib.createInstance(&instanceCreateInfo, &instance))
             return false;
 
         if (!lib.init(instance))
@@ -2952,12 +2932,12 @@ public:
         // Create debug messenger
         if constexpr (isDebugBuild)
         {
-            if (!lib.createDebugUtilsMessenger(instance, &messengerCreateInfo, nullptr, &debugMessenger))
+            if (!lib.createDebugUtilsMessenger(instance, &messengerCreateInfo, &debugMessenger))
                 return false;
         }
 
         // Create window surface
-        if (!renderWindow.createSurface(instance, nullptr, &surface))
+        if (!renderWindow.createSurface(instance, &surface))
             return false;
 
         // Get available physical devices
@@ -3025,14 +3005,14 @@ public:
     {
         logicalDeviceResources.cleanup();
 
-        renderWindow.destroySurface(instance, surface, nullptr);
+        renderWindow.destroySurface(instance, surface);
         renderWindow.cleanup();
 
         if (debugMessenger)
-            lib.destroyDebugUtilsMessenger(instance, debugMessenger, nullptr);
+            lib.destroyDebugUtilsMessenger(instance, debugMessenger);
 
         if (instance)
-            lib.destroyInstance(instance, nullptr);
+            lib.destroyInstance(instance);
 
         lib.cleanup();
     }
@@ -3067,8 +3047,7 @@ public:
                                            synchronizationResources.getImageSemaphore(currentFrameIndex), {}, &imageIndex);
         if (result == VkResult::VK_ERROR_OUT_OF_DATE_KHR || result == VkResult::VK_SUBOPTIMAL_KHR)
             return recreateSwapchain();
-
-        if (checkError(result, "", "Failed to acquire next image"))
+        if (lib.checkError(result, "Failed to acquire next image"sv))
             return false;
 
         auto commandBuffer = logicalDeviceResources.getCommandBuffer(currentFrameIndex);
@@ -3144,8 +3123,7 @@ public:
         result = lib.queuePresent(logicalDeviceResources.getPresentationQueue(), &presentInfo);
         if (result == VkResult::VK_ERROR_OUT_OF_DATE_KHR || result == VkResult::VK_SUBOPTIMAL_KHR)
             return recreateSwapchain();
-
-        if (checkError(result, "", "Failed to present image"))
+        if (lib.checkError(result, "Failed to present image"sv))
             return false;
 
         currentFrameIndex = (currentFrameIndex + 1) % maxFramesInFlight;
@@ -3277,7 +3255,7 @@ void QuadReference<layer>::init(T&& quadData)
 
     auto& [data, references] = quadPool.getStorage<layer>();
 
-    logger.extraAssert(data.getSize() < data.getCapacity(), "QuadReference::init() - quad pool was full");
+    logger.extraAssert(data.getSize() < data.capacity, "QuadReference::init() - quad pool was full");
 
     // Append reference to the end of the quad pool
     index = (std::int64_t)data.getSize();

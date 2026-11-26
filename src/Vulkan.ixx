@@ -209,6 +209,8 @@ using ::PFN_vkDestroyRenderPass;
 using ::PFN_vkDestroyFramebuffer;
 using ::PFN_vkDestroySwapchainKHR;
 using ::PFN_vkDestroyShaderModule;
+using ::PFN_vkAllocationFunction;
+
 using ::VkFenceCreateFlagBits;
 using ::VkDeviceQueueCreateInfo;
 using ::VkCommandPoolCreateFlagBits;
@@ -242,6 +244,7 @@ using ::VkMemoryAllocateFlagBits;
 using ::VkApplicationInfo;
 using ::VkClearValue;
 using ::VkClearColorValue;
+using ::VkSystemAllocationScope;
 using ::VkDebugUtilsMessageSeverityFlagBitsEXT;
 using ::VkDebugUtilsMessageTypeFlagBitsEXT;
 using ::VkDebugUtilsMessageTypeFlagsEXT;

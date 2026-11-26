@@ -4,7 +4,7 @@ set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
 
 project(AbrogueFull LANGUAGES CXX)
 
-if(EXISTS ${CMAKE_SOURCE_DIR}/../tools69)
+if (EXISTS ${CMAKE_SOURCE_DIR}/../tools69)
     set(CMAKE_PREFIX_PATH ${CMAKE_SOURCE_DIR}/../tools69)
     include_directories(SYSTEM ${CMAKE_PREFIX_PATH}/include)
     link_directories(${CMAKE_PREFIX_PATH}/lib)
@@ -13,12 +13,23 @@ if(EXISTS ${CMAKE_SOURCE_DIR}/../tools69)
     set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/../dist/${CMAKE_BUILD_TYPE}/Abrogue)
     set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
     set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
-endif()
+
+    configure_file(${CMAKE_PREFIX_PATH}/lib64/libstdc++.so ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
+    configure_file(${CMAKE_PREFIX_PATH}/lib64/libstdc++.so.6 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
+endif ()
 
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,-z,stack-size=16777216")
 set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN YES)
+
+include(CheckIPOSupported)
+check_ipo_supported(RESULT IPO_SUPPORTED)
+if (IPO_SUPPORTED)
+    set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+endif ()
 
 option(EXTRA_ASSERTS ON)
 
@@ -33,35 +44,22 @@ target_sources(VulkanModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS $
 target_link_libraries(VulkanModule PUBLIC Vulkan::Headers)
 
 add_library(HelpersModule)
-target_sources(HelpersModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES
-        src/Helpers/Helpers.ixx
-        src/Helpers/Concepts.ixx
-        src/Helpers/Flags.ixx
-        src/Helpers/Logger.ixx
-        src/Helpers/Array.ixx
-        src/Helpers/Color.ixx
-        src/Helpers/FixedString.ixx
-        src/Helpers/FixedVector.ixx
-        src/Helpers/Random.ixx
-        src/Helpers/Tags.ixx
-        src/Helpers/Literals.ixx
-)
-target_link_libraries(HelpersModule SDL3Module stdc++exp)
+target_sources(HelpersModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES src/Helpers.ixx)
+target_link_libraries(HelpersModule PUBLIC stdc++exp)
 if (EXTRA_ASSERTS)
     target_compile_definitions(HelpersModule PUBLIC EXTRA_ASSERTS)
-endif()
+endif ()
 
 add_library(RenderEngineModule)
-target_sources(RenderEngineModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES src/RenderEngine/RenderEngine.ixx)
-target_link_libraries(RenderEngineModule HelpersModule VulkanModule)
+target_sources(RenderEngineModule PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES src/RenderEngine.ixx)
+target_link_libraries(RenderEngineModule PUBLIC HelpersModule VulkanModule SDL3Module)
 
 add_executable(BitmapGenerator src/BitmapGenerator/main.cpp)
-target_link_libraries(BitmapGenerator HelpersModule)
+target_link_libraries(BitmapGenerator PUBLIC HelpersModule)
 
 add_executable(Abrogue src/Abrogue/main.cpp)
 target_sources(Abrogue PUBLIC FILE_SET modules TYPE CXX_MODULES BASE_DIRS ${CMAKE_CURRENT_SOURCE_DIR} FILES src/Abrogue/Abrogue.ixx)
-target_link_libraries(Abrogue RenderEngineModule)
-target_compile_options(Abrogue PRIVATE -fno-module-lazy)
+target_link_libraries(Abrogue PUBLIC RenderEngineModule)
 
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY})
 configure_file(data.dat ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
@@ -74,6 +72,3 @@ configure_file(shaders/quadFrag.spv ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/shaders CO
 
 file(MAKE_DIRECTORY ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/textures)
 configure_file(textures/tiles.png ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/textures COPYONLY)
-
-configure_file(${CMAKE_PREFIX_PATH}/lib64/libstdc++.so ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)
-configure_file(${CMAKE_PREFIX_PATH}/lib64/libstdc++.so.6 ${CMAKE_RUNTIME_OUTPUT_DIRECTORY} COPYONLY)

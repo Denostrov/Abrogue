@@ -2,7 +2,7 @@ export module Abrogue;
 
 import RenderEngine;
 import Helpers;
-
+import SDL3;
 import std;
 
 using namespace std::literals;
@@ -150,7 +150,9 @@ public:
         double cos = distanceX / distance;
         double sin = distanceY / distance;
 
-        QuadData quadData{{startX + distanceX / 2.0, startY + distanceY / 4.0}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 255)}, 179};
+        QuadData quadData{{static_cast<float>(startX + distanceX / 2.0), static_cast<float>(startY + distanceY / 4.0)},
+                          {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 255)},
+                          179};
         quadData.setRotation(static_cast<float>(-sin), static_cast<float>(cos));
         quadData.setScale(0.1f, static_cast<float>(distance / 2.0));
         quad.init(quadData);
@@ -917,7 +919,7 @@ public:
         size = text.getSize();
 
         // Create remaining quads when new text is longer
-        for (std::size_t i = quadReferences.getSize(); i < size; ++i)
+        for (std::size_t i = quadReferences.getSize(); i < size; i++)
         {
             quadReferences.emplaceBack();
             quadReferences.getBack().init(QuadData{{x + i + 0.5f, y + 0.5f}, {Color::pack(255, 255, 255, 255), getBackgroundColor(i)}, (std::uint32_t)text[i]});
@@ -1540,7 +1542,9 @@ void Weapon::update(double positionX, double positionY)
 
         if (drawDebugInfo)
         {
-            auto quadData = QuadData{{Constants::mapOffset + weaponX, weaponY}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)}, 249};
+            auto quadData = QuadData{{static_cast<float>(Constants::mapOffset + weaponX), static_cast<float>(weaponY)},
+                                     {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)},
+                                     249};
             damageReference.init(quadData);
         }
 
@@ -1580,7 +1584,7 @@ void Weapon::startAttack(double positionX, double positionY, double targetPositi
 {
     attackTimer = attackTime;
     auto weaponGlyph = type == WeaponType::eDagger ? 24u : type == WeaponType::eClub ? 20u : 94u;
-    QuadData weaponData{{positionX, positionY}, {color.getPacked(), color.getTransparentPacked()}, weaponGlyph};
+    QuadData weaponData{{static_cast<float>(positionX), static_cast<float>(positionY)}, {color.getPacked(), color.getTransparentPacked()}, weaponGlyph};
 
     double distanceX = (targetPositionX - positionX);
     double distanceY = (targetPositionY - positionY) * 2.0;
@@ -1829,7 +1833,9 @@ Item::Item(Type newType, double x, double y) : PhysicsComponent(x, y, 0.48, 0.48
 {
     type = newType;
 
-    quad.init(QuadData{{Constants::mapOffset + x, y}, {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)}, typeGlyphs[(std::size_t)newType]});
+    quad.init(QuadData{{static_cast<float>(Constants::mapOffset + x), static_cast<float>(y)},
+                       {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)},
+                       typeGlyphs[(std::size_t)newType]});
 }
 void Item::update() { PhysicsComponent::update(); }
 void Item::updateDraw(double deltaTime)
@@ -1885,7 +1891,9 @@ void Item::setVisible(bool visible)
     if (visible)
     {
         auto [x, y] = getPosition();
-        quad.init(QuadData{{Constants::mapOffset + x, y}, {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)}, typeGlyphs[(std::size_t)type]});
+        quad.init(QuadData{{static_cast<float>(Constants::mapOffset + x), static_cast<float>(y)},
+                           {Color::pack(255, 255, 0, 255), Color::pack(255, 255, 0, 0)},
+                           typeGlyphs[(std::size_t)type]});
     }
     else
         quad = QuadReference<QuadLayer::eItem>{};
@@ -3452,7 +3460,7 @@ void Map::calculateVisibilitySectorDebug(std::int64_t currentCellY, std::int64_t
 Player::Player(double velocity) : PhysicsComponent(40.5, 33.5, 0.4, 0.4, 0.32, 0.4)
 {
     auto [x, y] = getPosition();
-    quadReference.init(QuadData{{Constants::mapOffset + x, y}, {Color::pack(64, 255, 0, 255), Color::pack(64, 255, 0, 0)}, 64});
+    quadReference.init(QuadData{{static_cast<float>(Constants::mapOffset + x), static_cast<float>(y)}, {Color::pack(64, 255, 0, 255), Color::pack(64, 255, 0, 0)}, 64});
 
     setMaxVelocity(velocity);
     setHealth(100);
@@ -3651,7 +3659,8 @@ EnemyHandler::Enemy::Enemy(EnemyData const& data, double positionX, double posit
     PhysicsComponent(positionX, positionY, 0.45, 0.45, 0.45, 0.45), color(data.color), state(initialState)
 {
     auto [x, y] = getPosition();
-    quad.init(QuadData{{Constants::mapOffset + x, y}, {color.getPacked(), color.getTransparentPacked()}, (std::uint32_t)data.symbol});
+    quad.init(QuadData{
+        {static_cast<float>(Constants::mapOffset + x), static_cast<float>(y)}, {color.getPacked(), color.getTransparentPacked()}, (std::uint32_t)data.symbol});
 
     if (isDrawDebug)
         updateDrawDebug();
@@ -3788,11 +3797,14 @@ void EnemyHandler::Enemy::updateDrawDebug()
         for (auto [pathX, pathY] : path)
         {
             pathQuads.emplaceBack();
-            pathQuads.getBack().init(QuadData{{Constants::mapOffset + pathX + 0.5, pathY + 0.5}, {Color::pack(0, 0, 0, 0), Color::pack(255, 0, 0, 128)}, ' '});
+            pathQuads.getBack().init(QuadData{{static_cast<float>(Constants::mapOffset + pathX + 0.5), static_cast<float>(pathY + 0.5)},
+                                              {Color::pack(0, 0, 0, 0), Color::pack(255, 0, 0, 128)},
+                                              ' '});
         }
 
         auto [x, y] = getPosition();
-        QuadData stateData{{Constants::mapOffset + x - 0.25, y + 0.25}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)}, 'S'};
+        QuadData stateData{
+            {static_cast<float>(Constants::mapOffset + x - 0.25), static_cast<float>(y + 0.25)}, {Color::pack(255, 0, 0, 255), Color::pack(255, 0, 0, 0)}, 'S'};
         stateData.setScale(0.5, 0.5);
         stateQuad.init(stateData);
         stateQuad.setGlyph(state == State::eSleeping ? 'S' : state == State::eWandering ? 'W' : state == State::eHunting ? 'H' : '?');
@@ -3877,7 +3889,7 @@ void EnemyHandler::setDrawDebug(bool draw)
  */
 bool Game::init()
 {
-    if (!logger.init())
+    if (!logger.init(displayErrorMessage))
         return false;
 
     if (!configuration.init())
