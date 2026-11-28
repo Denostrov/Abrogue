@@ -10,7 +10,7 @@ export import std;
 
 using namespace std::literals;
 
-//Convert defines into constexpr flags
+// Convert defines into constexpr flags
 #ifdef NDEBUG
 export constexpr bool isDebugBuild{false};
 #else
@@ -31,14 +31,7 @@ export constexpr std::uint64_t operator""_u64(unsigned long long int val) { retu
 export template <class T, class U>
 concept IsSameType = std::same_as<std::remove_cvref_t<T>, std::remove_cvref_t<U>>;
 export template <class T>
-concept IsLikeStringView = requires { T(std::string_view{}); };
-export template <class T>
-concept IsLikePair = requires {
-    typename T::first_type;
-    typename T::second_type;
-};
-export template <class T>
-concept IsBoolArray = std::same_as<typename T::value_type, bool>;
+concept IsFixedString = requires { T::FixedStringType; };
 
 // Helper template aliases
 export template <class T>
@@ -46,20 +39,68 @@ using optRef = std::optional<std::reference_wrapper<T>>;
 export template <class T>
 using optCRef = std::optional<std::reference_wrapper<T const>>;
 
-template <class Enum, template <Enum> class T>
-class EnumTupleTrait
+export template<class... Ts>
+class Tuple
 {
-    template <std::size_t... I>
-    static consteval auto getType(std::index_sequence<I...>)
+    struct Storage;
+    consteval
     {
-        return std::tuple<T<static_cast<Enum>(I)>...>{};
+        std::vector<std::meta::info> member_specs;
+        template for (std::int64_t i{}; auto type : {^^Ts...})
+        {
+            member_specs.push_back(data_member_spec(type, {.name = std::string(1, 'a' + i)}));
+            i++;
+        }
+
+        std::meta::define_aggregate(^^Storage, member_specs);
     }
+    Storage data;
 
 public:
-    using type = decltype(getType(std::make_index_sequence<static_cast<std::size_t>(Enum::COUNT)>{}));
+    constexpr Tuple() = default;
+    template <class... Args>
+    constexpr Tuple(Args&&... args) :data{std::forward<Args>(args)...}
+    {}
+
+    template <class Self, auto I>
+    constexpr auto&& get(this Self&& self)
+    {
+        static constexpr auto field = std::meta::nonstatic_data_members_of(^^Storage, std::meta::access_context::current())[static_cast<std::int64_t>(I)];
+        return std::forward<Self>(self).data.[:field:];
+    }
 };
 export template <class Enum, template <Enum> class T>
-using EnumTupleType = EnumTupleTrait<Enum, T>::type;
+class EnumTuple
+{
+    struct Storage;
+    consteval
+    {
+        std::vector<std::meta::info> member_specs;
+        static constexpr auto enums = std::define_static_array(std::meta::enumerators_of(^^Enum));
+        template for (constexpr auto e : enums)
+        {
+            constexpr auto eVal = [:e:];
+            if (eVal < Enum::COUNT)
+                member_specs.push_back(data_member_spec(^^T<eVal>, {.name = std::meta::identifier_of(e)}));
+        }
+
+        std::meta::define_aggregate(^^Storage, member_specs);
+    }
+    Storage data;
+
+public:
+    constexpr EnumTuple() = default;
+    template <class... Args>
+    constexpr EnumTuple(Args&&... args) :data{std::forward<Args>(args)...}
+    {}
+
+    template <Enum e, class Self>
+    constexpr auto&& get(this Self&& self)
+    {
+        static constexpr auto field = std::meta::nonstatic_data_members_of(^^Storage, std::meta::access_context::current())[static_cast<std::int64_t>(e)];
+        return std::forward<Self>(self).data.[:field:];
+    }
+};
 
 export struct FillTag
 {};
@@ -374,6 +415,8 @@ export template <auto N>
 class FixedString
 {
 public:
+    using FixedStringType = void;
+
     constexpr FixedString() = default;
 
     template <auto StrSize>
@@ -641,7 +684,7 @@ public:
         if (!isValid)
             return false;
 
-        if constexpr (IsLikeStringView<Value>)
+        if constexpr (std::convertible_to<Value, std::string_view>)
         {
             if (valueStr.getSize() > value.capacity)
                 return false;
@@ -827,7 +870,7 @@ public:
     {
         FixedString<1024> rowStr;
         rowStr.append(key, '=');
-        if constexpr (IsLikeStringView<Value>)
+        if constexpr (IsFixedString<Value>)
         {
             rowStr.append(value);
         }

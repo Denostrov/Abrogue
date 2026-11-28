@@ -854,7 +854,7 @@ private:
  */
 export class QuadPool
 {
-    static constexpr Array<std::size_t, QuadLayer::COUNT> capacities{8192uz, 512uz, 512uz, 512uz, 512uz, 2048uz};
+    static constexpr Array<std::int64_t, QuadLayer::COUNT> capacities{8192, 512, 512, 512, 512, 2048};
 
     template <QuadLayer layer>
     struct Storage
@@ -867,25 +867,17 @@ public:
     QuadPool() = default;
 
     template <QuadLayer layer>
-    [[nodiscard]] auto getData()
-    {
-        return getStorage<layer>().data.getSpan();
-    }
-    [[nodiscard]] static constexpr auto getCapacity() { return std::accumulate(capacities.begin(), capacities.end(), 0uz); }
-
-private:
-    template <QuadLayer layer>
     [[nodiscard]] auto&& getStorage()
     {
-        return std::get<(std::size_t)layer>(storage);
+        return storage.get<layer>();
     }
 
-    EnumTupleType<QuadLayer, Storage> storage;
+    static constexpr auto capacity{std::accumulate(capacities.begin(), capacities.end(), 0_i64)};
 
-    template <QuadLayer layer>
-    friend class QuadReference;
+private:
+    EnumTuple<QuadLayer, Storage> storage;
 };
-export inline QuadPool quadPool;
+export QuadPool quadPool;
 
 /*
  * Class for handling Vulkan library functions
@@ -2647,7 +2639,7 @@ public:
             VkBufferCreateInfo bufferCreateInfo{.sType = VkStructureType::VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
                                                 .pNext = nullptr,
                                                 .flags = {},
-                                                .size = sizeof(QuadData) * QuadPool::getCapacity(),
+                                                .size = sizeof(QuadData) * QuadPool::capacity,
                                                 .usage = VkBufferUsageFlagBits::VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                                                 .sharingMode = VkSharingMode::VK_SHARING_MODE_EXCLUSIVE,
                                                 .queueFamilyIndexCount = 1,
@@ -3132,20 +3124,18 @@ public:
     }
 
 private:
-    template <std::size_t currentIndex = 0>
-    std::size_t copyQuadPools(std::size_t instanceCount = 0)
+    std::int64_t copyQuadPools()
     {
-        if constexpr (currentIndex < (std::size_t)QuadLayer::COUNT)
+        auto quadBuffer = static_cast<char*>(logicalDeviceResources.getQuadDataBuffer(currentFrameIndex).data);
+        std::int64_t totalSize{};
+        template for (constexpr auto i : std::views::indices(static_cast<std::int64_t>(QuadLayer::COUNT)))
         {
-            auto poolData = quadPool.getData<(QuadLayer)currentIndex>();
-            std::memcpy(static_cast<char*>(logicalDeviceResources.getQuadDataBuffer(currentFrameIndex).data) + instanceCount * sizeof(QuadData),
-                        poolData.data(), poolData.size() * sizeof(QuadData));
-            return copyQuadPools<currentIndex + 1>(instanceCount + poolData.size());
+            auto const& storage = quadPool.getStorage<static_cast<QuadLayer>(i)>();
+            auto poolSize = storage.data.getSize() * sizeof(QuadData);
+            std::memcpy(quadBuffer + totalSize, storage.data.getData(), poolSize);
+            totalSize += poolSize;
         }
-        else
-        {
-            return instanceCount;
-        }
+        return totalSize;
     }
 
     // Create new swapchain and mark old one for deletion
